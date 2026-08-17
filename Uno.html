@@ -268,14 +268,93 @@
     .seat.win { background: #dcfce7; }
     .seat.uno .meta b::after { content: " UNO"; color: var(--uno-red); }
 
-    .table {
+    .arena {
       flex: 1 1 auto;
+      min-height: 0;
       width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: minmax(72px, 130px) 1fr minmax(72px, 130px);
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        "tl top tr"
+        "left center right";
+      align-items: center;
+      justify-items: center;
+      gap: 4px 8px;
+    }
+    .seat-slot { min-width: 0; min-height: 0; }
+    .seat-slot.top { grid-area: top; }
+    .seat-slot.topLeft { grid-area: tl; }
+    .seat-slot.topRight { grid-area: tr; }
+    .seat-slot.left { grid-area: left; }
+    .seat-slot.right { grid-area: right; }
+    .table {
+      grid-area: center;
+      width: auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 22px;
+      gap: 18px;
       min-height: 0;
+    }
+
+    .opp {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .opp-fan-wrap {
+      display: grid;
+      place-items: center;
+      overflow: visible;
+    }
+    .opp-fan {
+      display: flex;
+      align-items: flex-end;
+      pointer-events: none;
+      height: 72px;
+      padding-top: 14px;
+    }
+    .opp-fan .ucard {
+      --fan-rot: 0deg;
+      --fan-y: 0px;
+      transform-origin: 50% 110%;
+      transform: translateY(var(--fan-y)) rotate(var(--fan-rot));
+    }
+    .opp-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      background: rgba(255,255,255,.94);
+      border-radius: 999px;
+      padding: 4px 10px;
+      box-shadow: 0 3px 0 rgba(0,0,0,.16);
+      max-width: 120px;
+    }
+    .opp-meta b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .opp-meta span { font-size: 11px; font-weight: 800; color: var(--muted); }
+    .opp.turn .opp-meta { background: var(--uno-yellow); }
+    .opp.uno .opp-meta b::after { content: " UNO"; color: var(--uno-red); }
+    .seat-slot.left .opp { flex-direction: row-reverse; }
+    .seat-slot.right .opp { flex-direction: row; }
+    .seat-slot.left .opp-fan-wrap,
+    .seat-slot.right .opp-fan-wrap {
+      width: 78px;
+      height: 150px;
+    }
+    .seat-slot.left .opp-fan { transform: rotate(90deg); }
+    .seat-slot.right .opp-fan { transform: rotate(-90deg); }
+    .seat-slot.top .opp-fan { transform: rotate(180deg); }
+    .seat-slot.topLeft .opp-fan { transform: rotate(135deg); }
+    .seat-slot.topRight .opp-fan { transform: rotate(-135deg); }
+
+    .ucard.tiny { width: 36px; height: 54px; padding: 3px; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,.28); }
+    .ucard.tiny .back-oval { width: 22px; height: 34px; font-size: 8px; box-shadow: 0 0 0 2px #111; }
+    .flying {
+      pointer-events: none;
+      z-index: 200;
+      margin: 0 !important;
     }
     .pile {
       display: flex;
@@ -569,14 +648,19 @@
       .qr img { width: 140px; height: 140px; }
       .uno-logo { width: 168px; height: 102px; }
       .uno-logo span { font-size: 46px; }
-      .ucard:not(.sm):not(.lg) { width: 64px; height: 98px; }
-      .ucard:not(.sm):not(.lg) .oval { width: 40px; height: 66px; }
-      .ucard:not(.sm):not(.lg) .face { font-size: 24px; }
+      .ucard:not(.sm):not(.lg):not(.tiny) { width: 64px; height: 98px; }
+      .ucard:not(.sm):not(.lg):not(.tiny) .oval { width: 40px; height: 66px; }
+      .ucard:not(.sm):not(.lg):not(.tiny) .face { font-size: 24px; }
       .ucard.lg { width: 82px; height: 124px; }
       .ucard.lg .oval { width: 50px; height: 82px; }
       .ucard.lg .face { font-size: 30px; }
       .ucard.lg .back-oval { width: 54px; height: 86px; font-size: 16px; }
-      .table { gap: 12px; }
+      .arena {
+        grid-template-columns: 64px 1fr 64px;
+        gap: 2px 4px;
+      }
+      .opp-meta { padding: 3px 7px; max-width: 72px; }
+      .opp-meta b { font-size: 10px; }
     }
     @media (max-height: 720px) {
       .table { gap: 10px; }
@@ -653,8 +737,12 @@
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:#fff">0:00</div>
       <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
     </div>
-    <div class="players" id="scoreboard"></div>
-    <div class="table">
+    <div class="arena">
+      <div class="seat-slot topLeft" id="slot-topLeft"></div>
+      <div class="seat-slot top" id="slot-top"></div>
+      <div class="seat-slot topRight" id="slot-topRight"></div>
+      <div class="seat-slot left" id="slot-left"></div>
+      <div class="table">
       <div class="pile">
         <div class="tag">Draw</div>
         <button class="ucard back lg" id="draw-pile" type="button" title="Draw a card">
@@ -671,6 +759,8 @@
         <div class="color-chip" id="color-chip"></div>
         <div class="dir" id="dir">↻</div>
       </div>
+      </div>
+      <div class="seat-slot right" id="slot-right"></div>
     </div>
     <div class="banner" id="banner">Match the color or number</div>
     <div class="hand-dock">
@@ -865,8 +955,8 @@
       timerId: 0,
       botTimer: 0,
       focusedCardId: null,
-      raisedCardId: null,
-      handDragged: false,
+      seenPlaySeq: 0,
+      pendingFly: null,
     };
     const guests = new Map();
 
@@ -977,6 +1067,8 @@
           isTurn: game.players[game.turn].id === id,
         },
         legal,
+        lastPlay: game.lastPlay || null,
+        playSeq: game.playSeq || 0,
         players: game.players.map((x) => ({
           id: x.id,
           name: x.name,
@@ -1024,6 +1116,8 @@
         startedAt: Date.now(),
         winnerId: null,
         players,
+        playSeq: 0,
+        lastPlay: null,
       };
     }
 
@@ -1107,6 +1201,8 @@
       if (!card || !canPlayCard(g, p.hand, card)) return;
       p.hand = p.hand.filter((c) => c.id !== cardId);
       g.discard.push(card);
+      g.playSeq = (g.playSeq || 0) + 1;
+      g.lastPlay = { seq: g.playSeq, playerId, card: { id: card.id, color: card.color, value: card.value } };
       if (card.color !== "wild") g.currentColor = card.color;
       sfx("play");
       if (card.value === "wild" || card.value === "wild4") {
@@ -1255,10 +1351,11 @@
         return;
       }
       const p = g.players[g.turn];
-      if (p && p.bot) state.botTimer = setTimeout(() => botAct(p.id), 750 + Math.random() * 450);
+      if (p && p.bot) state.botTimer = setTimeout(() => botAct(p.id), 900 + Math.random() * 350);
     }
 
     function applyView(view) {
+      const prevTop = state.view && state.view.top;
       state.view = view;
       if (view.phase === "lobby") {
         renderLobby(view);
@@ -1280,8 +1377,7 @@
         $("color-chip").style.background = {
           red: "#c41e3a", yellow: "#ffd100", green: "#2e8b3a", blue: "#1b5eaa",
         }[view.currentColor] || "#1a1a1a";
-        renderScoreboard(view);
-        renderDiscard(view.top);
+        renderOpponents(view);
         renderHand(view);
         $("btn-uno").disabled = view.you.hand.length > 2 || view.you.calledUno;
         $("btn-uno").classList.toggle("pulse", view.you.hand.length === 2 && !view.you.calledUno);
@@ -1289,7 +1385,60 @@
         $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId;
         $("color-pick").classList.toggle("show", view.choosingColor === view.you.id);
         if (view.startedAt && !state.timerId) startTimer(view.startedAt);
+        const play = view.lastPlay;
+        if (play && play.seq && play.seq !== state.seenPlaySeq) {
+          state.seenPlaySeq = play.seq;
+          renderDiscard(prevTop || view.top);
+          flyToPile(play.card, originRect(play), () => renderDiscard(view.top));
+        } else {
+          renderDiscard(view.top);
+        }
       }
+    }
+
+    function originRect(play) {
+      if (state.pendingFly && state.pendingFly.card.id === play.card.id) {
+        const r = state.pendingFly.from;
+        state.pendingFly = null;
+        return r;
+      }
+      const seat = document.querySelector('.opp[data-pid="' + play.playerId + '"]');
+      if (seat) return seat.getBoundingClientRect();
+      return null;
+    }
+
+    function flyToPile(card, from, done) {
+      const pile = $("discard");
+      const to = pile.getBoundingClientRect();
+      if (!from || from.width < 4 || to.width < 4) {
+        if (done) done();
+        return;
+      }
+      const el = makeCardEl(card);
+      el.classList.add("flying");
+      el.style.cssText = [
+        "position:fixed",
+        "left:" + from.left + "px",
+        "top:" + from.top + "px",
+        "width:" + from.width + "px",
+        "height:" + from.height + "px",
+        "z-index:200",
+        "margin:0",
+        "pointer-events:none",
+        "transform-origin:center center",
+        "transition:transform .48s cubic-bezier(.2,.85,.2,1)",
+      ].join(";");
+      document.body.append(el);
+      const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+      const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+      const sc = Math.max(0.4, to.width / from.width);
+      requestAnimationFrame(() => {
+        el.style.transform = "translate(" + dx + "px," + dy + "px) scale(" + sc + ") rotate(8deg)";
+      });
+      setTimeout(() => {
+        el.remove();
+        if (done) done();
+      }, 500);
     }
 
     function renderDiscard(card) {
@@ -1298,29 +1447,52 @@
       if (card) box.append(makeCardEl(card, "lg"));
     }
 
-    function renderScoreboard(view) {
-      const el = $("scoreboard");
-      el.replaceChildren();
-      for (const p of view.players) {
-        const seat = document.createElement("div");
-        seat.className = "seat"
-          + (p.id === view.you.id ? " you" : "")
-          + (p.isTurn ? " turn" : "")
-          + (p.calledUno && p.count === 1 ? " uno" : "");
-        const dot = document.createElement("div");
-        dot.className = "dot";
-        dot.style.background = p.color;
-        dot.textContent = p.name.slice(0, 1).toUpperCase();
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const b = document.createElement("b");
-        b.textContent = p.name + (p.bot ? " · bot" : "");
-        const s = document.createElement("span");
-        s.textContent = p.count + " card" + (p.count === 1 ? "" : "s") + (p.connected === false ? " · offline" : "");
-        meta.append(b, s);
-        seat.append(dot, meta);
-        el.append(seat);
-      }
+    const OPP_SLOTS = {
+      1: ["top"],
+      2: ["left", "right"],
+      3: ["left", "top", "right"],
+      4: ["left", "topLeft", "top", "right"],
+      5: ["left", "topLeft", "top", "topRight", "right"],
+    };
+
+    function renderOpponents(view) {
+      ["topLeft", "top", "topRight", "left", "right"].forEach((name) => {
+        const slot = $("slot-" + name);
+        if (slot) slot.replaceChildren();
+      });
+      const youIndex = view.players.findIndex((p) => p.id === view.you.id);
+      const n = view.players.length;
+      const around = [];
+      for (let i = 1; i < n; i++) around.push(view.players[(youIndex - i + n) % n]);
+      const slots = OPP_SLOTS[Math.min(around.length, 5)] || OPP_SLOTS[5];
+      around.forEach((p, i) => {
+        const slot = $("slot-" + (slots[i] || "top"));
+        if (!slot) return;
+        slot.append(makeOppEl(p));
+      });
+    }
+
+    function makeOppEl(p) {
+      const wrap = document.createElement("div");
+      wrap.className = "opp" + (p.isTurn ? " turn" : "") + (p.calledUno && p.count === 1 ? " uno" : "");
+      wrap.dataset.pid = p.id;
+      const hold = document.createElement("div");
+      hold.className = "opp-fan-wrap";
+      const fan = document.createElement("div");
+      fan.className = "opp-fan";
+      const show = Math.min(Math.max(p.count, 0), 12);
+      for (let i = 0; i < show; i++) fan.append(makeCardEl({ _back: true }, "tiny"));
+      hold.append(fan);
+      const meta = document.createElement("div");
+      meta.className = "opp-meta";
+      const b = document.createElement("b");
+      b.textContent = p.name;
+      const s = document.createElement("span");
+      s.textContent = String(p.count);
+      meta.append(b, s);
+      wrap.append(hold, meta);
+      requestAnimationFrame(() => layoutFan(fan, { overlap: 0.52, maxRot: 20, arc: 7 }));
+      return wrap;
     }
 
     function isTouchUi() {
@@ -1342,27 +1514,27 @@
       state.raisedCardId = id;
     }
 
-    function layoutHand() {
-      const wrap = $("hand-wrap");
-      const row = $("hand");
+    function layoutFan(row, opts) {
       const cards = [...row.querySelectorAll(".ucard")];
       const n = cards.length;
       if (!n) return;
-      const cw = cards[0].offsetWidth || 78;
-      const avail = Math.max(120, wrap.clientWidth - 24);
-      const minPeek = 28;
-      let overlap = n < 2 ? 0 : cw * 0.42;
-      const total = cw * n - overlap * (n - 1);
-      if (total > avail) overlap = Math.min(cw - minPeek, (cw * n - avail) / (n - 1));
+      const cw = cards[0].offsetWidth || 36;
+      const overlapRatio = (opts && opts.overlap) || 0.5;
+      const overlap = n < 2 ? 0 : cw * overlapRatio;
       const mid = (n - 1) / 2;
-      const maxRot = Math.min(24, 5 + n * 1.5);
+      const maxRot = Math.min((opts && opts.maxRot) || 22, 5 + n * 1.7);
+      const arc = (opts && opts.arc) != null ? opts.arc : 8;
       cards.forEach((el, i) => {
         const t = n === 1 ? 0 : (i - mid) / Math.max(mid, 1);
         el.style.marginLeft = i === 0 ? "0px" : (-overlap) + "px";
         el.style.setProperty("--fan-rot", (t * maxRot) + "deg");
-        el.style.setProperty("--fan-y", (Math.abs(t) * 10) + "px");
+        el.style.setProperty("--fan-y", (Math.abs(t) * arc) + "px");
         if (!el.classList.contains("raised")) el.style.zIndex = String(10 + i);
       });
+    }
+
+    function layoutHand() {
+      layoutFan($("hand"), { overlap: 0.42, maxRot: 24, arc: 10 });
       if (state.raisedCardId) raiseCard(state.raisedCardId);
     }
 
@@ -1512,6 +1684,13 @@
         if (navigator.vibrate) navigator.vibrate(50);
         return;
       }
+      const btn = $("hand").querySelector('[data-card-id="' + cardId + '"]');
+      const card = view.you.hand.find((c) => c.id === cardId);
+      if (btn && card) {
+        const r = btn.getBoundingClientRect();
+        state.pendingFly = { card, from: { left: r.left, top: r.top, width: r.width, height: r.height } };
+      }
+      state.raisedCardId = null;
       sendAction({ type: "play", cardId });
     }
 
