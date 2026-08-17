@@ -7,9 +7,10 @@ A growing collection of small browser games. Each game is a single HTML file —
 | Game | Status | File |
 | --- | --- | --- |
 | **Dobble** | Playable | [Dobble.html](Dobble.html) |
+| **Uno** | Playable | [Uno.html](Uno.html) |
 | More minigames | Coming soon | — |
 
-How rooms, networking, and the Dobble rules engine work is in [Dobble.md](Dobble.md).
+How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md).
 
 ---
 
@@ -55,15 +56,56 @@ The first player with **no cards left** wins. Scores and cards remaining show at
 
 ---
 
+## How to play Uno
+
+Match the discard’s **color** or **number**. First player to empty their hand wins.
+
+### Setup
+
+1. Open [Uno.html](Uno.html) in a browser.
+2. Type your name.
+3. Choose one:
+   - **Create room** — you are the host. Share the 4-letter code, the invite link, or the QR code.
+   - **Join friends** — type the host’s code (or open a link that already has `?room=ABCD`).
+   - **Practice solo** — play against 1–3 bots, no lobby.
+
+Everyone must open the **same** `Uno.html` page. Friends on the same Wi‑Fi or on a different network can join the same lobby.
+
+### In the lobby
+
+- Wait until at least two people have connected.
+- Host taps **Start game**. Keep the host tab open for the whole match.
+
+### During a turn
+
+You see the discard, the current color, and **your** hand.
+
+1. Tap a highlighted card that matches color or number (or a Wild).
+2. If you cannot play, tap the draw pile. You may play the drawn card if it fits, or tap **Keep**.
+3. Skip, Reverse, Draw Two, Wild, and Wild +4 do what they say on the card.
+4. When you have two cards, tap **UNO!** before going down to one — or you draw 2.
+
+### Winning
+
+The first player with **no cards left** wins. After the match, the host can play again with the same lobby or everyone can go home.
+
+### Tips
+
+- Same Wi‑Fi is the most reliable for joining.
+- The host must stay on the page. If the host closes the tab, the room ends.
+- You cannot join a game that has already started. Wait for the next round.
+- Wild Draw Four is only legal if you have no card of the current color.
+
+---
+
 ## Coming soon
 
-More one-file minigames will land in this folder. Each will get its own `.html` page and a short how-to, same pattern as Dobble.
+More one-file minigames will land in this folder. Each will get its own `.html` page and a short how-to, same pattern as Dobble and Uno.
 
 Ideas on the list (not built yet):
 
 - Party / reaction games
 - Short cooperative puzzles
-- Other table classics in the browser
 
 Watch this README for new titles.
 
@@ -75,6 +117,4 @@ Watch this README for new titles.
 npx serve .
 ```
 
-Then open `http://localhost:3000/Dobble.html`.
-# MiniGames
-# MiniGames
+Then open `http://localhost:3000/Dobble.html` or `http://localhost:3000/Uno.html`.

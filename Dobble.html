@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffcc33" />
+  <title>Dobble</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23e63946'/><text y='70' x='50' text-anchor='middle' font-size='52'>⭐</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffcc33;
+      --card: #ffffff;
+      --ink: #1b1b1b;
+      --muted: #5a4308;
+      --line: #1b1b1b;
+      --red: #ff2d3a;
+      --gold: #ff2d3a;
+      --teal: #00a86b;
+      --safe: env(safe-area-inset-top, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: Fredoka, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .play-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-color: #ffcc33;
+      background-image:
+        radial-gradient(circle 130px at 6% 10%, #ff2d3a 99%, transparent 100%),
+        radial-gradient(circle 100px at 94% 6%, #00c2ff 99%, transparent 100%),
+        radial-gradient(circle 150px at 96% 90%, #7bff3a 99%, transparent 100%),
+        radial-gradient(circle 110px at 4% 88%, #ff7a00 99%, transparent 100%),
+        radial-gradient(circle 72px at 48% 0%, #ff3db4 99%, transparent 100%),
+        radial-gradient(circle 64px at 12% 48%, #7b5cff 99%, transparent 100%),
+        radial-gradient(circle 54px at 82% 42%, #ff2d3a 99%, transparent 100%),
+        radial-gradient(circle 46px at 68% 94%, #00c2ff 99%, transparent 100%),
+        radial-gradient(circle 38px at 38% 82%, #ff7a00 99%, transparent 100%),
+        radial-gradient(circle 32px at 22% 22%, #ffffff 99%, transparent 100%),
+        radial-gradient(circle 26px at 74% 18%, #1b1b1b 99%, transparent 100%),
+        radial-gradient(circle 22px at 58% 58%, #7bff3a 99%, transparent 100%),
+        radial-gradient(circle 18px at 88% 68%, #ff3db4 99%, transparent 100%),
+        radial-gradient(circle 16px at 30% 62%, #00c2ff 99%, transparent 100%),
+        radial-gradient(circle 14px at 50% 28%, #ff2d3a 99%, transparent 100%);
+    }
+    .play-bg::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ff2d3a;
+      box-shadow:
+        18vw 14vh 0 6px #00c2ff,
+        28vw 72vh 0 3px #7bff3a,
+        42vw 8vh 0 5px #ff7a00,
+        52vw 86vh 0 2px #ffffff,
+        61vw 24vh 0 4px #7b5cff,
+        73vw 64vh 0 7px #ff3db4,
+        11vw 34vh 0 2px #1b1b1b,
+        86vw 28vh 0 3px #ffcc33,
+        8vw 64vh 0 5px #ffffff,
+        34vw 48vh 0 2px #ff2d3a,
+        91vw 52vh 0 4px #7bff3a,
+        47vw 70vh 0 3px #00c2ff,
+        16vw 92vh 0 4px #7b5cff,
+        77vw 8vh 0 2px #ff7a00,
+        64vw 46vh 0 6px #ffffff;
+    }
+
+    button, input, select { font-family: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 1;
+      min-height: 100dvh;
+      padding: calc(16px + var(--safe)) 16px 24px;
+    }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .brand h1 {
+      font-size: clamp(40px, 9vw, 72px);
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+      color: var(--red);
+    }
+    .brand p { color: var(--muted); margin-top: 10px; font-size: 15px; }
+
+    .panel {
+      width: min(420px, 100%);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 12px 0 6px;
+    }
+    input, select {
+      width: 100%;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 18px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--ink); }
+    input.room {
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--red);
+      margin-top: 12px;
+    }
+    .btn:active:not(:disabled) { opacity: 0.85; }
+    .btn.teal { background: var(--teal); color: #fff; }
+    .btn.ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 2px solid var(--line);
+    }
+    .btn.row { width: auto; padding-inline: 14px; margin-top: 0; }
+
+    .row { display: flex; gap: 10px; }
+    .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
+    .error {
+      display: none;
+      margin-top: 12px;
+      background: #fde8ea;
+      color: var(--red);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .error.show { display: block; }
+
+    .deco {
+      display: flex;
+      gap: 18px;
+      margin: 18px 0 8px;
+      pointer-events: none;
+    }
+    .deco .card { width: min(28vw, 140px); }
+
+    .topbar {
+      width: min(1100px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .code-pill {
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+    }
+    .icon-btn {
+      width: 42px; height: 42px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--ink); font-size: 18px;
+    }
+
+    .players {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 4px 0 10px;
+    }
+    .seat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 10px 6px 6px;
+      min-width: 120px;
+    }
+    .seat .dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+    }
+    .seat .meta { display: flex; flex-direction: column; line-height: 1.1; }
+    .seat .meta b { font-size: 13px; }
+    .seat .meta span { font-size: 11px; color: var(--muted); }
+    .seat.you { border-color: var(--red); }
+    .seat.frozen { opacity: 0.5; }
+    .seat.win { border-color: var(--teal); }
+
+    .play-area {
+      flex: 1;
+      width: min(1100px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(12px, 4vw, 48px);
+      min-height: 0;
+    }
+    .card-wrap { text-align: center; }
+    .card-wrap .tag {
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .card {
+      --ring: var(--red);
+      position: relative;
+      width: min(40vw, 56vh, 380px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--card);
+      border: 6px solid var(--ring);
+      container-type: size;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .card.yours { --ring: var(--teal); }
+    .card.flash { outline: 4px solid var(--ink); outline-offset: 4px; }
+    .card.oops { background: #f3f3f3; }
+
+    .sym {
+      position: absolute;
+      left: var(--x); top: var(--y);
+      transform: translate(-50%, -50%) rotate(var(--r));
+      width: calc(var(--s) * 1.15cqw);
+      height: calc(var(--s) * 1.15cqw);
+      border: 0;
+      background: transparent;
+      font-size: calc(var(--s) * 1cqw);
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sym:hover, .sym:focus-visible {
+      transform: translate(-50%, -50%) rotate(var(--r)) scale(1.12);
+      outline: none;
+    }
+    .sym.match {
+      animation: pop .55s ease;
+      z-index: 2;
+    }
+
+    .banner {
+      min-height: 28px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: center;
+      margin-top: 10px;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s;
+      z-index: 20;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .lobby-grid {
+      width: min(720px, 100%);
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .qr {
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--ink);
+      gap: 8px;
+    }
+    .qr img { width: 160px; height: 160px; }
+    .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .player-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .player-list .seat { min-width: 0; }
+
+    .end-card {
+      text-align: center;
+      width: min(420px, 100%);
+    }
+    .end-card h2 { font-size: 42px; color: var(--red); margin: 8px 0; }
+    .podium { margin: 16px 0; }
+
+    .overlay {
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      display: none;
+      place-items: center;
+      background: rgba(27, 27, 27, .72);
+      color: #fff;
+      font-weight: 700;
+      font-size: 22px;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .overlay.show { display: grid; }
+
+    @keyframes pop {
+      0% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
+      40% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1.45); }
+      100% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    @media (max-width: 720px) {
+      .lobby-grid { grid-template-columns: 1fr; }
+      .qr img { width: 140px; height: 140px; }
+    }
+    @media (max-width: 640px) and (orientation: portrait) {
+      .play-area { flex-direction: column; gap: 10px; }
+      .card { width: min(72vw, 36vh, 340px); }
+      .deco { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="play-bg" aria-hidden="true"></div>
+  <div id="screen-home" class="screen active">
+    <div class="brand">
+      <h1>DOBBLE</h1>
+      <p>Any two cards share exactly one symbol. Tap it first.</p>
+    </div>
+    <div class="deco" id="home-deco"></div>
+    <div class="panel">
+      <label for="name">Your name</label>
+      <input id="name" maxlength="16" placeholder="Player" autocomplete="nickname" />
+      <button class="btn" id="btn-create">Create room</button>
+      <div class="row">
+        <div style="flex:1">
+          <label for="join-code">Join a room</label>
+          <input id="join-code" class="room" maxlength="4" placeholder="ABCD" autocomplete="off" />
+        </div>
+      </div>
+      <button class="btn teal" id="btn-join">Join friends</button>
+      <button class="btn ghost" id="btn-solo">Practice solo</button>
+      <div class="error" id="home-error"></div>
+      <p class="hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
+    </div>
+  </div>
+
+  <div id="screen-lobby" class="screen">
+    <div class="topbar">
+      <div>
+        <div style="color:var(--muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase">Room</div>
+        <div class="code-pill" id="lobby-code">----</div>
+      </div>
+      <button class="btn row ghost" id="btn-copy">Copy link</button>
+    </div>
+    <div class="lobby-grid">
+      <div class="panel" style="width:auto;margin:0">
+        <b>Players</b>
+        <div class="player-list" id="lobby-players"></div>
+        <div class="settings" id="host-settings">
+          <div>
+            <label for="cards-each">Cards each</label>
+            <select id="cards-each">
+              <option value="5">Quick · 5</option>
+              <option value="8" selected>Normal · 8</option>
+              <option value="12">Long · 12</option>
+              <option value="all">Entire deck</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn teal" id="btn-start">Start game</button>
+          </div>
+        </div>
+        <p class="hint" id="lobby-hint">Waiting for the host to start…</p>
+      </div>
+      <div class="qr">
+        <img id="qr" alt="Invite QR code" />
+        <b>Scan to join</b>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="topbar">
+      <div class="code-pill" id="game-code">----</div>
+      <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700">0:00</div>
+      <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
+    </div>
+    <div class="players" id="scoreboard"></div>
+    <div class="play-area">
+      <div class="card-wrap">
+        <div class="tag">Your card</div>
+        <div class="card yours" id="card-mine">
+          <div class="overlay" id="freeze-overlay">Oops! Wait…</div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="tag">Center</div>
+        <div class="card" id="card-center"></div>
+      </div>
+    </div>
+    <div class="banner" id="banner">Find the one matching symbol</div>
+  </div>
+
+  <div id="screen-end" class="screen">
+    <div class="end-card">
+      <div style="font-size:64px" id="end-emoji">🏆</div>
+      <h2 id="end-title">Winner</h2>
+      <p id="end-sub" style="color:var(--muted)"></p>
+      <div class="podium panel" id="end-scores" style="width:auto;margin-top:16px"></div>
+      <button class="btn" id="btn-again">Play again</button>
+      <button class="btn ghost" id="btn-home">Home</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SYMBOLS = [
+      "🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐸","🐵","🦄",
+      "🐝","🦋","🐞","🐢","🐙","🐬","🐳","🦈","🐘","🦒",
+      "🍎","🍋","🍉","🍇","🍒","🍑","🍓","🥝","🥕","🌶️",
+      "⭐","🌙","☀️","⚡","❄️","🌈","🔥","💎","🎯","⚽",
+      "🏀","🎸","🚀","✈️","🚲","🎈","🎃","👑","🔔","💡",
+      "🎵","🌵","🌸","🍄","🎄","🎁","🎂"
+    ];
+    const COLORS = ["#e63946","#1d9a6c","#2563eb","#d97706","#7c3aed","#0f766e","#db2777","#1f2937"];
+    const N = 7;
+    const PEER_PREFIX = "dobblehost-";
+    const FREEZE_MS = 1600;
+    const REVEAL_MS = 900;
+
+    const $ = (id) => document.getElementById(id);
+    const screens = {
+      home: $("screen-home"),
+      lobby: $("screen-lobby"),
+      game: $("screen-game"),
+      end: $("screen-end"),
+    };
+
+    function showScreen(name) {
+      Object.values(screens).forEach((el) => el.classList.remove("active"));
+      screens[name].classList.add("active");
+    }
+
+    function toast(msg) {
+      const el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function showError(id, msg) {
+      const el = $(id);
+      el.textContent = msg;
+      el.classList.toggle("show", !!msg);
+    }
+
+    function mulberry32(a) {
+      return function () {
+        let t = (a += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateDeck(n) {
+      const cards = [];
+      const first = [];
+      for (let i = 0; i <= n; i++) first.push(i);
+      cards.push(first);
+      for (let i = 0; i < n; i++) {
+        const card = [0];
+        for (let j = 0; j < n; j++) card.push(n + 1 + n * i + j);
+        cards.push(card);
+      }
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const card = [i + 1];
+          for (let k = 0; k < n; k++) {
+            card.push(n + 1 + n * k + ((i * k + j) % n));
+          }
+          cards.push(card);
+        }
+      }
+      return cards;
+    }
+
+    function shuffle(arr, rng = Math.random) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function hashCard(ids) {
+      return ids.reduce((h, x) => (h * 33 + x) | 0, 17);
+    }
+
+    function layoutSymbols(ids) {
+      const rng = mulberry32(hashCard(ids) >>> 0);
+      const order = shuffle(ids, rng);
+      const out = [];
+      out.push({
+        id: order[0],
+        x: 50 + (rng() - 0.5) * 8,
+        y: 50 + (rng() - 0.5) * 8,
+        s: 22 + rng() * 6,
+        r: (rng() - 0.5) * 50,
+      });
+      const around = order.length - 1;
+      for (let i = 0; i < around; i++) {
+        const angle = (i / around) * Math.PI * 2 + (rng() - 0.5) * 0.25;
+        const dist = 30 + rng() * 6;
+        out.push({
+          id: order[i + 1],
+          x: 50 + Math.cos(angle) * dist,
+          y: 50 + Math.sin(angle) * dist,
+          s: 16 + rng() * 8,
+          r: (rng() - 0.5) * 80,
+        });
+      }
+      return out;
+    }
+
+    function renderCard(el, ids, highlight = null, clickable = false) {
+      [...el.querySelectorAll(".sym")].forEach((n) => n.remove());
+      if (!ids || !ids.length) return;
+      for (const item of layoutSymbols(ids)) {
+        const btn = document.createElement("button");
+        btn.className = "sym" + (item.id === highlight ? " match" : "");
+        btn.type = "button";
+        btn.textContent = SYMBOLS[item.id];
+        btn.style.setProperty("--x", item.x + "%");
+        btn.style.setProperty("--y", item.y + "%");
+        btn.style.setProperty("--s", item.s);
+        btn.style.setProperty("--r", item.r + "deg");
+        btn.disabled = !clickable;
+        if (clickable) {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onSymbolClick(item.id);
+          });
+        }
+        el.appendChild(btn);
+      }
+    }
+
+    let audioCtx = null;
+    let muted = false;
+    function ctx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function tone(freq, dur, type = "sine", gain = 0.07) {
+      if (muted) return;
+      const c = ctx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(gain, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + dur);
+    }
+    function sfx(kind) {
+      if (kind === "ok") { tone(523, 0.09); setTimeout(() => tone(784, 0.16), 70); }
+      else if (kind === "bad") { tone(140, 0.22, "square", 0.05); }
+      else if (kind === "win") { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18), i * 90)); }
+    }
+
+    const DECK = generateDeck(N);
+
+    const state = {
+      isHost: false,
+      solo: false,
+      peer: null,
+      conns: new Map(),
+      room: "",
+      myId: "",
+      myName: "",
+      phase: "home",
+      round: 0,
+      locked: false,
+      highlight: null,
+      startedAt: 0,
+      timerId: 0,
+      freezeUntil: 0,
+      freezeTimer: 0,
+      localFreezeUntil: 0,
+      view: null,
+      game: null,
+    };
+
+    function peerOptions() {
+      return {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+          ],
+        },
+      };
+    }
+
+    function randomCode() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let s = "";
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    }
+
+    function inviteUrl() {
+      const u = new URL(location.href);
+      u.search = "";
+      u.hash = "";
+      u.searchParams.set("room", state.room);
+      return u.toString();
+    }
+
+    function playerView(game, id) {
+      const p = game.players.find((x) => x.id === id);
+      return {
+        phase: game.phase,
+        round: game.round,
+        room: state.room,
+        center: game.center,
+        highlight: game.highlight,
+        banner: game.banner,
+        startedAt: game.startedAt,
+        winnerId: game.winnerId,
+        you: {
+          id,
+          card: p ? p.hand[0] || null : null,
+          remaining: p ? p.hand.length : 0,
+          frozenRemaining: p ? Math.max(0, p.frozenUntil - Date.now()) : 0,
+        },
+        players: game.players.map((x) => ({
+          id: x.id,
+          name: x.name,
+          color: x.color,
+          remaining: x.hand.length,
+          score: x.score,
+          frozen: x.frozenUntil > Date.now(),
+          connected: x.connected,
+        })),
+      };
+    }
+
+    function createGame(players, cardsEach) {
+      const perm = shuffle([...Array(SYMBOLS.length).keys()]);
+      const mapped = DECK.map((c) => c.map((i) => perm[i]));
+      const pile = shuffle(mapped);
+      const center = pile.pop();
+      let each = cardsEach;
+      if (each === "all") {
+        each = Math.floor(pile.length / players.length);
+      } else {
+        each = Number(each);
+      }
+      each = Math.max(1, Math.min(each, Math.floor(pile.length / players.length)));
+      const list = players.map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        color: COLORS[i % COLORS.length],
+        hand: pile.splice(0, each),
+        score: 0,
+        frozenUntil: 0,
+        connected: true,
+      }));
+      return {
+        phase: "playing",
+        round: 1,
+        center,
+        highlight: null,
+        banner: "Find the one matching symbol",
+        startedAt: Date.now(),
+        winnerId: null,
+        players: list,
+      };
+    }
+
+    function intersection(a, b) {
+      const set = new Set(a);
+      return b.filter((x) => set.has(x));
+    }
+
+    function hostBroadcast() {
+      if (state.solo) {
+        applyView(playerView(state.game, "host"));
+        return;
+      }
+      applyView(playerView(state.game, "host"));
+      for (const [id, conn] of state.conns) {
+        if (conn.open) {
+          try { conn.send({ type: "state", view: playerView(state.game, id) }); }
+          catch (e) {}
+        }
+      }
+    }
+
+    function finishGame(winnerId) {
+      const g = state.game;
+      g.phase = "end";
+      g.winnerId = winnerId;
+      g.banner = g.players.find((p) => p.id === winnerId).name + " wins!";
+      sfx("win");
+      hostBroadcast();
+    }
+
+    function hostHandleClick(playerId, symbol, round) {
+      const g = state.game;
+      if (!g || g.phase !== "playing" || g.locked) return;
+      if (round !== g.round) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || !p.hand.length) return;
+      if (p.frozenUntil > Date.now()) return;
+      const match = intersection(p.hand[0], g.center);
+      if (match.length !== 1 || match[0] !== symbol) {
+        p.frozenUntil = Date.now() + FREEZE_MS;
+        g.banner = p.name + " missed!";
+        hostBroadcast();
+        setTimeout(() => {
+          if (state.game && state.game.phase === "playing") {
+            p.frozenUntil = 0;
+            if (state.game.banner.endsWith("missed!")) state.game.banner = "Find the one matching symbol";
+            hostBroadcast();
+          }
+        }, FREEZE_MS);
+        return;
+      }
+      g.locked = true;
+      g.highlight = symbol;
+      p.score += 1;
+      g.banner = p.name + " found " + SYMBOLS[symbol] + "!";
+      hostBroadcast();
+      setTimeout(() => {
+        if (!state.game || state.game.phase !== "playing") return;
+        g.center = p.hand.shift();
+        g.highlight = null;
+        g.locked = false;
+        g.round += 1;
+        if (!p.hand.length) {
+          finishGame(p.id);
+          return;
+        }
+        g.banner = "Find the one matching symbol";
+        hostBroadcast();
+      }, REVEAL_MS);
+    }
+
+    function applyView(view) {
+      state.view = view;
+      if (view.phase === "lobby") {
+        renderLobby(view);
+        showScreen("lobby");
+        return;
+      }
+      if (view.phase === "end") {
+        renderEnd(view);
+        showScreen("end");
+        return;
+      }
+      if (view.phase === "playing") {
+        showScreen("game");
+        $("game-code").textContent = view.room || state.room;
+        $("banner").textContent = view.banner || "";
+        renderScoreboard(view);
+        const frozenMs = view.you.frozenRemaining || 0;
+        const clickable = !view.highlight && frozenMs <= 0;
+        renderCard($("card-center"), view.center, view.highlight, clickable);
+        renderCard($("card-mine"), view.you.card, view.highlight, clickable);
+        $("card-center").classList.toggle("flash", !!view.highlight);
+        $("card-mine").classList.toggle("flash", !!view.highlight);
+        $("card-mine").classList.toggle("oops", frozenMs > 0);
+        $("freeze-overlay").classList.toggle("show", frozenMs > 0);
+        clearTimeout(state.freezeTimer);
+        if (frozenMs > 0) {
+          state.localFreezeUntil = Date.now() + frozenMs;
+          state.freezeTimer = setTimeout(() => {
+            $("card-mine").classList.remove("oops");
+            $("freeze-overlay").classList.remove("show");
+          }, frozenMs);
+        } else {
+          state.localFreezeUntil = 0;
+        }
+        if (view.startedAt && !state.timerId) startTimer(view.startedAt);
+      }
+    }
+
+    function renderScoreboard(view) {
+      const el = $("scoreboard");
+      el.replaceChildren();
+      for (const p of view.players) {
+        const seat = document.createElement("div");
+        seat.className = "seat" + (p.id === view.you.id ? " you" : "") + (p.frozen ? " frozen" : "");
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = p.color;
+        dot.textContent = p.name.slice(0, 1).toUpperCase();
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const b = document.createElement("b");
+        b.textContent = p.name;
+        const s = document.createElement("span");
+        s.textContent = p.remaining + " left · " + p.score + " found";
+        meta.append(b, s);
+        seat.append(dot, meta);
+        el.append(seat);
+      }
+    }
+
+    function renderLobby(view) {
+      $("lobby-code").textContent = view.room || state.room;
+      const list = $("lobby-players");
+      list.replaceChildren();
+      for (const p of view.players) {
+        const seat = document.createElement("div");
+        seat.className = "seat" + (p.id === state.myId ? " you" : "");
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = p.color;
+        dot.textContent = p.name.slice(0, 1).toUpperCase();
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const b = document.createElement("b");
+        b.textContent = p.name + (p.id === "host" ? " (host)" : "");
+        const s = document.createElement("span");
+        s.textContent = p.connected ? "connected" : "offline";
+        meta.append(b, s);
+        seat.append(dot, meta);
+        list.append(seat);
+      }
+      const hostUI = $("host-settings");
+      hostUI.style.display = state.isHost ? "grid" : "none";
+      $("lobby-hint").textContent = state.isHost
+        ? "Start when everyone is in. Same Wi‑Fi is most reliable."
+        : "Waiting for the host to start…";
+      $("qr").src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(inviteUrl());
+    }
+
+    function renderEnd(view) {
+      const winner = view.players.find((p) => p.id === view.winnerId);
+      const youWin = view.winnerId === view.you.id;
+      $("end-emoji").textContent = youWin ? "🏆" : "⭐";
+      $("end-title").textContent = winner ? winner.name + " wins!" : "Game over";
+      const elapsed = Math.max(0, Date.now() - (view.startedAt || Date.now()));
+      $("end-sub").textContent = formatTime(elapsed);
+      const box = $("end-scores");
+      box.replaceChildren();
+      const ranked = view.players.slice().sort((a, b) => a.remaining - b.remaining || b.score - a.score);
+      for (const p of ranked) {
+        const row = document.createElement("div");
+        row.className = "seat" + (p.id === view.winnerId ? " win" : "");
+        row.style.margin = "6px 0";
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = p.color;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const b = document.createElement("b");
+        b.textContent = p.name;
+        const s = document.createElement("span");
+        s.textContent = p.score + " matches · " + p.remaining + " cards left";
+        meta.append(b, s);
+        row.append(dot, meta);
+        box.append(row);
+      }
+      $("btn-again").style.display = state.isHost || state.solo ? "inline-flex" : "none";
+      stopTimer();
+    }
+
+    function formatTime(ms) {
+      const s = Math.floor(ms / 1000);
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+    function startTimer(from) {
+      stopTimer();
+      const tick = () => { $("timer").textContent = formatTime(Date.now() - from); };
+      tick();
+      state.timerId = setInterval(tick, 250);
+    }
+    function stopTimer() {
+      clearInterval(state.timerId);
+      state.timerId = 0;
+    }
+
+    function onSymbolClick(symbol) {
+      const view = state.view;
+      if (!view || view.phase !== "playing" || view.highlight) return;
+      if (Date.now() < (state.localFreezeUntil || 0)) return;
+      const mine = view.you.card || [];
+      const center = view.center || [];
+      const match = intersection(mine, center)[0];
+      if (symbol === match) sfx("ok");
+      else {
+        sfx("bad");
+        if (navigator.vibrate) navigator.vibrate(80);
+      }
+      if (state.solo || state.isHost) {
+        hostHandleClick(state.myId, symbol, view.round);
+      } else {
+        const hostConn = [...state.conns.values()][0];
+        if (hostConn && hostConn.open) {
+          hostConn.send({ type: "click", symbol, round: view.round });
+        }
+      }
+    }
+
+    function lobbySnapshot() {
+      const players = [{ id: "host", name: state.myName, color: COLORS[0], connected: true }];
+      let i = 1;
+      for (const [id, meta] of guestMeta()) {
+        players.push({ id, name: meta.name, color: COLORS[i++ % COLORS.length], connected: true });
+      }
+      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+    }
+
+    const guests = new Map();
+    function guestMeta() { return guests; }
+
+    function sendLobby() {
+      const snap = lobbySnapshot();
+      applyView({ ...snap, you: { id: state.myId } });
+      for (const [id, conn] of state.conns) {
+        if (conn.open) {
+          try { conn.send({ type: "state", view: { ...snap, you: { id } } }); }
+          catch (e) {}
+        }
+      }
+    }
+
+    function attachHostConn(conn) {
+      conn.on("data", (msg) => {
+        if (!msg || typeof msg !== "object") return;
+        if (msg.type === "join") {
+          const name = String(msg.name || "Player").slice(0, 16);
+          guests.set(conn.peer, { name });
+          if (state.game && state.game.phase === "playing") {
+            conn.send({ type: "error", message: "Game already started" });
+            return;
+          }
+          sendLobby();
+        }
+        if (msg.type === "click") {
+          hostHandleClick(conn.peer, msg.symbol, msg.round);
+        }
+      });
+      conn.on("close", () => {
+        state.conns.delete(conn.peer);
+        guests.delete(conn.peer);
+        if (state.game && state.game.players) {
+          const p = state.game.players.find((x) => x.id === conn.peer);
+          if (p) p.connected = false;
+          hostBroadcast();
+        } else {
+          sendLobby();
+        }
+      });
+    }
+
+    function createRoom() {
+      if (typeof Peer === "undefined") {
+        showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+        return;
+      }
+      state.isHost = true;
+      state.solo = false;
+      state.myId = "host";
+      state.myName = ($("name").value.trim() || "Host").slice(0, 16);
+      localStorage.setItem("dobble-name", state.myName);
+      state.room = randomCode();
+      showError("home-error", "");
+      destroyPeer();
+      const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
+      state.peer = peer;
+      peer.on("open", () => {
+        sendLobby();
+        toast("Room " + state.room + " ready");
+      });
+      peer.on("connection", (conn) => {
+        state.conns.set(conn.peer, conn);
+        attachHostConn(conn);
+      });
+      peer.on("error", (err) => {
+        if (err.type === "unavailable-id") {
+          state.room = randomCode();
+          destroyPeer();
+          createRoom();
+          return;
+        }
+        showError("home-error", "Could not create room. Try again.");
+        showScreen("home");
+      });
+    }
+
+    function joinRoom(code) {
+      if (typeof Peer === "undefined") {
+        showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+        return;
+      }
+      code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (code.length !== 4) {
+        showError("home-error", "Enter a 4-character room code.");
+        return;
+      }
+      state.isHost = false;
+      state.solo = false;
+      state.myName = ($("name").value.trim() || "Player").slice(0, 16);
+      localStorage.setItem("dobble-name", state.myName);
+      state.room = code;
+      showError("home-error", "");
+      destroyPeer();
+      toast("Connecting…");
+      const peer = new Peer(peerOptions());
+      state.peer = peer;
+      peer.on("open", () => {
+        state.myId = peer.id;
+        const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+        state.conns.set("host", conn);
+        conn.on("open", () => conn.send({ type: "join", name: state.myName }));
+        conn.on("data", (msg) => {
+          if (msg.type === "state") applyView(msg.view);
+          if (msg.type === "error") toast(msg.message);
+        });
+        conn.on("close", () => toast("Disconnected from host"));
+      });
+      peer.on("error", () => {
+        showError("home-error", "Could not join. Check the code and that the host is still in the lobby.");
+        showScreen("home");
+      });
+    }
+
+    function startHostGame() {
+      if (!state.isHost) return;
+      const players = [{ id: "host", name: state.myName }];
+      for (const [id, meta] of guests) players.push({ id, name: meta.name });
+      const cardsEach = $("cards-each").value;
+      state.game = createGame(players, cardsEach);
+      hostBroadcast();
+    }
+
+    function playAgain() {
+      if (state.solo) {
+        startSolo();
+        return;
+      }
+      if (!state.isHost) return;
+      state.game = null;
+      stopTimer();
+      sendLobby();
+    }
+
+    function startSolo() {
+      state.solo = true;
+      state.isHost = true;
+      state.myId = "host";
+      state.myName = ($("name").value.trim() || "You").slice(0, 16);
+      localStorage.setItem("dobble-name", state.myName);
+      state.room = "SOLO";
+      state.game = createGame([{ id: "host", name: state.myName }], 8);
+      hostBroadcast();
+    }
+
+    function destroyPeer() {
+      stopTimer();
+      state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
+      state.conns.clear();
+      guests.clear();
+      if (state.peer) {
+        try { state.peer.destroy(); } catch (e) {}
+        state.peer = null;
+      }
+      state.game = null;
+      state.view = null;
+    }
+
+    function goHome() {
+      destroyPeer();
+      state.isHost = false;
+      state.solo = false;
+      showScreen("home");
+    }
+
+    $("btn-create").onclick = createRoom;
+    $("btn-join").onclick = () => joinRoom($("join-code").value);
+    $("join-code").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") joinRoom($("join-code").value);
+    });
+    $("btn-solo").onclick = startSolo;
+    $("btn-start").onclick = startHostGame;
+    $("btn-copy").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl());
+        toast("Invite link copied");
+      } catch (e) {
+        toast(state.room);
+      }
+    };
+    $("btn-mute").onclick = () => {
+      muted = !muted;
+      $("btn-mute").textContent = muted ? "🔇" : "🔊";
+      if (!muted) ctx().resume();
+    };
+    $("btn-again").onclick = playAgain;
+    $("btn-home").onclick = goHome;
+
+    (function homeDecor() {
+      const wrap = $("home-deco");
+      const a = document.createElement("div");
+      const b = document.createElement("div");
+      a.className = "card yours";
+      b.className = "card";
+      wrap.append(a, b);
+      renderCard(a, DECK[0], null, false);
+      renderCard(b, DECK[3], intersection(DECK[0], DECK[3])[0], false);
+    })();
+
+    const saved = localStorage.getItem("dobble-name");
+    if (saved) $("name").value = saved;
+    const params = new URLSearchParams(location.search);
+    const roomParam = (params.get("room") || "").toUpperCase();
+    if (roomParam.length === 4) $("join-code").value = roomParam;
+  </script>
+</body>
+</html>
