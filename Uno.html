@@ -192,7 +192,70 @@
       padding: 10px 12px;
       font-size: 14px;
     }
-    .error.show { display: block; }
+    input.bad { border-color: var(--uno-red); background: #fff5f5; }
+    .join-status {
+      display: none;
+      margin-top: 12px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #f1f5f9;
+    }
+    .join-status.show { display: block; }
+    .join-status.connecting, .join-status.joining { background: #e8f1ff; }
+    .join-status.ok { background: #e8f8ee; }
+    .join-status.fail { background: #fde8ea; }
+    .join-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .join-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--uno-blue);
+      flex-shrink: 0;
+    }
+    .join-status.connecting .join-dot,
+    .join-status.joining .join-dot {
+      animation: pulse-dot .8s ease infinite;
+    }
+    .join-status.ok .join-dot { background: var(--uno-green); }
+    .join-status.fail .join-dot { background: var(--uno-red); }
+    .join-status.ok .join-status-row { color: #166534; }
+    .join-status.fail .join-status-row { color: var(--uno-red); }
+    .join-bar {
+      margin-top: 8px;
+      height: 6px;
+      border-radius: 99px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+    .join-status.ok .join-bar { background: #bbf7d0; }
+    .join-status.fail .join-bar { display: none; }
+    .join-bar i {
+      display: block;
+      height: 100%;
+      width: 40%;
+      border-radius: 99px;
+      background: var(--uno-blue);
+      animation: join-slide 1s ease infinite;
+    }
+    .join-status.ok .join-bar i {
+      width: 100%;
+      background: var(--uno-green);
+      animation: none;
+    }
+    @keyframes join-slide {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(320%); }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
 
     .deco {
       display: flex;
@@ -627,11 +690,23 @@
       z-index: 12;
       background: rgba(0, 0, 0, .55);
       display: none;
-      place-items: center;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
-    .overlay.show { display: grid; }
-    .swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(280px, 100%); }
+    .overlay.show { display: flex; }
+    .overlay .panel {
+      width: min(280px, 100%);
+      margin: 0;
+      text-align: center;
+    }
+    .swatches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 200px;
+      margin: 14px auto 0;
+    }
     .swatches button {
       height: 88px;
       border: 0;
@@ -642,6 +717,39 @@
     .swatches .yellow { background: #ffd100; }
     .swatches .green { background: #2e8b3a; }
     .swatches .blue { background: #1b5eaa; }
+
+    .turn-pop {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + var(--safe-b));
+      transform: translateX(-50%) translateY(12px);
+      z-index: 18;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.28);
+      pointer-events: none;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .turn-pop.show {
+      display: flex;
+      transform: translateX(-50%) translateY(0);
+    }
+    .turn-pop b { font-size: 15px; font-weight: 800; }
+    @keyframes card-shake {
+      0%, 100% { translate: 0 0; }
+      20% { translate: -7px 0; }
+      40% { translate: 7px 0; }
+      60% { translate: -5px 0; }
+      80% { translate: 5px 0; }
+    }
+    .hand .ucard.shake { animation: card-shake .38s ease; }
 
     @media (max-width: 720px) {
       .lobby-grid { grid-template-columns: 1fr; }
@@ -679,7 +787,7 @@
     <div class="deco" id="home-deco"></div>
     <div class="panel">
       <label for="name">Your name</label>
-      <input id="name" maxlength="16" placeholder="Player" autocomplete="nickname" />
+      <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
       <button class="btn" id="btn-create">Create room</button>
       <div class="row">
         <div style="flex:1">
@@ -688,6 +796,13 @@
         </div>
       </div>
       <button class="btn blue" id="btn-join">Join friends</button>
+      <div class="join-status" id="join-status">
+        <div class="join-status-row">
+          <span class="join-dot"></span>
+          <span id="join-status-text">Connecting…</span>
+        </div>
+        <div class="join-bar"><i></i></div>
+      </div>
       <div class="row">
         <div style="flex:1">
           <label for="bot-count">Practice vs bots</label>
@@ -787,15 +902,19 @@
   </div>
 
   <div class="overlay" id="color-pick">
-    <div class="panel" style="text-align:center">
+    <div class="panel">
       <b>Pick a color</b>
-      <div class="swatches" style="margin-top:14px">
+      <div class="swatches">
         <button class="red" data-color="red" aria-label="Red"></button>
         <button class="yellow" data-color="yellow" aria-label="Yellow"></button>
         <button class="green" data-color="green" aria-label="Green"></button>
         <button class="blue" data-color="blue" aria-label="Blue"></button>
       </div>
     </div>
+  </div>
+
+  <div class="turn-pop" id="turn-pop">
+    <b id="turn-pop-name">Wait for your turn</b>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -832,6 +951,31 @@
       el.classList.add("show");
       clearTimeout(toast._t);
       toast._t = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function requireName() {
+      const name = $("name").value.trim();
+      if (!name) {
+        showError("home-error", "Enter your name first.");
+        $("name").classList.add("bad");
+        $("name").focus();
+        return "";
+      }
+      $("name").classList.remove("bad");
+      showError("home-error", "");
+      return name.slice(0, 16);
+    }
+
+    function setJoinStatus(kind, text) {
+      const box = $("join-status");
+      box.className = "join-status" + (kind ? " show " + kind : "");
+      $("join-status-text").textContent = text || "";
+      $("btn-join").disabled = kind === "connecting" || kind === "joining";
+    }
+
+    function clearJoinWait() {
+      clearTimeout(state.joinTimer);
+      state.joinTimer = 0;
     }
 
     function showError(id, msg) {
@@ -957,6 +1101,9 @@
       focusedCardId: null,
       seenPlaySeq: 0,
       pendingFly: null,
+      raisedCardId: null,
+      handDragged: false,
+      joinTimer: 0,
     };
     const guests = new Map();
 
@@ -1360,12 +1507,14 @@
       if (view.phase === "lobby") {
         renderLobby(view);
         showScreen("lobby");
+        $("turn-pop").classList.remove("show");
         return;
       }
       if (view.phase === "end") {
         renderEnd(view);
         showScreen("end");
         $("color-pick").classList.remove("show");
+        $("turn-pop").classList.remove("show");
         return;
       }
       if (view.phase === "playing") {
@@ -1538,9 +1687,44 @@
       if (state.raisedCardId) raiseCard(state.raisedCardId);
     }
 
+    function shakeCard(cardId) {
+      const btn = $("hand").querySelector('[data-card-id="' + cardId + '"]');
+      if (!btn) return;
+      btn.classList.remove("shake");
+      void btn.offsetWidth;
+      btn.classList.add("shake");
+      setTimeout(() => btn.classList.remove("shake"), 400);
+    }
+
+    function showWaitHint() {
+      const view = state.view;
+      const current = view && view.players.find((p) => p.isTurn);
+      const name = current ? current.name : "another player";
+      const picking = view && view.choosingColor && view.choosingColor !== view.you.id;
+      $("turn-pop-name").textContent = picking
+        ? name + " is picking a color"
+        : name + " is playing";
+      const el = $("turn-pop");
+      el.classList.add("show");
+      clearTimeout(state.turnHintTimer);
+      state.turnHintTimer = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function denyOffTurn(cardId) {
+      shakeCard(cardId);
+      showWaitHint();
+      sfx("bad");
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
+
     function onHandClick(cardId) {
       if (state.handDragged) {
         state.handDragged = false;
+        return;
+      }
+      const view = state.view;
+      if (view && view.phase === "playing" && !view.you.isTurn) {
+        denyOffTurn(cardId);
         return;
       }
       if (isTouchUi()) {
@@ -1679,7 +1863,12 @@
     function onPlay(cardId) {
       const view = state.view;
       if (!view || view.phase !== "playing") return;
+      if (!view.you.isTurn) {
+        denyOffTurn(cardId);
+        return;
+      }
       if (!view.legal.includes(cardId)) {
+        shakeCard(cardId);
         sfx("bad");
         if (navigator.vibrate) navigator.vibrate(50);
         return;
@@ -1754,6 +1943,7 @@
     function destroyPeer() {
       stopTimer();
       clearTimeout(state.botTimer);
+      clearJoinWait();
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
       guests.clear();
@@ -1766,6 +1956,8 @@
     }
 
     function createRoom() {
+      const name = requireName();
+      if (!name) return;
       if (typeof Peer === "undefined") {
         showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
         return;
@@ -1773,10 +1965,11 @@
       state.isHost = true;
       state.solo = false;
       state.myId = "host";
-      state.myName = ($("name").value.trim() || "Host").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = randomCode();
       showError("home-error", "");
+      setJoinStatus("", "");
       destroyPeer();
       const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
       state.peer = peer;
@@ -1801,38 +1994,70 @@
     }
 
     function joinRoom(code) {
+      const name = requireName();
+      if (!name) return;
       if (typeof Peer === "undefined") {
-        showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
         return;
       }
       code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
-        showError("home-error", "Enter a 4-character room code.");
+        setJoinStatus("fail", "Enter a 4-character room code.");
+        $("join-code").focus();
         return;
       }
       state.isHost = false;
       state.solo = false;
-      state.myName = ($("name").value.trim() || "Player").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = code;
       showError("home-error", "");
       destroyPeer();
-      toast("Connecting…");
+      setJoinStatus("connecting", "Finding room " + code + "…");
+      clearJoinWait();
+      state.joinTimer = setTimeout(() => {
+        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+        $("btn-join").disabled = false;
+        destroyPeer();
+      }, 12000);
       const peer = new Peer(peerOptions());
       state.peer = peer;
       peer.on("open", () => {
         state.myId = peer.id;
+        setJoinStatus("joining", "Connecting to the host…");
         const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
         state.conns.set("host", conn);
-        conn.on("open", () => conn.send({ type: "join", name: state.myName }));
-        conn.on("data", (msg) => {
-          if (msg.type === "state") applyView(msg.view);
-          if (msg.type === "error") toast(msg.message);
+        conn.on("open", () => {
+          setJoinStatus("joining", "Joining the lobby…");
+          conn.send({ type: "join", name: state.myName });
         });
-        conn.on("close", () => toast("Disconnected from host"));
+        conn.on("data", (msg) => {
+          if (msg.type === "state") {
+            clearJoinWait();
+            setJoinStatus("ok", "You're in!");
+            applyView(msg.view);
+          }
+          if (msg.type === "error") {
+            clearJoinWait();
+            setJoinStatus("fail", msg.message || "Could not join this room.");
+            toast(msg.message);
+          }
+        });
+        conn.on("close", () => {
+          if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
+          else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
+            clearJoinWait();
+            setJoinStatus("fail", "Connection closed. The host may have left.");
+          }
+        });
+        conn.on("error", () => {
+          clearJoinWait();
+          setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
+        });
       });
       peer.on("error", () => {
-        showError("home-error", "Could not join. Check the code and that the host is still in the lobby.");
+        clearJoinWait();
+        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
         showScreen("home");
       });
     }
@@ -1861,12 +2086,15 @@
     }
 
     function startSolo() {
+      const name = requireName();
+      if (!name) return;
       state.solo = true;
       state.isHost = true;
       state.myId = "host";
-      state.myName = ($("name").value.trim() || "You").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = "SOLO";
+      setJoinStatus("", "");
       const n = Math.max(1, Math.min(3, Number($("bot-count").value) || 2));
       const players = [{ id: "host", name: state.myName }];
       for (let i = 0; i < n; i++) players.push({ id: "bot-" + i, name: BOT_NAMES[i], bot: true });
@@ -1879,6 +2107,9 @@
       state.isHost = false;
       state.solo = false;
       $("color-pick").classList.remove("show");
+      $("turn-pop").classList.remove("show");
+      setJoinStatus("", "");
+      $("btn-join").disabled = false;
       showScreen("home");
     }
 
@@ -1888,6 +2119,9 @@
       if (e.key === "Enter") joinRoom($("join-code").value);
     });
     $("btn-solo").onclick = startSolo;
+    $("name").addEventListener("input", () => {
+      if ($("name").value.trim()) $("name").classList.remove("bad");
+    });
     $("btn-start").onclick = startHostGame;
     $("btn-copy").onclick = async () => {
       try {

@@ -136,6 +136,7 @@
       outline: none;
     }
     input:focus, select:focus { border-color: var(--ink); }
+    input.bad { border-color: var(--red); background: #fff5f5; }
     input.room {
       text-transform: uppercase;
       letter-spacing: 0.28em;
@@ -179,6 +180,69 @@
       font-size: 14px;
     }
     .error.show { display: block; }
+    .join-status {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f4f4f4;
+    }
+    .join-status.show { display: block; }
+    .join-status.connecting, .join-status.joining { background: #e8f6f1; }
+    .join-status.ok { background: #e8f8ee; }
+    .join-status.fail { background: #fde8ea; }
+    .join-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .join-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+    }
+    .join-status.connecting .join-dot,
+    .join-status.joining .join-dot {
+      animation: pulse-dot .8s ease infinite;
+    }
+    .join-status.ok .join-dot { background: var(--teal); }
+    .join-status.fail .join-dot { background: var(--red); }
+    .join-status.ok .join-status-row { color: #0d6b45; }
+    .join-status.fail .join-status-row { color: var(--red); }
+    .join-bar {
+      margin-top: 8px;
+      height: 6px;
+      border-radius: 99px;
+      background: #cfeedf;
+      overflow: hidden;
+    }
+    .join-status.ok .join-bar { background: #bbf7d0; }
+    .join-status.fail .join-bar { display: none; }
+    .join-bar i {
+      display: block;
+      height: 100%;
+      width: 40%;
+      border-radius: 99px;
+      background: var(--teal);
+      animation: join-slide 1s ease infinite;
+    }
+    .join-status.ok .join-bar i {
+      width: 100%;
+      background: var(--teal);
+      animation: none;
+    }
+    @keyframes join-slide {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(320%); }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
 
     .deco {
       display: flex;
@@ -401,7 +465,7 @@
     <div class="deco" id="home-deco"></div>
     <div class="panel">
       <label for="name">Your name</label>
-      <input id="name" maxlength="16" placeholder="Player" autocomplete="nickname" />
+      <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
       <button class="btn" id="btn-create">Create room</button>
       <div class="row">
         <div style="flex:1">
@@ -410,6 +474,13 @@
         </div>
       </div>
       <button class="btn teal" id="btn-join">Join friends</button>
+      <div class="join-status" id="join-status">
+        <div class="join-status-row">
+          <span class="join-dot"></span>
+          <span id="join-status-text">Connecting…</span>
+        </div>
+        <div class="join-bar"><i></i></div>
+      </div>
       <button class="btn ghost" id="btn-solo">Practice solo</button>
       <div class="error" id="home-error"></div>
       <p class="hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
@@ -527,6 +598,31 @@
       const el = $(id);
       el.textContent = msg;
       el.classList.toggle("show", !!msg);
+    }
+
+    function requireName() {
+      const name = $("name").value.trim();
+      if (!name) {
+        showError("home-error", "Enter your name first.");
+        $("name").classList.add("bad");
+        $("name").focus();
+        return "";
+      }
+      $("name").classList.remove("bad");
+      showError("home-error", "");
+      return name.slice(0, 16);
+    }
+
+    function setJoinStatus(kind, text) {
+      const box = $("join-status");
+      box.className = "join-status" + (kind ? " show " + kind : "");
+      $("join-status-text").textContent = text || "";
+      $("btn-join").disabled = kind === "connecting" || kind === "joining";
+    }
+
+    function clearJoinWait() {
+      clearTimeout(state.joinTimer);
+      state.joinTimer = 0;
     }
 
     function mulberry32(a) {
@@ -669,6 +765,7 @@
       localFreezeUntil: 0,
       view: null,
       game: null,
+      joinTimer: 0,
     };
 
     function peerOptions() {
@@ -1040,6 +1137,8 @@
     }
 
     function createRoom() {
+      const name = requireName();
+      if (!name) return;
       if (typeof Peer === "undefined") {
         showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
         return;
@@ -1047,10 +1146,11 @@
       state.isHost = true;
       state.solo = false;
       state.myId = "host";
-      state.myName = ($("name").value.trim() || "Host").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("dobble-name", state.myName);
       state.room = randomCode();
       showError("home-error", "");
+      setJoinStatus("", "");
       destroyPeer();
       const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
       state.peer = peer;
@@ -1075,38 +1175,70 @@
     }
 
     function joinRoom(code) {
+      const name = requireName();
+      if (!name) return;
       if (typeof Peer === "undefined") {
-        showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
         return;
       }
       code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
-        showError("home-error", "Enter a 4-character room code.");
+        setJoinStatus("fail", "Enter a 4-character room code.");
+        $("join-code").focus();
         return;
       }
       state.isHost = false;
       state.solo = false;
-      state.myName = ($("name").value.trim() || "Player").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("dobble-name", state.myName);
       state.room = code;
       showError("home-error", "");
       destroyPeer();
-      toast("Connecting…");
+      setJoinStatus("connecting", "Finding room " + code + "…");
+      clearJoinWait();
+      state.joinTimer = setTimeout(() => {
+        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+        $("btn-join").disabled = false;
+        destroyPeer();
+      }, 12000);
       const peer = new Peer(peerOptions());
       state.peer = peer;
       peer.on("open", () => {
         state.myId = peer.id;
+        setJoinStatus("joining", "Connecting to the host…");
         const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
         state.conns.set("host", conn);
-        conn.on("open", () => conn.send({ type: "join", name: state.myName }));
-        conn.on("data", (msg) => {
-          if (msg.type === "state") applyView(msg.view);
-          if (msg.type === "error") toast(msg.message);
+        conn.on("open", () => {
+          setJoinStatus("joining", "Joining the lobby…");
+          conn.send({ type: "join", name: state.myName });
         });
-        conn.on("close", () => toast("Disconnected from host"));
+        conn.on("data", (msg) => {
+          if (msg.type === "state") {
+            clearJoinWait();
+            setJoinStatus("ok", "You're in!");
+            applyView(msg.view);
+          }
+          if (msg.type === "error") {
+            clearJoinWait();
+            setJoinStatus("fail", msg.message || "Could not join this room.");
+            toast(msg.message);
+          }
+        });
+        conn.on("close", () => {
+          if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
+          else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
+            clearJoinWait();
+            setJoinStatus("fail", "Connection closed. The host may have left.");
+          }
+        });
+        conn.on("error", () => {
+          clearJoinWait();
+          setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
+        });
       });
       peer.on("error", () => {
-        showError("home-error", "Could not join. Check the code and that the host is still in the lobby.");
+        clearJoinWait();
+        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
         showScreen("home");
       });
     }
@@ -1132,18 +1264,22 @@
     }
 
     function startSolo() {
+      const name = requireName();
+      if (!name) return;
       state.solo = true;
       state.isHost = true;
       state.myId = "host";
-      state.myName = ($("name").value.trim() || "You").slice(0, 16);
+      state.myName = name;
       localStorage.setItem("dobble-name", state.myName);
       state.room = "SOLO";
+      setJoinStatus("", "");
       state.game = createGame([{ id: "host", name: state.myName }], 8);
       hostBroadcast();
     }
 
     function destroyPeer() {
       stopTimer();
+      clearJoinWait();
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
       guests.clear();
@@ -1159,6 +1295,8 @@
       destroyPeer();
       state.isHost = false;
       state.solo = false;
+      setJoinStatus("", "");
+      $("btn-join").disabled = false;
       showScreen("home");
     }
 
@@ -1168,6 +1306,9 @@
       if (e.key === "Enter") joinRoom($("join-code").value);
     });
     $("btn-solo").onclick = startSolo;
+    $("name").addEventListener("input", () => {
+      if ($("name").value.trim()) $("name").classList.remove("bad");
+    });
     $("btn-start").onclick = startHostGame;
     $("btn-copy").onclick = async () => {
       try {
