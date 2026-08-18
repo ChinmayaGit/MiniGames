@@ -187,6 +187,9 @@
     .art.uno {
       background: radial-gradient(ellipse at center, #3caf58 0%, #1f7a38 58%, #14602c 100%);
     }
+    .art.unoflip {
+      background: linear-gradient(120deg, #3caf58 0 50%, #3b0764 50%);
+    }
     .art.soon {
       background: repeating-linear-gradient(-32deg, #1a1612 0 12px, #241e18 12px 24px);
     }
@@ -375,6 +378,7 @@
     <nav class="jump">
       <a href="Dobble.html">Dobble</a>
       <a href="Uno.html">Uno</a>
+      <a href="unoflip.html">Uno Flip</a>
     </nav>
 
     <main class="grid">
@@ -389,6 +393,7 @@
             <span class="tag">Multiplayer</span>
             <span class="tag">Solo</span>
             <span class="tag">Max 8 players</span>
+            <span class="tag">8 editions</span>
           </div>
           <span class="play">Play Dobble</span>
         </div>
@@ -408,6 +413,23 @@
             <span class="tag">Max 10 players</span>
           </div>
           <span class="play">Play Uno</span>
+        </div>
+      </a>
+
+      <a class="tile" href="unoflip.html">
+        <div class="art unoflip" aria-hidden="true">
+          <div class="uno-oval"><span>FLIP</span></div>
+        </div>
+        <div class="body">
+          <h2>Uno Flip</h2>
+          <p>Same table as Uno, plus a Flip card. Light and dark sides, +1 / +5, skip everyone.</p>
+          <div class="tags">
+            <span class="tag">Multiplayer</span>
+            <span class="tag">Solo vs bots</span>
+            <span class="tag">Flip</span>
+            <span class="tag">Max 10 players</span>
+          </div>
+          <span class="play">Play Uno Flip</span>
         </div>
       </a>
 
@@ -461,8 +483,9 @@
         a.addEventListener("click", function (e) {
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
           e.preventDefault();
-          var name = a.href.indexOf("Uno") !== -1 ? "Uno" : "Dobble";
-          openGame(a.getAttribute("href"), name);
+          var href = a.getAttribute("href") || "";
+          var name = /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
+          openGame(href, name);
         });
       });
       window.addEventListener("pageshow", function () {

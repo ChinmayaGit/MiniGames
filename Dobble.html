@@ -41,7 +41,7 @@
       inset: 0;
       z-index: 0;
       pointer-events: none;
-      background-color: #ffcc33;
+      background-color: var(--bg);
       background-image:
         radial-gradient(circle 130px at 6% 10%, #ff2d3a 99%, transparent 100%),
         radial-gradient(circle 100px at 94% 6%, #00c2ff 99%, transparent 100%),
@@ -246,7 +246,7 @@
     .sym {
       position: absolute;
       left: var(--x); top: var(--y);
-      transform: translate(-50%, -50%) rotate(var(--r));
+      transform: translate(-50%, -50%);
       width: calc(var(--s) * 1.15cqw);
       height: calc(var(--s) * 1.15cqw);
       border: 0;
@@ -259,7 +259,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     .sym:hover, .sym:focus-visible {
-      transform: translate(-50%, -50%) rotate(var(--r)) scale(1.12);
+      transform: translate(-50%, -50%) scale(1.12);
       outline: none;
     }
     .sym.match {
@@ -276,7 +276,39 @@
       margin-top: 10px;
     }
 
+    .panel label { color: #6b5420; }
+    .panel .hint { color: #6b5420; }
+
+    .editions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 4px 0 2px;
+    }
+    .edition-chip {
+      border: 2px solid var(--line);
+      background: var(--card);
+      color: #1b1b1b;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .edition-chip.on {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--line);
+    }
+    body[data-edition="potter"] .edition-chip.on,
+    body[data-edition="disney"] .edition-chip.on,
+    body[data-edition="ocean"] .edition-chip.on,
+    body[data-edition="space"] .edition-chip.on {
+      color: #1b1b1b;
+    }
+
     .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .settings .span-all { grid-column: 1 / -1; }
     .end-card h2 { font-size: 42px; color: var(--red); margin: 8px 0; }
     .podium { margin: 16px 0; }
 
@@ -296,9 +328,9 @@
     .overlay.show { display: grid; }
 
     @keyframes pop {
-      0% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
-      40% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1.45); }
-      100% { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
+      0% { transform: translate(-50%, -50%) scale(1); }
+      40% { transform: translate(-50%, -50%) scale(1.45); }
+      100% { transform: translate(-50%, -50%) scale(1); }
     }
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
@@ -309,6 +341,59 @@
       .play-area { flex-direction: column; gap: 10px; }
       .card { width: min(72vw, 36vh, 340px); }
       .deco { display: none; }
+    }
+
+    body[data-edition="potter"] {
+      --bg: #24143a;
+      --muted: #d4c4ae;
+      --red: #d4a017;
+      --gold: #d4a017;
+      --accent: #d4a017;
+      --teal: #2e8b3a;
+    }
+    body[data-edition="disney"] {
+      --bg: #1a365d;
+      --muted: #dbe7ff;
+      --red: #f4c542;
+      --gold: #f4c542;
+      --accent: #f4c542;
+      --teal: #3b82f6;
+    }
+    body[data-edition="heroes"] {
+      --bg: #1e1b4b;
+      --muted: #c7d2fe;
+      --red: #ef4444;
+      --gold: #ef4444;
+      --accent: #ef4444;
+    }
+    body[data-edition="animals"] {
+      --bg: #f4d35e;
+      --muted: #3f4a1e;
+      --red: #2d6a4f;
+      --gold: #2d6a4f;
+      --accent: #2d6a4f;
+    }
+    body[data-edition="space"] {
+      --bg: #070b1a;
+      --muted: #c4d4f0;
+      --red: #38bdf8;
+      --gold: #38bdf8;
+      --accent: #38bdf8;
+    }
+    body[data-edition="food"] {
+      --bg: #ffd7a8;
+      --muted: #7a3e12;
+      --red: #e11d48;
+      --gold: #e11d48;
+      --accent: #e11d48;
+    }
+    body[data-edition="ocean"] {
+      --bg: #0369a1;
+      --muted: #e0f2fe;
+      --red: #fbbf24;
+      --gold: #fbbf24;
+      --accent: #fbbf24;
+      --teal: #22d3ee;
     }
   </style>
 </head>
@@ -331,6 +416,8 @@
     <div class="panel">
       <label for="name">Your name</label>
       <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
+      <label>Edition</label>
+      <div class="editions" id="home-editions"></div>
       <button class="btn" id="btn-create">Create room</button>
       <div class="row">
         <div style="flex:1">
@@ -368,6 +455,10 @@
         <b>Players</b>
         <div class="player-list" id="lobby-players"></div>
         <div class="settings" id="host-settings">
+          <div class="span-all">
+            <label>Edition</label>
+            <div class="editions" id="lobby-editions"></div>
+          </div>
           <div>
             <label for="cards-each">Cards each</label>
             <select id="cards-each">
@@ -431,17 +522,59 @@
 
   <script src="shared/kit.js"></script>
   <script>
-    const SYMBOLS = [
-      "🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐸","🐵","🦄",
-      "🐝","🦋","🐞","🐢","🐙","🐬","🐳","🦈","🐘","🦒",
-      "🍎","🍋","🍉","🍇","🍒","🍑","🍓","🥝","🥕","🌶️",
-      "⭐","🌙","☀️","⚡","❄️","🌈","🔥","💎","🎯","⚽",
-      "🏀","🎸","🚀","✈️","🚲","🎈","🎃","👑","🔔","💡",
-      "🎵","🌵","🌸","🍄","🎄","🎁","🎂"
+    const N = 7;
+    const EDITIONS = [
+      {
+        id: "classic",
+        name: "Classic",
+        icon: "⭐",
+        symbols: ["🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐸","🐵","🦄","🐝","🦋","🐞","🐢","🐙","🐬","🐳","🦈","🐘","🦒","🍎","🍋","🍉","🍇","🍒","🍑","🍓","🥝","🥕","🌶️","⭐","🌙","☀️","⚡","❄️","🌈","🔥","💎","🎯","⚽","🏀","🎸","🚀","✈️","🚲","🎈","🎃","👑","🔔","💡","🎵","🌵","🌸","🍄","🎄","🎁","🎂"],
+      },
+      {
+        id: "potter",
+        name: "Harry Potter",
+        icon: "⚡",
+        symbols: ["🧙","🪄","⚡","🦉","🧹","🏰","📜","🧪","🔮","📖","🕯️","🌙","⭐","🐍","🦁","🦡","🦅","🚂","🎩","🎟️","❄️","🔥","💎","🗝️","🚪","🪞","🌲","💧","🪙","🏆","🖤","❤️","💚","💛","🐈","🕸️","🕷️","🐺","🦌","🐸","🐀","🦇","🪶","⚗️","🪵","🪨","🌫️","🌧️","🌈","☂️","🎃","👻","💀","🪦","🧿","📿","🔔"],
+      },
+      {
+        id: "disney",
+        name: "Disney",
+        icon: "🏰",
+        symbols: ["🏰","👸","🤴","🧚","🧜","🐭","🐻","🦁","🐸","🦆","⭐","🌈","💖","🎀","🎩","🎪","🎠","🎢","🎡","🎬","🍎","🌹","❄️","🔥","🐠","🦀","🐙","🐢","🐬","🐳","🎵","🎤","🎨","🎭","🪄","🧞","🐉","🦄","🐝","🦋","🌸","🌺","🍋","🧁","🎂","🎁","👑","💎","🗝️","🚪","🚂","⛵","🌙","☀️","🌊","🪵","🔔"],
+      },
+      {
+        id: "heroes",
+        name: "Superheroes",
+        icon: "🦸",
+        symbols: ["🦸","🦹","💥","⚡","🔥","❄️","💎","🛡️","⚔️","🦇","🕷️","🕸️","🦅","🐺","🦁","🐉","🤖","👽","🚀","🌟","⭐","🌙","☀️","🌈","🔮","🧪","💊","🩹","🚑","🚓","🚒","🚁","🏙️","🌃","🏰","🗿","🔑","🚪","💪","👁️","🧠","❤️","🖤","💛","💚","💙","💜","🎯","🏆","👑","🪄","🧿","🪶","🪵","🪨","🐱","🐸"],
+      },
+      {
+        id: "animals",
+        name: "Animals",
+        icon: "🦁",
+        symbols: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🐺","🐗","🐴","🦄","🐝","🐛","🦋","🐞","🐜","🪲","🦗","🐢","🐍","🦎","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🦈","🦭","🐊","🐆","🦓","🦍","🐘","🦛","🦏","🐪","🦒"],
+      },
+      {
+        id: "space",
+        name: "Space",
+        icon: "🚀",
+        symbols: ["🚀","🛸","🌌","🪐","🌍","🌎","🌏","🌙","⭐","☀️","☄️","🛰️","👽","🤖","👾","🔭","📡","💫","✨","🌑","🌕","🌟","⚡","🔥","❄️","💎","🔋","💡","🧲","⚙️","🧪","🧬","🪨","🌋","☁️","🌈","🪂","🎈","🎯","🏆","👑","🔑","💍","🧿","🔮","🌊","🐙","🐢","🐸","🐱","🐶","🦄","🐝","🦋","🌸","🍎","🚂"],
+      },
+      {
+        id: "food",
+        name: "Food",
+        icon: "🍕",
+        symbols: ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🫒","🧄","🧅","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🥪","🌮","🌯","🥙","🧆","🥗","🍝","🍜"],
+      },
+      {
+        id: "ocean",
+        name: "Ocean",
+        icon: "🐠",
+        symbols: ["🐠","🐟","🐡","🦈","🐙","🦑","🦐","🦞","🦀","🐚","🐳","🐬","🦭","🐢","🐧","🌊","⛵","🚤","⚓","🏝️","🌴","🪸","🪨","🫧","🌀","❄️","🌈","🏖️","🏄","🏊","🤿","🎣","🌅","☀️","🌙","⭐","💎","☁️","🌧️","⚡","🐋","🪼","🐦","🦆","🐛","🦋","🌺","🌸","🍋","🥥","🚣","🛟","🧭","🔑","🚪","👑","🏆"],
+      },
     ];
     const COLORS = ["#e63946","#1d9a6c","#2563eb","#d97706","#7c3aed","#0f766e","#db2777","#1f2937"];
     const MAX_PLAYERS = 8;
-    const N = 7;
     const PEER_PREFIX = "dobblehost-";
     const FREEZE_MS = 1600;
     const REVEAL_MS = 900;
@@ -518,7 +651,6 @@
         x: 50 + (rng() - 0.5) * 8,
         y: 50 + (rng() - 0.5) * 8,
         s: 22 + rng() * 6,
-        r: (rng() - 0.5) * 50,
       });
       const around = order.length - 1;
       for (let i = 0; i < around; i++) {
@@ -529,7 +661,6 @@
           x: 50 + Math.cos(angle) * dist,
           y: 50 + Math.sin(angle) * dist,
           s: 16 + rng() * 8,
-          r: (rng() - 0.5) * 80,
         });
       }
       return out;
@@ -542,11 +673,10 @@
         const btn = document.createElement("button");
         btn.className = "sym" + (item.id === highlight ? " match" : "");
         btn.type = "button";
-        btn.textContent = SYMBOLS[item.id];
+        btn.textContent = currentSymbols()[item.id];
         btn.style.setProperty("--x", item.x + "%");
         btn.style.setProperty("--y", item.y + "%");
         btn.style.setProperty("--s", item.s);
-        btn.style.setProperty("--r", item.r + "deg");
         btn.disabled = !clickable;
         if (clickable) {
           btn.addEventListener("click", (e) => {
@@ -585,6 +715,7 @@
     }
 
     const DECK = generateDeck(N);
+    let decoCards = [];
 
     const state = {
       isHost: false,
@@ -607,7 +738,55 @@
       game: null,
       joinTimer: 0,
       connecting: false,
+      edition: "classic",
     };
+
+    function editionById(id) {
+      return EDITIONS.find((e) => e.id === id) || EDITIONS[0];
+    }
+
+    function currentSymbols() {
+      const need = N * N + N + 1;
+      const list = editionById(state.edition).symbols.slice();
+      while (list.length < need) list.push("⭐");
+      return list.slice(0, need);
+    }
+
+    function pickEdition(id, fromNetwork) {
+      const ed = editionById(id);
+      const same = state.edition === ed.id && document.body.getAttribute("data-edition") === ed.id;
+      state.edition = ed.id;
+      document.body.setAttribute("data-edition", ed.id);
+      if (!fromNetwork) {
+        try { localStorage.setItem("dobble-edition", ed.id); } catch (e) {}
+        if (state.isHost && !state.solo && state.view && state.view.phase === "lobby") sendLobby();
+      }
+      if (same) return;
+      renderEditionChips();
+      paintHomeDecor();
+    }
+
+    function renderEditionChips() {
+      ["home-editions", "lobby-editions"].forEach((id) => {
+        const wrap = $(id);
+        if (!wrap) return;
+        wrap.replaceChildren();
+        for (const ed of EDITIONS) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "edition-chip" + (ed.id === state.edition ? " on" : "");
+          btn.textContent = ed.icon + " " + ed.name;
+          btn.onclick = () => pickEdition(ed.id);
+          wrap.append(btn);
+        }
+      });
+    }
+
+    function paintHomeDecor() {
+      if (!decoCards[0] || !decoCards[1]) return;
+      renderCard(decoCards[0], DECK[0], null, false);
+      renderCard(decoCards[1], DECK[3], intersection(DECK[0], DECK[3])[0], false);
+    }
 
     function playerView(game, id) {
       const p = game.players.find((x) => x.id === id);
@@ -626,6 +805,7 @@
           remaining: p ? p.hand.length : 0,
           frozenRemaining: p ? Math.max(0, p.frozenUntil - Date.now()) : 0,
         },
+        edition: game.edition || state.edition,
         players: game.players.map((x) => ({
           id: x.id,
           name: x.name,
@@ -639,7 +819,8 @@
     }
 
     function createGame(players, cardsEach) {
-      const perm = shuffle([...Array(SYMBOLS.length).keys()]);
+      const pack = currentSymbols();
+      const perm = shuffle([...Array(pack.length).keys()]);
       const mapped = DECK.map((c) => c.map((i) => perm[i]));
       const pile = shuffle(mapped);
       const center = pile.pop();
@@ -667,6 +848,7 @@
         banner: "Find the one matching symbol",
         startedAt: Date.now(),
         winnerId: null,
+        edition: state.edition,
         players: list,
       };
     }
@@ -723,7 +905,7 @@
       g.locked = true;
       g.highlight = symbol;
       p.score += 1;
-      g.banner = p.name + " found " + SYMBOLS[symbol] + "!";
+      g.banner = p.name + " found " + currentSymbols()[symbol] + "!";
       hostBroadcast();
       setTimeout(() => {
         if (!state.game || state.game.phase !== "playing") return;
@@ -742,6 +924,7 @@
 
     function applyView(view) {
       state.view = view;
+      if (view.edition) pickEdition(view.edition, true);
       if (view.phase === "lobby") {
         renderLobby(view);
         showScreen("lobby");
@@ -806,8 +989,8 @@
       MiniGames.renderPlayerList(view.players, state.myId);
       $("host-settings").style.display = state.isHost ? "grid" : "none";
       $("lobby-hint").textContent = state.isHost
-        ? "Up to " + MAX_PLAYERS + " players. Start when everyone is in."
-        : "Waiting for the host to start…";
+        ? "Up to " + MAX_PLAYERS + " players. Pick an edition, then start when everyone is in."
+        : "Waiting for the host to start… " + editionById(view.edition || state.edition).icon + " " + editionById(view.edition || state.edition).name + " edition.";
       MiniGames.setQr(inviteUrl());
     }
 
@@ -817,7 +1000,7 @@
       $("end-emoji").textContent = youWin ? "🏆" : "⭐";
       $("end-title").textContent = winner ? winner.name + " wins!" : "Game over";
       const elapsed = Math.max(0, Date.now() - (view.startedAt || Date.now()));
-      $("end-sub").textContent = formatTime(elapsed);
+      $("end-sub").textContent = formatTime(elapsed) + " · " + editionById(view.edition || state.edition).name + " edition";
       const box = $("end-scores");
       box.replaceChildren();
       const ranked = view.players.slice().sort((a, b) => a.remaining - b.remaining || b.score - a.score);
@@ -885,7 +1068,7 @@
       for (const [id, meta] of guests) {
         players.push({ id, name: meta.name, color: COLORS[i++ % COLORS.length], connected: true });
       }
-      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+      return { phase: "lobby", room: state.room, players, you: { id: "host" }, edition: state.edition };
     }
 
     const guests = new Map();
@@ -1122,6 +1305,10 @@
       $("btn-join").disabled = false;
       hideWarmup();
       showScreen("home");
+      try {
+        const saved = localStorage.getItem("dobble-edition");
+        if (saved) pickEdition(saved, true);
+      } catch (e) {}
     }
 
     function leaveRoom() {
@@ -1164,8 +1351,12 @@
       a.className = "card yours";
       b.className = "card";
       wrap.append(a, b);
-      renderCard(a, DECK[0], null, false);
-      renderCard(b, DECK[3], intersection(DECK[0], DECK[3])[0], false);
+      decoCards = [a, b];
+      try {
+        const saved = localStorage.getItem("dobble-edition");
+        if (saved) state.edition = saved;
+      } catch (e) {}
+      pickEdition(state.edition, true);
     })();
   </script>
 </body>

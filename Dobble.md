@@ -4,6 +4,8 @@ A real-time multiplayer [Dobble](https://en.wikipedia.org/wiki/Dobble) (Spot It!
 
 Any two cards share **exactly one** symbol. Tap it first.
 
+Pick an **edition** on the home screen or in the lobby (host chooses, everyone plays that pack): Classic, Harry Potter, Disney, Superheroes, Animals, Space, Food, Ocean. Each pack has 57 emoji. The match rule does not change.
+
 How to play from a player’s point of view is in the collection [README](README.md). This file covers rooms, networking, and the rules engine.
 
 ---
@@ -179,7 +181,7 @@ Tiny JSON over the PeerJS data channel:
 | --- | --- | --- |
 | Guest → host | `join` | Name for the lobby list |
 | Guest → host | `click` | Tapped symbol + round |
-| Host → guest | `state` | Lobby or in-game view |
+| Host → guest | `state` | Lobby or in-game view (includes `edition`) |
 | Host → guest | `error` | e.g. game already started |
 
 That is the entire network API.

@@ -1,0 +1,4287 @@
+<!DOCTYPE html>
+<html lang="en" class="booting" style="--boot-bg:#5b1d8a;--boot-accent:#ffd100;--boot-ink:#fff;--boot-title:'Waking up Uno Flip…'">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#5b1d8a" />
+  <title>Uno Flip</title>
+  <link rel="stylesheet" href="shared/boot.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='46' ry='32' transform='rotate(-22 50 50)' fill='%23111'/><ellipse cx='50' cy='50' rx='38' ry='26' transform='rotate(-22 50 50)' fill='%23c41e3a'/><text y='58' x='50' text-anchor='middle' font-size='22' font-family='Arial Black,Arial' font-weight='700' fill='%23ffd100'>UNO</text></svg>" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="shared/shell.css" />
+  <style>
+    :root {
+      --uno-red: #c41e3a;
+      --uno-yellow: #ffd100;
+      --uno-green: #2e8b3a;
+      --uno-blue: #1b5eaa;
+      --red: #c41e3a;
+      --accent: #ffd100;
+      --teal: #2e8b3a;
+      --felt: #1f7a38;
+      --ink: #1a1a1a;
+      --muted: #6b7280;
+      --surface: #ffffff;
+      --card: var(--surface);
+      --line: #e5e7eb;
+      --surface-soft: #f8fafc;
+      --surface-muted: #f1f5f9;
+      --bg-home-start: #e03952;
+      --bg-home-mid: #7c3aed;
+      --bg-home-end: #3b0764;
+      --bg-game-start: #3caf58;
+      --bg-game-mid: #1f7a38;
+      --bg-game-end: #14602c;
+      --toast-bg: #111111;
+      --toast-fg: #ffffff;
+      --paper: #ffffff;
+      --paper-ink: #111111;
+      --pad-x: clamp(8px, 2.4vw, 16px);
+      --pad-y: clamp(8px, 1.6vh, 16px);
+      --card-w: clamp(48px, min(12vw, 9.5vh), 78px);
+      --card-h: calc(var(--card-w) * 1.51);
+      --card-lg-w: clamp(62px, min(16vw, 13vh), 100px);
+      --card-lg-h: calc(var(--card-lg-w) * 1.52);
+      --card-sm-w: clamp(36px, min(8vw, 7vh), 54px);
+      --card-sm-h: calc(var(--card-sm-w) * 1.52);
+      --card-tiny-w: clamp(26px, min(6vw, 5.5vh), 36px);
+      --card-tiny-h: calc(var(--card-tiny-w) * 1.5);
+      --side-col: clamp(52px, 15vw, 130px);
+      --safe: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    body.dark {
+      --ink: #edf2f7;
+      --muted: #94a3b8;
+      --surface: #111827;
+      --card: var(--surface);
+      --surface-soft: #1f2937;
+      --surface-muted: #172033;
+      --bg-home-start: #1f2937;
+      --bg-home-mid: #111827;
+      --bg-home-end: #0b1220;
+      --bg-game-start: #173424;
+      --bg-game-mid: #10261a;
+      --bg-game-end: #09150f;
+      --toast-bg: #f8fafc;
+      --toast-fg: #111827;
+      --paper: #0b1220;
+      --paper-ink: #f8fafc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    body {
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      background: var(--bg-home-mid);
+      color: var(--ink);
+    }
+
+    .play-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-home-start) 0%, var(--bg-home-mid) 42%, var(--bg-home-end) 100%);
+    }
+
+    button, input, select { font-family: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding: calc(var(--pad-y) + var(--safe)) var(--pad-x) calc(var(--pad-y) + var(--safe-b));
+    }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #screen-home.active,
+    #screen-lobby.active,
+    #screen-end.active {
+      overflow-x: hidden;
+      overflow-y: auto;
+      max-height: 100dvh;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    #screen-home.active > *,
+    #screen-lobby.active > *,
+    #screen-end.active > * {
+      flex-shrink: 0;
+    }
+    #screen-game {
+      background:
+        radial-gradient(ellipse at center, var(--bg-game-start) 0%, var(--bg-game-mid) 58%, var(--bg-game-end) 100%);
+    }
+    #screen-game.active {
+      overflow: hidden;
+      max-height: 100dvh;
+    }
+
+    .brand { text-align: center; margin: 4px 0; width: min(420px, 100%); }
+    .all-games {
+      width: min(420px, 100%);
+      margin: 0 0 6px;
+      text-align: left;
+    }
+    .all-games a { color: #fff; }
+    .uno-logo {
+      width: clamp(120px, 42vw, 210px);
+      height: clamp(74px, 26vw, 128px);
+      margin: 0 auto 8px;
+      background: var(--paper-ink);
+      border-radius: 50%;
+      transform: rotate(-22deg);
+      display: grid;
+      place-items: center;
+      position: relative;
+      box-shadow: 8px 10px 0 rgba(0, 0, 0, .22);
+    }
+    .uno-logo::after {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      background: var(--uno-red);
+      border-radius: 50%;
+    }
+    .uno-logo span {
+      position: relative;
+      z-index: 1;
+      font-family: Impact, "Arial Black", sans-serif;
+      font-size: clamp(26px, 9vw, 44px);
+      font-style: italic;
+      letter-spacing: 0.02em;
+      color: var(--uno-yellow);
+      text-shadow:
+        -2px -2px 0 var(--paper-ink), 2px -2px 0 var(--paper-ink),
+        -2px 2px 0 var(--paper-ink), 2px 2px 0 var(--paper-ink),
+        0 3px 0 #7a0e1c;
+    }
+    .brand p { color: #fff; margin-top: 10px; font-size: clamp(13px, 3.4vw, 15px); opacity: .92; }
+
+    .panel {
+      width: min(420px, 100%);
+      background: var(--surface);
+      border-radius: 20px;
+      padding: clamp(14px, 3vh, 22px);
+      margin-top: clamp(8px, 2vh, 14px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 12px 0 6px;
+    }
+    input, select {
+      width: 100%;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 13px 14px;
+      font-size: 17px;
+      background: var(--surface-soft);
+      color: var(--ink);
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--uno-red); background: var(--surface); }
+    input.room {
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      background: var(--uno-red);
+      margin-top: 12px;
+      box-shadow: 0 4px 0 #8b1224;
+    }
+    .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #8b1224; }
+    .btn.teal { background: var(--uno-green); box-shadow: 0 4px 0 #1a5c24; }
+    .btn.blue { background: var(--uno-blue); box-shadow: 0 4px 0 #103a6c; }
+    .btn.yellow {
+      background: var(--uno-yellow);
+      color: #111;
+      box-shadow: 0 4px 0 #c9a400;
+    }
+    .btn.ghost {
+      background: var(--surface);
+      color: var(--uno-red);
+      box-shadow: 0 4px 0 #b01024;
+    }
+    .btn.row { width: auto; padding-inline: 16px; margin-top: 0; }
+    .btn.pulse { box-shadow: 0 0 0 4px var(--paper), 0 4px 0 #c9a400; }
+
+    #btn-uno {
+      width: 76px;
+      height: 52px;
+      border-radius: 50%;
+      transform: rotate(-18deg);
+      font-family: Impact, "Arial Black", sans-serif;
+      font-style: italic;
+      letter-spacing: .04em;
+      background: var(--uno-yellow);
+      color: #111;
+      box-shadow: 0 0 0 3px var(--paper-ink), 0 5px 0 #c9a400;
+    }
+    #btn-uno.pulse { box-shadow: 0 0 0 3px var(--paper-ink), 0 0 0 7px var(--paper), 0 5px 0 #c9a400; }
+    #btn-uno:active:not(:disabled) { transform: rotate(-18deg) translateY(2px); }
+
+    .row { display: flex; gap: 10px; align-items: end; }
+    .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
+    .join-dot { background: var(--uno-blue); }
+    .join-bar i { background: var(--uno-blue); }
+
+    .deco {
+      display: flex;
+      gap: 10px;
+      margin: clamp(8px, 2vh, 18px) 0 6px;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 10px rgba(0,0,0,.28));
+    }
+
+    .topbar {
+      width: min(1100px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .icon-btn, .btn.mic {
+      flex-shrink: 0;
+    }
+    .btn.mic {
+      min-width: 76px;
+    }
+    .btn.mic.live {
+      background: #166534;
+      color: #fff;
+      box-shadow: 0 4px 0 #0f3d1f;
+    }
+    .code-pill, .icon-btn {
+      background: var(--surface);
+      border: 0;
+      border-radius: 999px;
+      box-shadow: 0 3px 0 rgba(0,0,0,.18);
+    }
+    .code-pill {
+      padding: 8px 16px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+    }
+    .icon-btn {
+      width: 42px; height: 42px;
+      color: var(--ink); font-size: 18px;
+      position: relative;
+    }
+    .icon-btn.live {
+      background: #166534;
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.35);
+    }
+    .icon-btn.mic-off::after {
+      content: "";
+      position: absolute;
+      left: 8px; right: 8px; top: 50%;
+      height: 2px;
+      background: var(--uno-red);
+      transform: rotate(-28deg);
+      pointer-events: none;
+    }
+    body.dark .icon-btn.mic-off::after { background: #fca5a5; }
+    .theme-toggle { flex-shrink: 0; }
+    .room-label {
+      color: #fff;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-weight: 700;
+      opacity: .85;
+      margin-bottom: 4px;
+    }
+
+    .players {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 0 0 8px;
+      flex-shrink: 0;
+    }
+    .seat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      border-radius: 999px;
+      padding: 6px 12px 6px 6px;
+      min-width: 118px;
+      box-shadow: 0 3px 0 rgba(0,0,0,.16);
+    }
+    .seat .dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+    }
+    .seat .meta { display: flex; flex-direction: column; line-height: 1.1; }
+    .seat .meta b { font-size: 13px; }
+    .seat .meta span { font-size: 11px; color: var(--muted); }
+    .seat.you { box-shadow: 0 0 0 3px var(--uno-yellow), 0 3px 0 rgba(0,0,0,.16); }
+    .seat.turn { background: var(--uno-yellow); }
+    .seat.win { background: #dcfce7; }
+    .seat.uno .meta b::after { content: " UNO"; color: var(--uno-red); }
+
+    .arena {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: var(--side-col) minmax(0, 1fr) var(--side-col);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "tl top tr"
+        "left center right";
+      align-items: center;
+      justify-items: center;
+      gap: clamp(2px, 0.8vh, 4px) clamp(4px, 1.2vw, 8px);
+    }
+    .seat-slot { min-width: 0; min-height: 0; }
+    .seat-slot.top { grid-area: top; }
+    .seat-slot.topLeft { grid-area: tl; }
+    .seat-slot.topRight { grid-area: tr; }
+    .seat-slot.left { grid-area: left; }
+    .seat-slot.right { grid-area: right; }
+    .table {
+      grid-area: center;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      min-height: 0;
+    }
+    .table-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .table-center .pile { pointer-events: auto; }
+    .draw-pile-slot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) translateX(calc(-1 * (var(--card-lg-w) + 18px)));
+      z-index: 3;
+    }
+
+    .opp {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .opp-fan-wrap {
+      display: grid;
+      place-items: center;
+      overflow: visible;
+    }
+    .opp-fan {
+      display: flex;
+      align-items: flex-end;
+      pointer-events: none;
+      height: 72px;
+      padding-top: 14px;
+    }
+    .opp-fan .ucard {
+      --fan-rot: 0deg;
+      --fan-y: 0px;
+      transform-origin: 50% 110%;
+      transform: translateY(var(--fan-y)) rotate(var(--fan-rot));
+    }
+    .opp-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      background: var(--surface);
+      border-radius: 999px;
+      padding: 4px 10px;
+      box-shadow: 0 3px 0 rgba(0,0,0,.16);
+      color: var(--ink);
+      max-width: 120px;
+    }
+    .opp-meta b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+    .opp-meta span { font-size: 11px; font-weight: 800; color: var(--muted); }
+    .opp.turn .opp-meta { background: var(--uno-yellow); }
+    .opp.mic .opp-meta b::before { content: "🎙 "; }
+    .seat-slot.left .opp { flex-direction: row-reverse; }
+    .seat-slot.right .opp { flex-direction: row; }
+    .seat-slot.left .opp-meta,
+    .seat-slot.right .opp-meta {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 6px;
+      width: 22px;
+      max-width: 22px;
+      min-height: 58px;
+      gap: 4px;
+    }
+    .seat-slot.left .opp-meta b,
+    .seat-slot.right .opp-meta b {
+      text-orientation: mixed;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      line-height: 1;
+      max-height: 86px;
+    }
+    .seat-slot.left .opp-meta b { writing-mode: vertical-rl; }
+    .seat-slot.right .opp-meta b { writing-mode: vertical-lr; }
+    .seat-slot.left .opp-fan-wrap,
+    .seat-slot.right .opp-fan-wrap {
+      width: calc(var(--card-tiny-w) * 2.1);
+      height: calc(var(--card-tiny-h) * 2.6);
+    }
+    .seat-slot.left .opp-fan { transform: rotate(90deg); }
+    .seat-slot.right .opp-fan { transform: translateX(-42px) rotate(-90deg); }
+    .seat-slot.right .opp-meta { position: relative; z-index: 2; }
+    .seat-slot.top .opp-fan { transform: rotate(180deg); }
+    .seat-slot.topLeft .opp-fan { transform: rotate(135deg); }
+    .seat-slot.topRight .opp-fan { transform: rotate(-135deg); }
+
+    .ucard.tiny { width: var(--card-tiny-w); height: var(--card-tiny-h); padding: 3px; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,.28); }
+    .ucard.tiny .back-oval { width: 62%; height: 64%; font-size: 8px; box-shadow: 0 0 0 2px var(--paper-ink); }
+    .flying {
+      pointer-events: none;
+      z-index: 200;
+      margin: 0 !important;
+    }
+    .pile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .pile .tag, .tag {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.88);
+    }
+    .color-chip {
+      width: 36px; height: 36px;
+      border: 3px solid var(--paper);
+      border-radius: 50%;
+      box-shadow: 0 3px 0 rgba(0,0,0,.25);
+    }
+    .dir {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .ucard {
+      --c: #c41e3a;
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 5px;
+      position: relative;
+      color: #fff;
+      flex-shrink: 0;
+      user-select: none;
+      box-shadow: 0 6px 14px rgba(0,0,0,.32);
+    }
+    .card-face, .back-face {
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      background: var(--c);
+      position: relative;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .ucard.red { --c: #c41e3a; }
+    .ucard.yellow { --c: #ffd100; color: #111; }
+    .ucard.yellow .face { color: #7a5b00; }
+    body.dark .ucard.yellow .face { color: #ffd100; }
+    .ucard.green { --c: #2e8b3a; }
+    .ucard.blue { --c: #1b5eaa; }
+    .ucard.pink { --c: #ff4f9a; }
+    .ucard.teal { --c: #12b5a0; }
+    .ucard.orange { --c: #ff7a18; color: #111; }
+    .ucard.orange .face { color: #7a3b00; }
+    .ucard.purple { --c: #7b3dff; }
+    .ucard.wild { --c: var(--paper-ink); color: var(--paper); }
+    .oval {
+      width: 64%;
+      height: 69%;
+      background: var(--paper);
+      border-radius: 50%;
+      transform: rotate(-22deg);
+      display: grid;
+      place-items: center;
+    }
+    .ucard .face {
+      font-family: Impact, "Arial Black", sans-serif;
+      font-weight: 700;
+      font-size: calc(var(--card-w) * 0.38);
+      line-height: 1;
+      color: var(--c);
+      font-style: italic;
+    }
+    .ucard.wild .oval {
+      background: transparent;
+      overflow: hidden;
+    }
+    .ucard .corner {
+      position: absolute;
+      font-family: Impact, "Arial Black", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      font-style: italic;
+    }
+    .ucard .corner.tl { top: 5px; left: 6px; }
+    .ucard .corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); }
+    .ucard.back .back-face { background: var(--paper-ink); }
+    .back-oval {
+      width: 69%;
+      height: 70%;
+      background: var(--uno-red);
+      border-radius: 50%;
+      transform: rotate(-22deg);
+      display: grid;
+      place-items: center;
+      font-family: Impact, "Arial Black", sans-serif;
+      font-style: italic;
+      font-size: calc(var(--card-w) * 0.22);
+      color: var(--uno-yellow);
+      letter-spacing: .02em;
+      box-shadow: 0 0 0 3px var(--paper-ink);
+      text-shadow: -1px -1px 0 var(--paper-ink), 1px -1px 0 var(--paper-ink), -1px 1px 0 var(--paper-ink), 1px 1px 0 var(--paper-ink);
+    }
+    .ucard.sm { width: var(--card-sm-w); height: var(--card-sm-h); padding: 4px; border-radius: 8px; }
+    .ucard.sm .face { font-size: calc(var(--card-sm-w) * 0.34); }
+    .ucard.sm .corner { font-size: 10px; }
+    .ucard.sm .back-oval { font-size: calc(var(--card-sm-w) * 0.2); }
+    .ucard.lg { width: var(--card-lg-w); height: var(--card-lg-h); padding: 6px; }
+    .ucard.lg .face { font-size: calc(var(--card-lg-w) * 0.4); }
+    .ucard.lg .back-oval { font-size: calc(var(--card-lg-w) * 0.22); }
+    .ucard.playable { box-shadow: 0 0 0 3px var(--uno-yellow), 0 10px 18px rgba(0,0,0,.35); }
+    .ucard.dead { opacity: 0.4; }
+    .hand .ucard.dead { opacity: 1; }
+    .ucard.drawn { box-shadow: 0 0 0 4px var(--paper), 0 8px 16px rgba(0,0,0,.35); }
+    button.ucard { padding: 5px; touch-action: manipulation; border: 0; }
+    button.ucard.lg { padding: 6px; }
+    button.ucard:disabled { opacity: 1; cursor: default; }
+
+    .pie {
+      width: 51%; height: 54%;
+      border-radius: 50%;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .pie i:nth-child(1) { background: #c41e3a; }
+    .pie i:nth-child(2) { background: #ffd100; }
+    .pie i:nth-child(3) { background: #2e8b3a; }
+    .pie i:nth-child(4) { background: #1b5eaa; }
+    body[data-side="dark"] .pie i:nth-child(1) { background: #ff4f9a; }
+    body[data-side="dark"] .pie i:nth-child(2) { background: #12b5a0; }
+    body[data-side="dark"] .pie i:nth-child(3) { background: #ff7a18; }
+    body[data-side="dark"] .pie i:nth-child(4) { background: #7b3dff; }
+    body[data-side="dark"] #screen-game {
+      --bg-game-start: #6d28d9;
+      --bg-game-mid: #3b0764;
+      --bg-game-end: #1e0533;
+    }
+    body[data-side="dark"] .back-oval {
+      background: #7b3dff;
+      color: #ffd100;
+    }
+    .ucard .face.flip {
+      font-size: calc(var(--card-w) * 0.28);
+      letter-spacing: .02em;
+    }
+
+    .hand-dock {
+      width: min(1100px, 100%);
+      flex: 0 0 auto;
+      margin-top: 4px;
+      z-index: 4;
+    }
+    .actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2px;
+      position: relative;
+      z-index: 5;
+    }
+    .hand-hint {
+      display: block;
+      text-align: center;
+      color: rgba(255,255,255,.8);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .deck-hint {
+      margin-top: 8px;
+      max-width: 132px;
+      text-align: center;
+      color: rgba(255,255,255,.85);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .hand-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: clamp(36px, 7vh, 56px) 12px 12px;
+      scrollbar-width: thin;
+      position: relative;
+    }
+    .hand {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: calc(var(--card-h) + 14px);
+      position: relative;
+      width: max-content;
+      min-width: 100%;
+      margin: 0 auto;
+    }
+    .hand .ucard {
+      --fan-rot: 0deg;
+      --fan-y: 0px;
+      --pop: 0px;
+      position: relative;
+      flex-shrink: 0;
+      transform-origin: 50% 110%;
+      transform: translateY(var(--fan-y)) translateY(var(--pop)) rotate(var(--fan-rot));
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    }
+    .hand .ucard.playable {
+      --pop: -18px;
+      box-shadow: 0 0 0 3px var(--uno-yellow), 0 10px 18px rgba(0,0,0,.32);
+    }
+    .hand .ucard.raised {
+      --pop: -50px;
+      z-index: 90 !important;
+      box-shadow: 0 14px 24px rgba(0,0,0,.38);
+    }
+    .hand .ucard.raised.playable {
+      box-shadow: 0 0 0 4px var(--uno-yellow), 0 14px 24px rgba(0,0,0,.38);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .hand .ucard:hover {
+        --pop: -48px;
+        z-index: 90 !important;
+      }
+      .hand .ucard.playable:hover {
+        --pop: -56px;
+      }
+    }
+    /* hand-hint is always visible */
+
+    .banner-wrap {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .banner-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+    }
+    .banner-turn {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--uno-yellow);
+      min-height: 18px;
+      text-align: center;
+    }
+    .banner {
+      min-height: 22px;
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,.9);
+      text-align: center;
+    }
+    .banner-color {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .banner-color .color-chip {
+      width: 28px;
+      height: 28px;
+    }
+    .banner-color .dir {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .qr {
+      background: var(--surface);
+      border: 0;
+      border-radius: 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
+    }
+    .settings { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .player-list .seat { background: var(--surface-soft); box-shadow: none; }
+
+    .end-card { text-align: center; width: min(420px, 100%); }
+    .end-card h2 { font-size: 36px; color: #fff; margin: 8px 0; }
+    .end-card .panel { margin-left: auto; margin-right: auto; }
+    .podium { margin: 16px 0; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 12;
+      background: rgba(0, 0, 0, .55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .overlay.show { display: flex; }
+    .overlay .panel {
+      width: min(280px, 100%);
+      margin: 0;
+      text-align: center;
+    }
+    #stack-pick .panel { width: min(320px, 100%); }
+    #stack-pick .hint { margin-top: 8px; }
+    #away-pick, #reconnect-pick { z-index: 16; }
+    #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
+    #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
+    #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    #btn-debug {
+      position: fixed;
+      left: max(10px, env(safe-area-inset-left));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 22;
+      width: auto;
+      height: 36px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    #debug-pick { z-index: 24; }
+    #debug-pick .panel {
+      width: min(420px, 100%);
+      text-align: left;
+    }
+    #debug-log {
+      margin-top: 10px;
+      max-height: min(42vh, 280px);
+      overflow: auto;
+      background: #0b1220;
+      color: #d1fae5;
+      border-radius: 10px;
+      padding: 10px;
+      font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #debug-pick .hint { margin-top: 8px; }
+    #debug-pick label { margin-top: 10px; }
+    #debug-pick input { width: 100%; }
+    .swatches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 200px;
+      margin: 14px auto 0;
+    }
+    .swatches button {
+      height: 88px;
+      border: 0;
+      border-radius: 50%;
+      box-shadow: 0 6px 0 rgba(0,0,0,.25);
+    }
+    .swatches .red { background: #c41e3a; }
+    .swatches .yellow { background: #ffd100; }
+    .swatches .green { background: #2e8b3a; }
+    .swatches .blue { background: #1b5eaa; }
+    .swatches .pink { background: #ff4f9a; }
+    .swatches .teal { background: #12b5a0; }
+    .swatches .orange { background: #ff7a18; }
+    .swatches .purple { background: #7b3dff; }
+
+    .turn-pop {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + var(--safe-b));
+      transform: translateX(-50%) translateY(12px);
+      z-index: 18;
+      align-items: center;
+      justify-content: center;
+      background: var(--toast-bg);
+      color: var(--toast-fg);
+      border-radius: 999px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.28);
+      pointer-events: none;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .turn-pop.show {
+      display: flex;
+      transform: translateX(-50%) translateY(0);
+    }
+    .turn-pop b { font-size: 15px; font-weight: 800; }
+    @keyframes card-shake {
+      0%, 100% { translate: 0 0; }
+      20% { translate: -7px 0; }
+      40% { translate: 7px 0; }
+      60% { translate: -5px 0; }
+      80% { translate: 5px 0; }
+    }
+    .hand .ucard.shake { animation: card-shake .38s ease; }
+
+    @media (max-width: 720px) {
+      .lobby-grid { grid-template-columns: 1fr; }
+      .arena { --side-col: clamp(44px, 18vw, 72px); }
+    }
+    @media (max-height: 740px) {
+      .deco { margin: 6px 0; transform: scale(0.86); transform-origin: center top; }
+      .brand p { margin-top: 6px; }
+    }
+    @media (max-height: 620px) {
+      .deco { display: none; }
+      .uno-logo { width: clamp(96px, 28vw, 140px); height: clamp(58px, 17vw, 86px); }
+      .panel { padding: 12px; margin-top: 6px; }
+      label { margin: 8px 0 4px; }
+      .btn { padding: 11px 16px; margin-top: 8px; }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      .deco { display: none; }
+      .lobby-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+      .hand-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Waking up…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
+  <div class="play-bg" aria-hidden="true"></div>
+  <div id="screen-home" class="screen active">
+    <p class="all-games"><a href="index.html">← All games</a></p>
+    <div class="brand">
+      <div class="uno-logo" aria-label="UNO Flip"><span>FLIP</span></div>
+      <p>Light and dark sides. Play Flip to turn the whole table over.</p>
+    </div>
+    <div class="deco" id="home-deco"></div>
+    <div class="panel">
+      <label for="name">Your name</label>
+      <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
+      <button class="btn" id="btn-create">Create room</button>
+      <div class="row">
+        <div style="flex:1">
+          <label for="join-code">Join a room</label>
+          <input id="join-code" class="room" maxlength="4" placeholder="ABCD" autocomplete="off" />
+        </div>
+      </div>
+      <button class="btn blue" id="btn-join">Join friends</button>
+      <div class="join-status" id="join-status">
+        <div class="join-status-row">
+          <span class="join-dot"></span>
+          <span id="join-status-text">Connecting…</span>
+        </div>
+        <div class="join-bar"><i></i></div>
+      </div>
+      <button class="btn ghost" id="btn-invite-leave" type="button" style="display:none;margin-top:10px">Leave this invite</button>
+      <div class="row" id="solo-home-row">
+        <div style="flex:1">
+          <label for="bot-count">Practice vs bots</label>
+          <select id="bot-count">
+            <option value="1">1 bot</option>
+            <option value="2" selected>2 bots</option>
+            <option value="3">3 bots</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn yellow" id="btn-solo">Practice solo</button>
+      <div class="error" id="home-error"></div>
+      <div class="net-warn" id="net-warn">
+        <b>Wi‑Fi tip</b>
+        Same Wi‑Fi is easiest. Two <em>different</em> home Wi‑Fi on the <em>same ISP</em> (two routers, even a few km apart) often cannot connect. Put one phone on <strong>mobile data</strong>, or join the <strong>same Wi‑Fi</strong>. Different ISPs, or one person on mobile data, usually work at any distance.
+      </div>
+      <p class="hint" id="home-hint">Share a 4-letter room code. Friends open this same Uno Flip page and join.</p>
+    </div>
+  </div>
+
+  <div id="screen-lobby" class="screen">
+    <div class="topbar">
+      <div>
+        <div class="room-label">Room</div>
+        <div class="code-pill" id="lobby-code">----</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-copy">Copy link</button>
+        <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
+      </div>
+    </div>
+    <div class="lobby-grid">
+      <div class="panel" style="width:auto;margin:0">
+        <b>Players</b>
+        <div class="player-list" id="lobby-players"></div>
+        <div class="settings" id="host-settings">
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn teal" id="btn-start">Start game</button>
+          </div>
+        </div>
+        <button class="btn mic" id="btn-mic-lobby" type="button" title="Turn on microphone" aria-pressed="false">🎤 Mic</button>
+        <p class="hint" id="lobby-hint">Waiting for the host to start…</p>
+        <div class="net-warn">
+          <b>If friends cannot join</b>
+          Same ISP + different home Wi‑Fi (two separate routers) often fails. One person should switch to <strong>mobile data</strong>, or everyone use the <strong>same Wi‑Fi</strong>.
+        </div>
+      </div>
+      <div class="qr">
+        <img id="qr" alt="Invite QR code" />
+        <b>Scan to join</b>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="topbar">
+      <div class="code-pill" id="game-code">----</div>
+      <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:#fff">0:00</div>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
+        <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
+        <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
+      </div>
+    </div>
+    <div class="arena">
+      <div class="seat-slot topLeft" id="slot-topLeft"></div>
+      <div class="seat-slot top" id="slot-top"></div>
+      <div class="seat-slot topRight" id="slot-topRight"></div>
+      <div class="seat-slot left" id="slot-left"></div>
+      <div class="table">
+        <div class="table-center">
+          <div class="pile">
+            <div class="tag">Discard</div>
+            <div id="discard"></div>
+          </div>
+        </div>
+        <div class="pile draw-pile-slot">
+          <div class="tag">Draw</div>
+          <button class="ucard back lg" id="draw-pile" type="button" title="Draw a card">
+            <div class="back-face"><div class="back-oval">FLIP</div></div>
+          </button>
+          <div class="tag" id="draw-count">0</div>
+        </div>
+      </div>
+      <div class="seat-slot right" id="slot-right"></div>
+    </div>
+    <div class="banner-wrap">
+      <div class="banner-text">
+        <div class="banner-turn" id="banner-turn"></div>
+        <div class="banner" id="banner">Match the color or number</div>
+      </div>
+      <div class="banner-color">
+        <div class="color-chip" id="color-chip"></div>
+        <div class="dir" id="dir">↻</div>
+      </div>
+    </div>
+    <div class="hand-dock">
+      <div class="actions">
+        <button class="btn row yellow" id="btn-uno" type="button">UNO!</button>
+        <button class="btn row mic" id="btn-mic-game" type="button" title="Turn on microphone" aria-pressed="false">🎤 Mic</button>
+        <button class="btn row ghost" id="btn-pass" type="button">Keep</button>
+        <button class="btn row" id="btn-caught" type="button" style="background:#7c3aed">Caught!</button>
+      </div>
+      <div class="hand-wrap" id="hand-wrap">
+        <div class="hand" id="hand"></div>
+      </div>
+      <p class="hand-hint">Tap a card to lift it · tap again to play</p>
+    </div>
+  </div>
+
+  <div id="screen-end" class="screen">
+    <div class="end-card">
+      <div style="font-size:64px" id="end-emoji">🏆</div>
+      <h2 id="end-title">Winner</h2>
+      <p id="end-sub" style="color:#fff;opacity:.9"></p>
+      <div class="podium panel" id="end-scores" style="width:auto;margin-top:16px"></div>
+      <button class="btn yellow" id="btn-again">Play again</button>
+      <button class="btn ghost" id="btn-home">Home</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="color-pick">
+    <div class="panel">
+      <b>Pick a color</b>
+      <div class="swatches">
+        <button class="red" data-color="red" aria-label="Red"></button>
+        <button class="yellow" data-color="yellow" aria-label="Yellow"></button>
+        <button class="green" data-color="green" aria-label="Green"></button>
+        <button class="blue" data-color="blue" aria-label="Blue"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="stack-pick">
+    <div class="panel">
+      <b id="stack-title">Draw or use a + card?</b>
+      <p class="hint" id="stack-sub">You can play a + card to pass it on.</p>
+      <button class="btn yellow" id="btn-stack-play" type="button">Use + card</button>
+      <button class="btn" id="btn-stack-take" type="button">Pick from pile</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="away-pick">
+    <div class="panel">
+      <b id="away-title">Player lost connection</b>
+      <p class="hint" id="away-sub">They may come back, or they may have left. Wait for them, or kick them so the game can continue.</p>
+      <div id="away-actions"></div>
+      <button class="btn ghost" id="btn-away-wait" type="button">Wait for them</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="reconnect-pick">
+    <div class="panel">
+      <b id="reconnect-title">Rejoining…</b>
+      <p class="hint" id="reconnect-sub">Connection dropped. Trying to get you back in.</p>
+      <div class="join-bar" id="reconnect-bar" style="display:block;margin-top:14px"><i></i></div>
+      <button class="btn ghost" id="btn-reconnect-extend" type="button" style="display:none">Wait 2 more minutes</button>
+      <button class="btn" id="btn-reconnect-leave" type="button">Leave table</button>
+    </div>
+  </div>
+
+  <div class="turn-pop" id="turn-pop">
+    <b id="turn-pop-name">Wait for your turn</b>
+  </div>
+
+  <div class="overlay" id="debug-pick">
+    <div class="panel">
+      <b>Connection debug</b>
+      <p class="hint" id="debug-hint" style="text-align:left">Two home Wi‑Fi networks often need a TURN relay. The old public relay is dead (your log: TURN 400 / DNS 701). Paste a free Metered TURN key below, tap Save, then Test ICE — you should see <code>relay</code> candidates.</p>
+      <label for="turn-app">Metered app name</label>
+      <input id="turn-app" placeholder="your-app" autocomplete="off" />
+      <label for="turn-key">Metered TURN API key</label>
+      <input id="turn-key" placeholder="from metered.ca dashboard" autocomplete="off" />
+      <button class="btn teal" id="btn-turn-save" type="button">Save TURN</button>
+      <pre id="debug-log"></pre>
+      <div class="row">
+        <button class="btn row teal" id="btn-debug-copy" type="button">Copy log</button>
+        <button class="btn row blue" id="btn-debug-probe" type="button">Test ICE</button>
+        <button class="btn row ghost" id="btn-debug-close" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="icon-btn" id="btn-debug" type="button" title="Connection debug log">Debug</button>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="shared/kit.js"></script>
+  <script>
+    const LIGHT_COLORS = ["red", "yellow", "green", "blue"];
+    const DARK_COLORS = ["pink", "teal", "orange", "purple"];
+    const COLORS = LIGHT_COLORS;
+    const SEAT = ["#c41e3a", "#1b5eaa", "#c9a400", "#2e8b3a", "#7c3aed", "#0f766e"];
+    const MAX_PLAYERS = 10;
+    const BOT_NAMES = ["Rita", "Leo", "Maya"];
+    const PEER_PREFIX = "unofliphost-";
+    const HOST_GONE_MS = 3 * 60 * 1000;
+    const HOST_GONE_EXTEND_MS = 2 * 60 * 1000;
+    const AWAY_AUTO_KICK_MS = 3 * 60 * 1000;
+    const AWAY_TURN_SKIP_MS = 15 * 1000;
+    const CATCH_WINDOW_MIN_MS = 1500;
+    const CATCH_WINDOW_MAX_MS = 2000;
+    const UNO_HINT_CHANCE = 0.28;
+    const FACE = {
+      skip: "⊘",
+      skipAll: "ALL",
+      reverse: "⇄",
+      draw1: "+1",
+      draw5: "+5",
+      flip: "⟳",
+      wild: "W",
+      wildDraw2: "+2",
+      wildDrawColor: "+C",
+    };
+    const COLOR_HEX = {
+      red: "#c41e3a", yellow: "#ffd100", green: "#2e8b3a", blue: "#1b5eaa",
+      pink: "#ff4f9a", teal: "#12b5a0", orange: "#ff7a18", purple: "#7b3dff",
+    };
+    const COLOR_PACK = {
+      red: "r", yellow: "y", green: "g", blue: "b", wild: "w",
+      pink: "k", teal: "e", orange: "n", purple: "u",
+    };
+    const COLOR_UNPACK = {
+      r: "red", y: "yellow", g: "green", b: "blue", w: "wild",
+      k: "pink", e: "teal", n: "orange", u: "purple",
+    };
+
+    const $ = MiniGames.$;
+    const screens = {
+      home: $("screen-home"),
+      lobby: $("screen-lobby"),
+      game: $("screen-game"),
+      end: $("screen-end"),
+    };
+
+    const showScreen = MiniGames.showScreen;
+    const toast = MiniGames.toast;
+    const requireName = MiniGames.requireName;
+    const rememberName = MiniGames.rememberName;
+    const showWarmup = MiniGames.showWarmup;
+    const hideWarmup = MiniGames.hideWarmup;
+    const waitForPeer = MiniGames.waitForPeer;
+    const randomCode = MiniGames.randomCode;
+    const setJoinStatus = MiniGames.setJoinStatus;
+    const stripRoomFromUrl = MiniGames.stripRoomFromUrl;
+    const inviteUrl = () => MiniGames.inviteUrl(state.room);
+    function peerOptions() { return MiniGames.peerOptions(turnIce); }
+
+    function setInviteHome(code) {
+      const invite = !!(code && String(code).length === 4);
+      $("btn-create").style.display = invite ? "none" : "";
+      $("solo-home-row").style.display = invite ? "none" : "";
+      $("btn-solo").style.display = invite ? "none" : "";
+      $("btn-invite-leave").style.display = invite ? "" : "none";
+      $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join friends";
+      $("home-hint").textContent = invite
+        ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
+        : "Share a 4-letter room code. Friends open this same Uno Flip page and join.";
+    }
+
+    function clearJoinWait() {
+      clearTimeout(state.joinTimer);
+      state.joinTimer = 0;
+    }
+
+    function showError(id, msg) {
+      MiniGames.showError(id, msg);
+      if (msg) netlog("ui-error", id, msg);
+    }
+
+    const netLogs = [];
+    let turnIce = [];
+    try {
+      const raw = localStorage.getItem("uno-turn-ice");
+      if (raw) turnIce = JSON.parse(raw) || [];
+    } catch (e) { turnIce = []; }
+    (function loadNetLogs() {
+      try {
+        const saved = sessionStorage.getItem("unoflip-netlog");
+        if (saved) saved.split("\n").forEach((line) => { if (line) netLogs.push(line); });
+      } catch (e) {}
+    })();
+
+    function netInfo() {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const bits = [
+        "online=" + navigator.onLine,
+        "https=" + !!window.isSecureContext,
+        c ? ("net=" + (c.type || c.effectiveType || "?") + (c.downlink != null ? " " + c.downlink + "Mb" : "")) : "net=?",
+        "role=" + (state.solo ? "solo" : state.isHost ? "host" : "guest"),
+        "room=" + (state.room || "-"),
+        "turn=" + (turnIce.length ? turnIce.length + " extra" : "none"),
+      ];
+      return bits.join(" ");
+    }
+
+    function summarizeCandidate(cand) {
+      if (!cand) return "end";
+      const t = cand.type || "?";
+      const proto = cand.protocol || cand.transport || "";
+      const addr = String(cand.address || cand.ip || "");
+      const v = addr.indexOf(":") >= 0 ? "v6" : "v4";
+      return t + " " + proto + " " + v;
+    }
+
+    function iceSummary() {
+      try {
+        return peerOptions().config.iceServers.map((s) => {
+          const u = [].concat(s.urls || s.url || []);
+          return u.map((x) => String(x).split("?")[0].replace(/:\/\/.*@/, "://")).join(",");
+        }).join(" | ");
+      } catch (e) {
+        return "?";
+      }
+    }
+
+    function debugDump() {
+      return [
+        "UNO FLIP debug " + new Date().toISOString(),
+        netInfo(),
+        "ice=" + iceSummary(),
+        "ua=" + String(navigator.userAgent || "").slice(0, 140),
+        "url=" + location.origin + location.pathname,
+        "---",
+        netLogs.slice(-220).join("\n"),
+      ].join("\n");
+    }
+
+    async function saveTurnFromMetered() {
+      const app = ($("turn-app").value || "").trim()
+        .replace(/^https?:\/\//, "")
+        .replace(/\.metered\.live.*$/i, "");
+      const key = ($("turn-key").value || "").trim();
+      if (!app || !key) {
+        toast("Enter Metered app name and API key");
+        return;
+      }
+      try { localStorage.setItem("uno-turn-app", app); } catch (e) {}
+      try { localStorage.setItem("uno-turn-key", key); } catch (e) {}
+      netlog("turn fetch", app);
+      try {
+        const url = "https://" + app + ".metered.live/api/v1/turn/credentials?apiKey=" + encodeURIComponent(key);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const ice = await res.json();
+        if (!Array.isArray(ice) || !ice.length) throw new Error("empty iceServers");
+        turnIce = ice;
+        try { localStorage.setItem("uno-turn-ice", JSON.stringify(ice)); } catch (e) {}
+        netlog("turn saved", iceSummary());
+        toast("TURN saved. Tap Test ICE — look for relay. Then join again.");
+        renderDebugLog();
+      } catch (e) {
+        netlog("turn fetch fail", e && e.message);
+        toast("Could not fetch TURN. Check app name and API key.");
+      }
+    }
+
+    function renderDebugLog() {
+      const pre = $("debug-log");
+      if (!pre) return;
+      pre.textContent = debugDump();
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    function netlog() {
+      const msg = Array.prototype.slice.call(arguments).join(" ");
+      const line = new Date().toISOString().slice(11, 23) + " " + msg;
+      netLogs.push(line);
+      if (netLogs.length > 250) netLogs.shift();
+      try { sessionStorage.setItem("unoflip-netlog", netLogs.join("\n")); } catch (e) {}
+      const panel = $("debug-pick");
+      if (panel && panel.classList.contains("show")) renderDebugLog();
+    }
+
+    function watchRtc(label, conn) {
+      if (!conn) return;
+      if (conn._unoWatch) return;
+      conn._unoWatch = true;
+      conn.on("iceStateChanged", (s) => netlog(label, "iceState", s));
+      const hook = () => {
+        const pc = conn.peerConnection;
+        if (!pc || pc._unoWatched) return;
+        pc._unoWatched = true;
+        const dump = (why) => netlog(label, why, "ice=" + pc.iceConnectionState, "pc=" + (pc.connectionState || ""), "g=" + pc.iceGatheringState);
+        pc.addEventListener("iceconnectionstatechange", () => dump("ice"));
+        pc.addEventListener("connectionstatechange", () => dump("pc"));
+        pc.addEventListener("icegatheringstatechange", () => dump("gather"));
+        pc.addEventListener("icecandidateerror", (e) => netlog(label, "ice-error", e.errorCode, e.errorText || "", e.url || ""));
+        pc.addEventListener("icecandidate", (e) => {
+          if (e.candidate) netlog(label, "cand", summarizeCandidate(e.candidate));
+          else netlog(label, "cand-done");
+        });
+        dump("watch");
+      };
+      hook();
+      setTimeout(hook, 300);
+      setTimeout(hook, 1200);
+    }
+
+    async function runIceProbe() {
+      netlog("probe start", netInfo());
+      toast("Testing ICE…");
+      let pc;
+      try {
+        pc = new RTCPeerConnection(peerOptions().config);
+        pc.createDataChannel("probe");
+        const seen = { host: 0, srflx: 0, relay: 0, prflx: 0 };
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) {
+            netlog("probe done", JSON.stringify(seen));
+            if (!seen.relay) netlog("probe WARN no TURN relay — two home Wi‑Fi networks may fail. Try mobile data on one phone.");
+            if (!seen.srflx && !seen.relay) netlog("probe WARN no public STUN candidates");
+            try { pc.close(); } catch (err) {}
+            renderDebugLog();
+            return;
+          }
+          const t = e.candidate.type || "host";
+          if (seen[t] != null) seen[t]++;
+          netlog("probe cand", summarizeCandidate(e.candidate));
+        };
+        pc.onicecandidateerror = (e) => netlog("probe ice-error", e.errorCode, e.url || "");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        setTimeout(() => { try { if (pc.signalingState !== "closed") pc.close(); } catch (e) {} }, 7000);
+      } catch (e) {
+        netlog("probe fail", e && e.message);
+        toast("ICE test failed");
+      }
+    }
+
+    async function shareDebugLog() {
+      const text = debugDump();
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Uno connection log", text });
+          return;
+        } catch (e) {}
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Debug log copied");
+      } catch (e) {
+        toast("Could not copy — select the log text");
+      }
+    }
+
+    function openDebug() {
+      netlog("debug open", netInfo(), iceSummary());
+      try { $("turn-app").value = localStorage.getItem("uno-turn-app") || ""; } catch (e) {}
+      try { $("turn-key").value = localStorage.getItem("uno-turn-key") || ""; } catch (e) {}
+      $("debug-pick").classList.add("show");
+      renderDebugLog();
+    }
+
+    function wifiJoinHint() {
+      return turnIce.length
+        ? " Timed out. TURN is saved but ICE did not connect. Tap Debug, Test ICE, and share the log."
+        : " Timed out. Same ISP with two different home Wi‑Fi often fails. Put one phone on mobile data, or use the same Wi‑Fi.";
+    }
+
+    function shuffle(arr, rng = Math.random) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    const VALUE_FROM_TYPE = {
+      drawOne: "draw1",
+      wildDrawTwo: "wildDraw2",
+      reverse: "reverse",
+      skip: "skip",
+      flip: "flip",
+      drawFive: "draw5",
+      skipEveryone: "skipAll",
+      wild: "wild",
+      wildDrawColor: "wildDrawColor",
+    };
+    const TYPE_FROM_VALUE = {
+      draw1: "drawOne",
+      wildDraw2: "wildDrawTwo",
+      reverse: "reverse",
+      skip: "skip",
+      flip: "flip",
+      draw5: "drawFive",
+      skipAll: "skipEveryone",
+      wild: "wild",
+      wildDrawColor: "wildDrawColor",
+    };
+
+    function makeFace(color, type, value) {
+      if (type === "number") return { color, type, value };
+      return { color, type, value: VALUE_FROM_TYPE[type] };
+    }
+
+    function buildDeck() {
+      const cards = [];
+      let id = 1;
+      function make(light, dark) {
+        return { id: id++, light, dark };
+      }
+      const actionPairs = [
+        ["skip", "skipEveryone"],
+        ["reverse", "reverse"],
+        ["drawOne", "drawFive"],
+        ["flip", "flip"],
+      ];
+      for (let i = 0; i < 4; i++) {
+        const L = LIGHT_COLORS[i];
+        const D = DARK_COLORS[i];
+        for (let n = 1; n <= 9; n++) {
+          cards.push(make(makeFace(L, "number", n), makeFace(D, "number", n)));
+          cards.push(make(makeFace(L, "number", n), makeFace(D, "number", n)));
+        }
+        for (const [lt, dt] of actionPairs) {
+          cards.push(make(makeFace(L, lt), makeFace(D, dt)));
+          cards.push(make(makeFace(L, lt), makeFace(D, dt)));
+        }
+      }
+      for (let i = 0; i < 4; i++) {
+        cards.push(make(makeFace("wild", "wild"), makeFace("wild", "wild")));
+        cards.push(make(makeFace("wild", "wildDrawTwo"), makeFace("wild", "wildDrawColor")));
+      }
+      return cards;
+    }
+
+    function tableColors(g) {
+      return (g && g.side === "dark") ? DARK_COLORS : LIGHT_COLORS;
+    }
+
+    function gameSide(g) {
+      return (g && g.side === "dark") ? "dark" : "light";
+    }
+
+    function faceOf(g, card) {
+      if (!card) return null;
+      if (card._back) return card;
+      const f = (card.light || card.dark) ? (card[gameSide(g)] || card.light) : card;
+      const value = f.value;
+      const type = f.type || (typeof value === "number" ? "number" : TYPE_FROM_VALUE[value]);
+      return { id: card.id, color: f.color, type, value };
+    }
+
+    function mapColorToSide(color, side) {
+      let i = LIGHT_COLORS.indexOf(color);
+      if (i < 0) i = DARK_COLORS.indexOf(color);
+      if (i < 0) return (side === "dark" ? DARK_COLORS : LIGHT_COLORS)[0];
+      return (side === "dark" ? DARK_COLORS : LIGHT_COLORS)[i];
+    }
+
+    function flipTable(g) {
+      g.side = g.side === "light" ? "dark" : "light";
+      const top = faceOf(g, topCard(g));
+      if (top && top.color !== "wild") g.currentColor = top.color;
+      else g.currentColor = mapColorToSide(g.currentColor, g.side);
+      sfx("flip");
+    }
+
+    function isWildPlus(v) {
+      return v === "wildDraw2" || v === "wildDrawColor" || v === "wildDrawTwo";
+    }
+
+    function isPlus(v) {
+      return v === "draw1" || v === "draw5" || v === "drawOne" || v === "drawFive" || isWildPlus(v);
+    }
+
+    function plusAdd(face) {
+      if (face.type === "drawOne" || face.value === "draw1") return 1;
+      if (face.type === "drawFive" || face.value === "draw5") return 5;
+      if (face.type === "wildDrawTwo" || face.value === "wildDraw2") return 2;
+      return 0;
+    }
+
+    function labelOf(card) {
+      const v = card && card.value;
+      return FACE[v] || String(v);
+    }
+
+    function makeCardEl(card, size, tag) {
+      const el = document.createElement(tag || "div");
+      if (tag === "button") el.type = "button";
+      const sizeCls = size ? " " + size : "";
+      if (card._back) {
+        el.className = "ucard back" + sizeCls;
+        const inner = document.createElement("div");
+        inner.className = "back-face";
+        const oval = document.createElement("div");
+        oval.className = "back-oval";
+        oval.textContent = "FLIP";
+        inner.append(oval);
+        el.append(inner);
+        return el;
+      }
+      el.className = "ucard " + card.color + sizeCls;
+      const faceBox = document.createElement("div");
+      faceBox.className = "card-face";
+      const tl = document.createElement("span");
+      tl.className = "corner tl";
+      tl.textContent = labelOf(card);
+      const br = document.createElement("span");
+      br.className = "corner br";
+      br.textContent = labelOf(card);
+      const oval = document.createElement("div");
+      oval.className = "oval";
+      if (card.value === "wild" || card.type === "wild") {
+        const pie = document.createElement("div");
+        pie.className = "pie";
+        for (let i = 0; i < 4; i++) pie.append(document.createElement("i"));
+        oval.append(pie);
+      } else {
+        const face = document.createElement("span");
+        face.className = "face" + (card.value === "flip" || card.value === "skipAll" || card.type === "flip" || card.type === "skipEveryone" ? " flip" : "");
+        face.textContent = labelOf(card);
+        oval.append(face);
+      }
+      faceBox.append(tl, oval, br);
+      el.append(faceBox);
+      return el;
+    }
+
+    let audioCtx = null;
+    let muted = false;
+    function ctx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function tone(freq, dur, type = "sine", gain = 0.07) {
+      if (muted) return;
+      const c = ctx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(gain, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + dur);
+    }
+    function sfx(kind) {
+      if (kind === "play") { tone(392, 0.08); setTimeout(() => tone(523, 0.12), 60); }
+      else if (kind === "draw") { tone(220, 0.1, "triangle", 0.05); }
+      else if (kind === "uno") { [523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, 0.12), i * 70)); }
+      else if (kind === "flip") { [392, 523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, 0.1), i * 55)); }
+      else if (kind === "bad") { tone(140, 0.22, "square", 0.05); }
+      else if (kind === "win") { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18), i * 90)); }
+    }
+
+    const state = {
+      isHost: false,
+      solo: false,
+      peer: null,
+      conns: new Map(),
+      room: "",
+      myId: "",
+      myName: "",
+      timerId: 0,
+      botTimer: 0,
+      focusedCardId: null,
+      seenPlaySeq: 0,
+      pendingFly: null,
+      raisedCardId: null,
+      handDragged: false,
+      joinTimer: 0,
+      reconnectTimer: 0,
+      leaving: false,
+      replacingPeer: false,
+      reconnecting: false,
+      connecting: false,
+      hostLostDeadline: 0,
+      hostWaitExpired: false,
+      hostLeftExplicit: false,
+      reconnectAttempt: 0,
+      bcastTimer: 0,
+      lastPingAt: 0,
+      lastRxAt: 0,
+      pendingLocalPlay: 0,
+      seenUnoHintSeq: 0,
+      hintGameAt: 0,
+      myRtt: 0,
+      micOn: false,
+      micStream: null,
+    };
+    const guests = new Map();
+    const dropTimers = new Map();
+    const catchTimers = new Map();
+    const lastSeen = new Map();
+    const rttById = new Map();
+    const voiceCalls = new Map();
+    const voiceAudio = new Map();
+
+    function noteRtt(id, ms) {
+      const n = Number(ms);
+      if (!id || !n || n < 20 || n > 20000) return;
+      rttById.set(id, n);
+      if (id === state.myId || id === "me") state.myRtt = n;
+    }
+
+    function worstRtt() {
+      let m = state.myRtt || 0;
+      for (const v of rttById.values()) if (v > m) m = v;
+      return m;
+    }
+
+    function linkIsSlow() {
+      return worstRtt() >= 400 || state.reconnectAttempt > 2;
+    }
+
+    function pingEveryMs() {
+      return linkIsSlow() ? 10000 : 4000;
+    }
+
+    function awayGraceFor(playerId) {
+      const rtt = rttById.get(playerId) || 0;
+      const ping = (rtt >= 400 || linkIsSlow()) ? 10000 : 4000;
+      return Math.max(ping * 3, 10000 + rtt * 8);
+    }
+
+    function dropGraceMs() {
+      return linkIsSlow() ? 20000 : 8000;
+    }
+
+    function reconnectDelayMs() {
+      const n = Math.min(state.reconnectAttempt || 0, 6);
+      const base = linkIsSlow() ? 2800 : 1600;
+      return Math.min(18000, Math.round(base * Math.pow(1.55, n)));
+    }
+
+    function joinWaitMs(reconnect) {
+      if (linkIsSlow()) return reconnect ? 32000 : 24000;
+      return reconnect ? 12000 : 14000;
+    }
+
+    function voiceRoster() {
+      const hostVid = (state.peer && state.peer.id) || (state.room ? PEER_PREFIX + state.room : "");
+      const list = [];
+      if (hostVid) list.push({ vid: hostVid, pid: "host", on: !!(state.isHost && state.micOn) });
+      for (const [peerId, meta] of guests) {
+        list.push({ vid: peerId, pid: meta.playerId || peerId, on: !!meta.voiceOn });
+      }
+      return list;
+    }
+
+    function updateMicUi() {
+      const on = !!state.micOn;
+      const show = !state.solo;
+      ["btn-mic-lobby", "btn-mic-game"].forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.hidden = !show;
+        el.classList.toggle("live", on);
+        el.classList.toggle("mic-off", !on);
+        el.textContent = on ? "🎤 On" : "🎤 Mic";
+        el.title = on ? "Mute microphone" : "Turn on microphone";
+        el.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+
+    function playRemoteVoice(id, stream) {
+      if (!id || !stream) return;
+      let el = voiceAudio.get(id);
+      if (!el) {
+        el = document.createElement("audio");
+        el.autoplay = true;
+        el.setAttribute("playsinline", "");
+        $("voice-audio").append(el);
+        voiceAudio.set(id, el);
+      }
+      el.srcObject = stream;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+
+    function closeVoiceCall(id) {
+      const call = voiceCalls.get(id);
+      if (call) {
+        try { call.close(); } catch (e) {}
+        voiceCalls.delete(id);
+      }
+      const el = voiceAudio.get(id);
+      if (el) {
+        try { el.srcObject = null; el.remove(); } catch (e) {}
+        voiceAudio.delete(id);
+      }
+    }
+
+    function closeVoiceCalls() {
+      for (const id of [...voiceCalls.keys()]) closeVoiceCall(id);
+    }
+
+    function stopMic() {
+      state.micOn = false;
+      if (state.micStream) {
+        state.micStream.getTracks().forEach((t) => t.stop());
+        state.micStream = null;
+      }
+      closeVoiceCalls();
+      updateMicUi();
+    }
+
+    function attachVoiceCall(call) {
+      if (!call || !call.peer) return;
+      const id = call.peer;
+      const existing = voiceCalls.get(id);
+      if (existing && existing !== call) {
+        const keepIncoming = id < ((state.peer && state.peer.id) || "");
+        if (keepIncoming) {
+          try { existing.close(); } catch (e) {}
+        } else {
+          try { call.close(); } catch (e) {}
+          return;
+        }
+      }
+      voiceCalls.set(id, call);
+      call.on("stream", (stream) => playRemoteVoice(id, stream));
+      call.on("close", () => {
+        if (voiceCalls.get(id) === call) {
+          voiceCalls.delete(id);
+          const el = voiceAudio.get(id);
+          if (el) { try { el.srcObject = null; el.remove(); } catch (e) {} voiceAudio.delete(id); }
+        }
+      });
+      call.on("error", () => closeVoiceCall(id));
+    }
+
+    function bindVoice(peer) {
+      if (!peer || peer._unoVoice) return;
+      peer._unoVoice = true;
+      peer.on("call", (call) => {
+        try { call.answer(state.micStream || undefined); } catch (e) {
+          try { call.answer(); } catch (err) {}
+        }
+        attachVoiceCall(call);
+      });
+    }
+
+    function openVoiceCall(theirId) {
+      if (!state.peer || !state.micStream || !theirId) return;
+      if (theirId === state.peer.id) return;
+      if (voiceCalls.has(theirId)) return;
+      try {
+        const call = state.peer.call(theirId, state.micStream);
+        if (call) attachVoiceCall(call);
+      } catch (e) {}
+    }
+
+    function pushMicIntoCalls() {
+      const track = state.micStream && state.micStream.getAudioTracks()[0];
+      if (!track) return;
+      for (const [, call] of voiceCalls) {
+        try {
+          const pc = call.peerConnection;
+          if (!pc) continue;
+          const senders = pc.getSenders();
+          const audio = senders.find((s) => s.track && s.track.kind === "audio") || senders.find((s) => !s.track);
+          if (audio && audio.replaceTrack) audio.replaceTrack(track);
+        } catch (e) {}
+      }
+    }
+
+    function connectVoiceToAll() {
+      if (!state.micOn || !state.micStream || !state.peer) return;
+      const roster = (state.view && state.view.voice) || voiceRoster();
+      for (const v of roster) {
+        if (v && v.vid) openVoiceCall(v.vid);
+      }
+      if (!state.isHost && state.room) openVoiceCall(PEER_PREFIX + state.room);
+    }
+
+    function publishVoice() {
+      if (state.solo || !state.room) return;
+      if (state.isHost) {
+        if (state.game) hostBroadcast();
+        else sendLobby();
+      } else {
+        sendAction({ type: "voice", on: !!state.micOn });
+      }
+      connectVoiceToAll();
+    }
+
+    async function toggleMic() {
+      if (state.solo || !state.room) {
+        toast("Mic works in a multiplayer room");
+        return;
+      }
+      if (!window.isSecureContext) {
+        toast("Mic needs HTTPS");
+        return;
+      }
+      if (state.micOn) {
+        state.micOn = false;
+        if (state.micStream) state.micStream.getAudioTracks().forEach((t) => { t.enabled = false; });
+        updateMicUi();
+        publishVoice();
+        return;
+      }
+      try {
+        if (!state.micStream) {
+          state.micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            video: false,
+          });
+        } else {
+          state.micStream.getAudioTracks().forEach((t) => { t.enabled = true; });
+        }
+        state.micOn = true;
+        updateMicUi();
+        bindVoice(state.peer);
+        pushMicIntoCalls();
+        publishVoice();
+        toast("Mic on — others can hear you");
+      } catch (e) {
+        toast("Allow microphone access, then try again");
+      }
+    }
+
+    function myToken() {
+      let t = localStorage.getItem("unoflip-token");
+      if (!t) {
+        t = (crypto.randomUUID && crypto.randomUUID()) || ("t" + Math.random().toString(36).slice(2) + Date.now().toString(36));
+        localStorage.setItem("unoflip-token", t);
+      }
+      return t;
+    }
+
+    function saveSession() {
+      if (state.solo || !state.room) return;
+      const payload = JSON.stringify({
+        role: state.isHost ? "host" : "guest",
+        room: state.room,
+        name: state.myName,
+        token: myToken(),
+        myId: state.myId,
+        game: state.isHost ? state.game : null,
+        guests: state.isHost ? [...guests.entries()] : null,
+        hostLostDeadline: state.hostLostDeadline || 0,
+        savedAt: Date.now(),
+      });
+      try { sessionStorage.setItem("unoflip-session", payload); } catch (e) {}
+      try { localStorage.setItem("unoflip-session", payload); } catch (e) {}
+    }
+
+    function loadSession() {
+      try {
+        return JSON.parse(sessionStorage.getItem("unoflip-session") || "null")
+          || JSON.parse(localStorage.getItem("unoflip-session") || "null");
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearSession() {
+      try { sessionStorage.removeItem("unoflip-session"); } catch (e) {}
+      try { localStorage.removeItem("unoflip-session"); } catch (e) {}
+    }
+
+    function playerIdFromPeer(peerId) {
+      const meta = guests.get(peerId);
+      return (meta && meta.playerId) || peerId;
+    }
+
+    function playerConnOpen(playerId) {
+      if (!playerId || playerId === "host") return true;
+      for (const [peer, meta] of guests) {
+        if (meta.playerId === playerId || peer === playerId) {
+          const conn = state.conns.get(peer);
+          if (conn && conn.open) return true;
+        }
+      }
+      return false;
+    }
+
+    function turnIsBlocked(g) {
+      if (!g || !g.awayIds || !g.awayIds.length) return false;
+      const away = g.awayIds.filter((id) => id && id !== "host");
+      if (!away.length) return false;
+      const turnId = g.players[g.turn] && g.players[g.turn].id;
+      if (away.includes(turnId)) return true;
+      if (g.choosingColor && away.includes(g.choosingColor)) return true;
+      if (g.stackChoice && away.includes(g.stackChoice)) return true;
+      return false;
+    }
+
+    function isPaused() {
+      return turnIsBlocked(state.game);
+    }
+
+    function setReconnectUi(on, text) {
+      state.reconnecting = !!on;
+      const el = $("reconnect-pick");
+      if (!el) return;
+      el.classList.toggle("show", !!on);
+      if (text) $("reconnect-sub").textContent = text;
+      const lost = !!on && state.hostLostDeadline && Date.now() >= state.hostLostDeadline;
+      $("reconnect-title").textContent = state.hostLeftExplicit
+        ? "Host left"
+        : (lost ? "Host didn't come back" : "Rejoining…");
+      $("reconnect-bar").style.display = lost || state.hostLeftExplicit ? "none" : "block";
+      $("btn-reconnect-extend").style.display = lost && !state.hostLeftExplicit ? "" : "none";
+    }
+
+    // Session handler: leave, last-player win, host-gone timeout (3 min + optional 2).
+    // Guests never retry forever. Invite links can be abandoned so Create room returns.
+    function remainingPlayers(g) {
+      return (g.players || []).filter((p) => !p.kicked);
+    }
+
+    function endIfLastPlayer(g) {
+      if (!g || g.phase !== "playing") return false;
+      const left = remainingPlayers(g);
+      if (left.length >= 2) return false;
+      if (left.length === 1) {
+        g.banner = "Everyone else left — " + left[0].name + " wins";
+        finishGame(left[0].id);
+        return true;
+      }
+      g.phase = "end";
+      g.winnerId = null;
+      g.banner = "Everyone left";
+      hostBroadcast();
+      return true;
+    }
+
+    function vacateSeat(g, p) {
+      if (!p) return;
+      p.kicked = true;
+      p.connected = false;
+      p.left = true;
+      if (g) g.awayIds = (g.awayIds || []).filter((id) => id !== p.id);
+      lastSeen.delete(p.id);
+      rttById.delete(p.id);
+      closeCatchWindow(p.id);
+      for (const [peer, meta] of [...guests.entries()]) {
+        if (meta.playerId === p.id || peer === p.id) {
+          const conn = state.conns.get(peer);
+          if (conn) {
+            try { conn.close(); } catch (e) {}
+          }
+          state.conns.delete(peer);
+          guests.delete(peer);
+          closeVoiceCall(peer);
+        }
+      }
+      if (!g || g.phase !== "playing") return;
+      if (g.choosingColor === p.id) {
+        g.currentColor = "red";
+        g.choosingColor = null;
+      }
+      if (g.stackChoice === p.id) g.stackChoice = null;
+      if (g.players[g.turn] && g.players[g.turn].id === p.id) {
+        if (g.pendingDraw) resolvePendingDraw(g);
+        else g.turn = nextSeat(g, g.turn);
+      }
+    }
+
+    function hostPlayerLeave(playerId) {
+      if (playerId === "host") {
+        notifyHostLeft();
+        return;
+      }
+      if (!state.game) {
+        for (const [peer, meta] of [...guests.entries()]) {
+          if (meta.playerId === playerId || peer === playerId) {
+            const conn = state.conns.get(peer);
+            if (conn) {
+              try { conn.close(); } catch (e) {}
+            }
+            state.conns.delete(peer);
+            guests.delete(peer);
+            closeVoiceCall(peer);
+          }
+        }
+        sendLobby();
+        return;
+      }
+      const p = state.game.players.find((x) => x.id === playerId);
+      if (!p || p.kicked || p.bot) return;
+      vacateSeat(state.game, p);
+      if (endIfLastPlayer(state.game)) return;
+      state.game.banner = p.name + " left";
+      hostBroadcast();
+    }
+
+    function notifyHostLeft() {
+      for (const [, conn] of state.conns) {
+        if (conn && conn.open) {
+          try { conn.send({ type: "host-left" }); } catch (e) {}
+        }
+      }
+    }
+
+    function onHostLeft() {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      state.hostLeftExplicit = true;
+      state.hostLostDeadline = Date.now() - 1;
+      setReconnectUi(true, "The host left the table. You can leave and create your own room.");
+    }
+
+    function beginHostGoneClock() {
+      if (!state.hostLostDeadline) state.hostLostDeadline = Date.now() + HOST_GONE_MS;
+      saveSession();
+    }
+
+    function clearHostGoneClock() {
+      state.hostLostDeadline = 0;
+      state.hostWaitExpired = false;
+      state.hostLeftExplicit = false;
+    }
+
+    function hostGoneTimedOut() {
+      return !!(state.hostLostDeadline && Date.now() >= state.hostLostDeadline);
+    }
+
+    function showHostLost() {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(true, state.hostLeftExplicit
+        ? "The host left the table. You can leave and create your own room."
+        : "No response for 3 minutes. Leave, or wait 2 more minutes.");
+    }
+
+    function expireHostWait() {
+      if (state.leaving) return;
+      const inTable = !!(state.view && (state.view.phase === "playing" || state.view.phase === "lobby" || state.view.phase === "end"));
+      if (inTable || state.reconnecting) {
+        showHostLost();
+        return;
+      }
+      if (state.hostWaitExpired) return;
+      state.hostWaitExpired = true;
+      clearJoinWait();
+      destroyNetwork();
+      clearSession();
+      stripRoomFromUrl();
+      setInviteHome("");
+      setJoinStatus("fail", "The host didn't come back after 3 minutes. Create your own room, or try the code again.");
+    }
+
+    const SESSION_FLUSH_MS = 220;
+
+    function leaveRoom() {
+      if (state.leaving) return;
+      state.leaving = true;
+      if (state.solo) {
+        goHome();
+        return;
+      }
+      if (state.isHost) {
+        notifyHostLeft();
+        setTimeout(goHome, SESSION_FLUSH_MS);
+        return;
+      }
+      const hostConn = state.conns.get("host");
+      if (hostConn && hostConn.open) {
+        try { hostConn.send({ type: "leave" }); } catch (e) {}
+        setTimeout(goHome, SESSION_FLUSH_MS);
+        return;
+      }
+      goHome();
+    }
+
+    function sessionDenied(message) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(false);
+      toast(message || "You can't join this table");
+      goHome();
+    }
+
+    function topCard(g) {
+      return g.discard[g.discard.length - 1];
+    }
+
+    function hasColor(g, hand, color, exceptId) {
+      return hand.some((c) => c.id !== exceptId && faceOf(g, c).color === color);
+    }
+
+    function canStackCard(g, card) {
+      if (!g.pendingDraw && g.pendingKind !== "wildDrawColor") return false;
+      const f = faceOf(g, card);
+      if (g.pendingKind === "wildDraw2") return f.type === "wildDrawTwo";
+      if (g.pendingKind === "draw1") return f.type === "drawOne" || f.type === "wildDrawTwo";
+      if (g.pendingKind === "wildDrawColor") return f.type === "wildDrawColor";
+      if (g.pendingKind === "draw5") return f.type === "drawFive" || f.type === "wildDrawColor";
+      return false;
+    }
+
+    function stackableInHand(g, hand) {
+      return hand.filter((c) => canStackCard(g, c));
+    }
+
+    function canPlayCard(g, hand, card) {
+      if (g.stackChoice) return false;
+      if (g.pendingDraw || g.pendingKind === "wildDrawColor") return canStackCard(g, card);
+      if (g.drawnCardId && card.id !== g.drawnCardId) return false;
+      const f = faceOf(g, card);
+      if (f.type === "wild") return true;
+      if (f.type === "wildDrawTwo" || f.type === "wildDrawColor") return !hasColor(g, hand, g.currentColor, card.id);
+      const top = faceOf(g, topCard(g));
+      return f.color === g.currentColor || f.value === top.value;
+    }
+
+    function sortHand(g, hand) {
+      const order = { red: 0, yellow: 1, green: 2, blue: 3, pink: 0, teal: 1, orange: 2, purple: 3, wild: 4 };
+      const val = (v) => (typeof v === "number" ? v : {
+        skip: 10, skipAll: 10, reverse: 11, draw1: 12, draw5: 12, flip: 13,
+        wild: 14, wildDraw2: 15, wildDrawColor: 15,
+      }[v] || 20);
+      return hand.slice().sort((a, b) => {
+        const fa = faceOf(g, a);
+        const fb = faceOf(g, b);
+        return order[fa.color] - order[fb.color] || val(fa.value) - val(fb.value);
+      });
+    }
+
+    function ensureDeck(g) {
+      if (g.deck.length) return;
+      if (g.discard.length <= 1) return;
+      const top = g.discard.pop();
+      g.deck = shuffle(g.discard);
+      g.discard = [top];
+    }
+
+    function drawCards(g, player, n) {
+      const got = [];
+      for (let i = 0; i < n; i++) {
+        ensureDeck(g);
+        if (!g.deck.length) break;
+        got.push(g.deck.pop());
+      }
+      player.hand.push(...got);
+      if (player.hand.length > 1) player.calledUno = false;
+      if (player.hand.length !== 1) closeCatchWindow(player.id);
+      return got;
+    }
+
+    function nextSeat(g, from, steps = 1) {
+      const n = g.players.length;
+      let i = from;
+      for (let s = 0; s < steps; s++) {
+        for (let k = 0; k < n; k++) {
+          i = (i + g.direction + n) % n;
+          if (g.players[i].connected !== false && !g.players[i].kicked) break;
+        }
+      }
+      return i;
+    }
+
+    function playerView(game, id) {
+      const p = game.players.find((x) => x.id === id);
+      const hand = p ? p.hand : [];
+      const paused = turnIsBlocked(game);
+      const legal = p && game.players[game.turn].id === id && !game.choosingColor && !game.stackChoice && !paused
+        ? hand.filter((c) => canPlayCard(game, hand, c)).map((c) => c.id)
+        : [];
+      const voice = state.solo ? [] : voiceRoster();
+      const micOf = (pid) => voice.some((v) => v.pid === pid && v.on);
+      return {
+        phase: game.phase,
+        room: state.room,
+        banner: game.banner,
+        startedAt: game.startedAt,
+        winnerId: game.winnerId,
+        direction: game.direction,
+        currentColor: game.currentColor,
+        side: game.side || "light",
+        top: faceOf(game, topCard(game)),
+        drawCount: game.deck.length,
+        turnId: game.players[game.turn].id,
+        choosingColor: game.choosingColor,
+        drawnCardId: game.players[game.turn].id === id ? game.drawnCardId : null,
+        pendingDraw: game.pendingDraw || 0,
+        pendingKind: game.pendingKind || null,
+        stackChoice: game.stackChoice || null,
+        you: {
+          id,
+          hand: sortHand(game, hand.map((c) => faceOf(game, c))),
+          calledUno: p ? p.calledUno : false,
+          isTurn: game.players[game.turn].id === id,
+        },
+        legal,
+        lastPlay: game.lastPlay
+          ? { seq: game.lastPlay.seq, playerId: game.lastPlay.playerId, card: faceOf(game, game.lastPlay.card) }
+          : null,
+        playSeq: game.playSeq || 0,
+        unoHintSeq: catchHintSeqFor(game, id),
+        paused,
+        away: (game.awayIds || []).filter((aid) => aid && aid !== "host").map((aid) => {
+          const x = game.players.find((p) => p.id === aid);
+          return { id: aid, name: x ? x.name : "Player" };
+        }),
+        voice,
+        players: game.players.filter((x) => !x.kicked).map((x) => ({
+          id: x.id,
+          name: x.name,
+          color: x.seatColor,
+          count: x.hand.length,
+          connected: x.connected,
+          calledUno: x.calledUno,
+          isTurn: game.players[game.turn].id === x.id,
+          bot: !!x.bot,
+          mic: micOf(x.id),
+        })),
+      };
+    }
+
+    const V1 = {
+      s: "skip", a: "skipAll", r: "reverse", o: "draw1", v: "draw5",
+      p: "flip", w: "wild", t: "wildDraw2", c: "wildDrawColor",
+    };
+
+    function packCard(c) {
+      if (!c) return 0;
+      const f = faceOf(state.game, c);
+      const v = typeof f.value === "number" ? f.value : {
+        skip: "s", skipAll: "a", reverse: "r", draw1: "o", draw5: "v",
+        flip: "p", wild: "w", wildDraw2: "t", wildDrawColor: "c",
+      }[f.value];
+      return [f.id, COLOR_PACK[f.color] || f.color[0], v];
+    }
+
+    function unpackCard(a) {
+      if (!a) return null;
+      const value = typeof a[2] === "number" ? a[2] : (V1[a[2]] || a[2]);
+      const color = COLOR_UNPACK[a[1]] || a[1];
+      const type = typeof value === "number" ? "number" : TYPE_FROM_VALUE[value];
+      return { id: a[0], color, type, value };
+    }
+
+    function packView(view) {
+      if (!view) return null;
+      if (view.phase === "lobby") {
+        return {
+          p: "l",
+          r: view.room,
+          y: view.you && view.you.id,
+          pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.connected === false ? 0 : 1, x.mic ? 1 : 0]),
+          vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
+        };
+      }
+      return {
+        p: view.phase === "end" ? "e" : "g",
+        r: view.room,
+        b: view.banner || "",
+        a: view.startedAt || 0,
+        w: view.winnerId || 0,
+        d: view.direction,
+        c: COLOR_PACK[view.currentColor] || "r",
+        sd: view.side === "dark" ? 1 : 0,
+        t: packCard(view.top),
+        n: view.drawCount || 0,
+        u: view.turnId,
+        k: view.choosingColor || 0,
+        dr: view.drawnCardId || 0,
+        pd: view.pendingDraw || 0,
+        pk: view.pendingKind || 0,
+        sc: view.stackChoice || 0,
+        y: [view.you.id, (view.you.hand || []).map(packCard), view.you.calledUno ? 1 : 0, view.you.isTurn ? 1 : 0],
+        g: view.legal || [],
+        lp: view.lastPlay ? [view.lastPlay.seq, view.lastPlay.playerId, packCard(view.lastPlay.card)] : 0,
+        q: view.playSeq || 0,
+        h: 0,
+        uh: view.unoHintSeq || 0,
+        ps: view.paused ? 1 : 0,
+        aw: (view.away || []).map((x) => [x.id, x.name]),
+        pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0, x.mic ? 1 : 0]),
+        vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
+      };
+    }
+
+    function unpackView(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      if (raw.phase) return raw;
+      if (raw.p === "l") {
+        return {
+          phase: "lobby",
+          room: raw.r,
+          you: { id: raw.y },
+          players: (raw.pl || []).map((x) => ({ id: x[0], name: x[1], color: x[2], connected: !!x[3], mic: !!x[4] })),
+          voice: (raw.vc || []).map((v) => ({ vid: v[0], pid: v[1], on: !!v[2] })),
+        };
+      }
+      const you = raw.y || [];
+      return {
+        phase: raw.p === "e" ? "end" : "playing",
+        room: raw.r,
+        banner: raw.b || "",
+        startedAt: raw.a || 0,
+        winnerId: raw.w || null,
+        direction: raw.d,
+        currentColor: COLOR_UNPACK[raw.c] || raw.c || "red",
+        side: raw.sd ? "dark" : "light",
+        top: unpackCard(raw.t),
+        drawCount: raw.n || 0,
+        turnId: raw.u,
+        choosingColor: raw.k || null,
+        drawnCardId: raw.dr || null,
+        pendingDraw: raw.pd || 0,
+        pendingKind: raw.pk || null,
+        stackChoice: raw.sc || null,
+        you: {
+          id: you[0],
+          hand: (you[1] || []).map(unpackCard),
+          calledUno: !!you[2],
+          isTurn: !!you[3],
+        },
+        legal: raw.g || [],
+        lastPlay: raw.lp ? { seq: raw.lp[0], playerId: raw.lp[1], card: unpackCard(raw.lp[2]) } : null,
+        playSeq: raw.q || 0,
+        unoHintSeq: raw.uh || 0,
+        paused: !!raw.ps,
+        away: (raw.aw || []).filter((x) => x[0] && x[0] !== "host").map((x) => ({ id: x[0], name: x[1] })),
+        players: (raw.pl || []).map((x) => ({
+          id: x[0],
+          name: x[1],
+          color: x[2],
+          count: x[3],
+          connected: !!x[4],
+          calledUno: !!x[5],
+          isTurn: !!x[6],
+          bot: !!x[7],
+          mic: !!x[8],
+        })),
+        voice: (raw.vc || []).map((v) => ({ vid: v[0], pid: v[1], on: !!v[2] })),
+      };
+    }
+
+    function sendPackedState(conn, view) {
+      if (!conn || !conn.open) return;
+      try { conn.send({ type: "state", v: packView(view) }); } catch (e) {}
+    }
+
+    function ingestState(msg) {
+      const view = unpackView(msg && (msg.v || msg.view));
+      if (!view) return;
+      state.lastRxAt = Date.now();
+      state.reconnectAttempt = 0;
+      applyView(view);
+      saveSession();
+      if (state.micOn && !state.isHost) {
+        const meVid = state.peer && state.peer.id;
+        const listed = (view.voice || []).some((v) => v.vid === meVid && v.on);
+        if (!listed) sendAction({ type: "voice", on: true });
+      }
+    }
+
+    function createGame(people) {
+      clearAllCatchWindows();
+      const deck = shuffle(buildDeck());
+      const players = people.map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        token: p.token || "",
+        seatColor: SEAT[i % SEAT.length],
+        hand: [],
+        connected: true,
+        calledUno: false,
+        kicked: false,
+        bot: !!p.bot,
+      }));
+      for (let i = 0; i < 7; i++) {
+        for (const p of players) p.hand.push(deck.pop());
+      }
+      let top = deck.pop();
+      const parked = [];
+      const light = { side: "light" };
+      while (top && faceOf(light, top).type !== "number") {
+        parked.push(top);
+        top = deck.pop();
+      }
+      deck.push(...parked);
+      return {
+        phase: "playing",
+        deck,
+        discard: [top],
+        currentColor: faceOf(light, top).color,
+        side: "light",
+        direction: 1,
+        turn: 0,
+        drawnCardId: null,
+        choosingColor: null,
+        pendingDraw: 0,
+        pendingKind: null,
+        stackChoice: null,
+        awayIds: [],
+        banner: "Match color or number. Flip turns the table over.",
+        startedAt: Date.now(),
+        winnerId: null,
+        players,
+        playSeq: 0,
+        lastPlay: null,
+        catchWindows: {},
+        unoHintSeq: 0,
+      };
+    }
+
+    function flushBroadcast() {
+      state.bcastTimer = 0;
+      if (!state.game) return;
+      applyView(playerView(state.game, "host"));
+      if (!state.solo) {
+        for (const [peer, conn] of state.conns) {
+          sendPackedState(conn, playerView(state.game, playerIdFromPeer(peer)));
+        }
+      }
+      saveSession();
+      maybeBot();
+    }
+
+    function hostBroadcast(immediate) {
+      if (state.solo) {
+        applyView(playerView(state.game, "host"));
+        maybeBot();
+        return;
+      }
+      if (immediate) {
+        clearTimeout(state.bcastTimer);
+        flushBroadcast();
+        return;
+      }
+      if (state.bcastTimer) return;
+      state.bcastTimer = setTimeout(flushBroadcast, linkIsSlow() ? 80 : 24);
+    }
+
+    function finishGame(winnerId) {
+      const g = state.game;
+      clearAllCatchWindows();
+      const winner = g.players.find((p) => p.id === winnerId);
+      g.phase = "end";
+      g.winnerId = winnerId;
+      g.choosingColor = null;
+      g.stackChoice = null;
+      g.awayIds = [];
+      g.banner = winner ? winner.name + " wins!" : "Game over";
+      sfx("win");
+      hostBroadcast(true);
+    }
+
+    function nameOf(g, id) {
+      return g.players.find((p) => p.id === id).name;
+    }
+
+    function resolvePendingDraw(g) {
+      const p = g.players[g.turn];
+      if (g.pendingKind === "wildDrawColor") {
+        const n = drawUntilColor(g, p, g.currentColor);
+        sfx("draw");
+        g.banner = p.name + " draws until " + g.currentColor + " (" + n + ")";
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        g.stackChoice = null;
+        g.drawnCardId = null;
+        g.turn = nextSeat(g, g.turn);
+        return;
+      }
+      const n = g.pendingDraw || 0;
+      if (p && n) {
+        drawCards(g, p, n);
+        sfx("draw");
+        g.banner = p.name + " draws " + n;
+      }
+      g.pendingDraw = 0;
+      g.pendingKind = null;
+      g.stackChoice = null;
+      g.drawnCardId = null;
+      g.turn = nextSeat(g, g.turn);
+    }
+
+    function drawUntilColor(g, player, color) {
+      const got = [];
+      if (!player) return 0;
+      for (let i = 0; i < 40; i++) {
+        ensureDeck(g);
+        if (!g.deck.length) break;
+        const c = g.deck.pop();
+        player.hand.push(c);
+        got.push(c);
+        if (faceOf(g, c).color === color) break;
+      }
+      if (player.hand.length > 1) player.calledUno = false;
+      if (player.hand.length !== 1) closeCatchWindow(player.id);
+      return got.length;
+    }
+
+    function offerStackOrForce(g) {
+      const p = g.players[g.turn];
+      if (!p || (!g.pendingDraw && g.pendingKind !== "wildDrawColor")) {
+        g.stackChoice = null;
+        return;
+      }
+      if (stackableInHand(g, p.hand).length) {
+        g.stackChoice = p.id;
+        g.banner = g.pendingKind === "wildDrawColor"
+          ? p.name + " can stack or draw until " + g.currentColor
+          : p.name + " can stack or draw " + g.pendingDraw;
+        return;
+      }
+      resolvePendingDraw(g);
+    }
+
+    function passPlusToNext(g, card) {
+      const f = faceOf(g, card);
+      g.pendingDraw = (g.pendingDraw || 0) + plusAdd(f);
+      if (!g.pendingKind || isWildPlus(f.value) || f.type === "wildDrawTwo" || f.type === "wildDrawColor") g.pendingKind = f.value;
+      g.drawnCardId = null;
+      g.stackChoice = null;
+      g.turn = nextSeat(g, g.turn);
+      const next = g.players[g.turn];
+      g.banner = g.pendingKind === "wildDrawColor"
+        ? next.name + " faces draw until " + g.currentColor
+        : next.name + " faces +" + g.pendingDraw;
+      offerStackOrForce(g);
+    }
+
+    function afterPlay(g, player, card) {
+      const f = faceOf(g, card);
+      if (player.hand.length === 1 && !player.calledUno) openCatchWindow(g, player);
+      if (!player.hand.length) {
+        if (f.type === "wild" || f.type === "wildDrawTwo" || f.type === "wildDrawColor") return;
+        if (f.type === "flip") flipTable(g);
+        if (f.type === "drawOne" || f.type === "drawFive") {
+          const victim = g.players[nextSeat(g, g.turn)];
+          drawCards(g, victim, (g.pendingDraw || 0) + plusAdd(f));
+        }
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        g.stackChoice = null;
+        finishGame(player.id);
+        return;
+      }
+      applyActionThenAdvance(g, card);
+    }
+
+    function applyActionThenAdvance(g, card) {
+      const f = faceOf(g, card);
+      g.drawnCardId = null;
+      if (f.type === "flip") {
+        flipTable(g);
+        g.turn = nextSeat(g, g.turn);
+      } else if (f.type === "reverse") {
+        if (g.players.length === 2) {
+          g.turn = nextSeat(g, g.turn, 2);
+        } else {
+          g.direction *= -1;
+          g.turn = nextSeat(g, g.turn);
+        }
+      } else if (f.type === "skip") {
+        g.turn = nextSeat(g, g.turn, 2);
+      } else if (f.type === "skipEveryone") {
+        g.banner = g.players[g.turn].name + " skips everyone and plays again";
+        return;
+      } else if (f.type === "drawOne" || f.type === "drawFive") {
+        passPlusToNext(g, card);
+        return;
+      } else {
+        g.turn = nextSeat(g, g.turn);
+      }
+      const next = g.players[g.turn];
+      g.banner = next.name + "'s turn";
+    }
+
+    function hostPlay(playerId, cardId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing" || g.choosingColor) return;
+      if (isPaused()) return;
+      if (g.stackChoice) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || g.players[g.turn].id !== playerId) return;
+      const card = p.hand.find((c) => c.id === cardId);
+      if (!card || !canPlayCard(g, p.hand, card)) return;
+      p.hand = p.hand.filter((c) => c.id !== cardId);
+      g.discard.push(card);
+      const f = faceOf(g, card);
+      g.playSeq = (g.playSeq || 0) + 1;
+      g.lastPlay = { seq: g.playSeq, playerId, card: { id: card.id, color: f.color, type: f.type, value: f.value } };
+      if (f.color !== "wild") g.currentColor = f.color;
+      sfx("play");
+      if (f.type === "wild" || f.type === "wildDrawTwo" || f.type === "wildDrawColor") {
+        g.choosingColor = playerId;
+        g.drawnCardId = null;
+        g.stackChoice = null;
+        g.banner = p.name + " played Wild" + (f.type === "wildDrawTwo" ? " +2" : f.type === "wildDrawColor" ? " Draw Color" : "") + ". Pick a color";
+        if (!p.hand.length) g.banner = p.name + " wins after picking a color";
+        if (p.hand.length === 1 && !p.calledUno) openCatchWindow(g, p);
+        hostBroadcast();
+        return;
+      }
+      g.banner = p.name + " played " + (f.type === "flip" ? "FLIP" : labelOf(f));
+      afterPlay(g, p, card);
+      hostBroadcast();
+    }
+
+    function hostDraw(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing" || g.choosingColor) return;
+      if (isPaused()) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || g.players[g.turn].id !== playerId) return;
+      if (g.pendingDraw || g.pendingKind === "wildDrawColor") {
+        if (g.stackChoice && g.stackChoice !== playerId) return;
+        g.stackChoice = null;
+        resolvePendingDraw(g);
+        hostBroadcast();
+        return;
+      }
+      if (g.stackChoice) return;
+      if (g.drawnCardId) return;
+      const got = drawCards(g, p, 1);
+      sfx("draw");
+      if (!got.length) {
+        g.banner = "Deck empty — turn passes";
+        g.turn = nextSeat(g, g.turn);
+        hostBroadcast();
+        return;
+      }
+      const card = got[0];
+      if (canPlayCard(g, p.hand, card)) {
+        g.drawnCardId = card.id;
+        g.banner = p.name + " drew. Play it or keep it";
+      } else {
+        g.drawnCardId = null;
+        g.banner = p.name + " drew and passes";
+        g.turn = nextSeat(g, g.turn);
+      }
+      hostBroadcast();
+    }
+
+    function hostPass(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      if (g.players[g.turn].id !== playerId || !g.drawnCardId) return;
+      g.drawnCardId = null;
+      g.banner = nameOf(g, playerId) + " keeps the card";
+      g.turn = nextSeat(g, g.turn);
+      hostBroadcast();
+    }
+
+    function catchWindowMs() {
+      return CATCH_WINDOW_MIN_MS + Math.floor(Math.random() * (CATCH_WINDOW_MAX_MS - CATCH_WINDOW_MIN_MS + 1));
+    }
+
+    function catchHintSeqFor(game, viewerId) {
+      const windows = game.catchWindows || {};
+      const now = Date.now();
+      const show = Object.keys(windows).some((id) => {
+        const w = windows[id];
+        return w && w.hint && id !== viewerId && w.until > now;
+      });
+      return show ? (game.unoHintSeq || 0) : 0;
+    }
+
+    function closeCatchWindow(victimId) {
+      const t = catchTimers.get(victimId);
+      if (t) clearTimeout(t);
+      catchTimers.delete(victimId);
+      const g = state.game;
+      if (g && g.catchWindows) delete g.catchWindows[victimId];
+    }
+
+    function clearAllCatchWindows() {
+      catchTimers.forEach((t) => clearTimeout(t));
+      catchTimers.clear();
+      if (state.game) {
+        state.game.catchWindows = {};
+      }
+    }
+
+    function expireCatchWindow(victimId) {
+      const g = state.game;
+      const hadHint = !!(g && g.catchWindows && g.catchWindows[victimId] && g.catchWindows[victimId].hint);
+      closeCatchWindow(victimId);
+      if (hadHint && g && g.phase === "playing") hostBroadcast();
+    }
+
+    function openCatchWindow(g, player) {
+      if (!g || g.phase !== "playing" || !player || player.kicked) return;
+      if (player.hand.length !== 1 || player.calledUno) return;
+      closeCatchWindow(player.id);
+      const ms = catchWindowMs();
+      const hint = Math.random() < UNO_HINT_CHANCE;
+      g.catchWindows = g.catchWindows || {};
+      g.catchWindows[player.id] = { until: Date.now() + ms, hint };
+      if (hint) g.unoHintSeq = (g.unoHintSeq || 0) + 1;
+      catchTimers.set(player.id, setTimeout(() => expireCatchWindow(player.id), ms));
+    }
+
+    function activeCatchVictim(g, callerId) {
+      const now = Date.now();
+      const windows = Object.entries(g.catchWindows || {})
+        .filter(([id, w]) => id !== callerId && w && w.until > now)
+        .sort((a, b) => b[1].until - a[1].until);
+      for (const [id] of windows) {
+        const p = g.players.find((x) => x.id === id && !x.kicked && x.hand.length === 1 && !x.calledUno);
+        if (p) return p;
+      }
+      return null;
+    }
+
+    function rearmCatchWindows(g) {
+      catchTimers.forEach((t) => clearTimeout(t));
+      catchTimers.clear();
+      if (!g || !g.catchWindows) return;
+      const now = Date.now();
+      for (const id of Object.keys(g.catchWindows)) {
+        const w = g.catchWindows[id];
+        const left = (w && w.until || 0) - now;
+        if (left <= 0) delete g.catchWindows[id];
+        else catchTimers.set(id, setTimeout(() => expireCatchWindow(id), left));
+      }
+    }
+
+    function hostUno(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.hand.length > 2) return;
+      p.calledUno = true;
+      closeCatchWindow(playerId);
+      sfx("uno");
+      g.banner = p.name + " says UNO!";
+      hostBroadcast();
+    }
+
+    function hostCaught(callerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (g.catchLock) return;
+      const caller = g.players.find((p) => p.id === callerId);
+      if (!caller || caller.kicked) return;
+      const victim = activeCatchVictim(g, callerId);
+      if (!victim) return;
+      g.catchLock = true;
+      closeCatchWindow(victim.id);
+      drawCards(g, victim, 2);
+      g.banner = caller.name + " caught " + victim.name + "! Draw 2";
+      sfx("bad");
+      g.catchLock = false;
+      hostBroadcast();
+    }
+
+    function hostStack(playerId, action) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      if (g.stackChoice !== playerId || g.players[g.turn].id !== playerId) return;
+      if (action === "take") {
+        g.stackChoice = null;
+        resolvePendingDraw(g);
+        hostBroadcast();
+        return;
+      }
+      if (action !== "play") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || !stackableInHand(g, p.hand).length) return;
+      g.stackChoice = null;
+      g.banner = p.name + " can play a + card or draw " + g.pendingDraw;
+      hostBroadcast();
+    }
+
+    function hostKick(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.id === "host" || p.bot || p.kicked) return;
+      vacateSeat(g, p);
+      if (endIfLastPlayer(g)) return;
+      g.banner = p.name + " was kicked";
+      hostBroadcast();
+    }
+
+    function hostChooseColor(playerId, color) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      if (g.choosingColor !== playerId) return;
+      if (!tableColors(g).includes(color)) return;
+      g.currentColor = color;
+      g.choosingColor = null;
+      const p = g.players.find((x) => x.id === playerId);
+      const card = topCard(g);
+      const f = faceOf(g, card);
+      if (!p.hand.length) {
+        if (f.type === "wildDrawTwo") {
+          const victim = g.players[nextSeat(g, g.turn)];
+          drawCards(g, victim, (g.pendingDraw || 0) + 2);
+        } else if (f.type === "wildDrawColor") {
+          const victim = g.players[nextSeat(g, g.turn)];
+          drawUntilColor(g, victim, color);
+        }
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        g.stackChoice = null;
+        finishGame(p.id);
+        return;
+      }
+      if (f.type === "wildDrawTwo" || f.type === "wildDrawColor") {
+        passPlusToNext(g, card);
+      } else {
+        g.banner = "Color is " + color;
+        g.turn = nextSeat(g, g.turn);
+      }
+      hostBroadcast();
+    }
+
+    function botColor(p) {
+      const g = state.game;
+      const counts = {};
+      for (const c of tableColors(g)) counts[c] = 0;
+      for (const c of p.hand) {
+        const f = faceOf(g, c);
+        if (counts[f.color] != null) counts[f.color]++;
+      }
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    }
+
+    function botAct(id) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = g.players.find((x) => x.id === id);
+      if (!p || !p.bot || g.players[g.turn].id !== id) return;
+      if (g.choosingColor === id) {
+        hostChooseColor(id, botColor(p));
+        return;
+      }
+      if (g.stackChoice === id) {
+        const plus = stackableInHand(g, p.hand);
+        if (!plus.length) {
+          hostStack(id, "take");
+          return;
+        }
+        g.stackChoice = null;
+        if (p.hand.length === 2) hostUno(id);
+        const choice = plus.find((c) => {
+          const t = faceOf(g, c).type;
+          return t === "wildDrawTwo" || t === "wildDrawColor";
+        }) || plus[0];
+        hostPlay(id, choice.id);
+        return;
+      }
+      if (g.pendingDraw || g.pendingKind === "wildDrawColor") {
+        hostDraw(id);
+        return;
+      }
+      if (g.drawnCardId) {
+        const card = p.hand.find((c) => c.id === g.drawnCardId);
+        if (card && canPlayCard(g, p.hand, card)) hostPlay(id, card.id);
+        else hostPass(id);
+        return;
+      }
+      const playable = p.hand.filter((c) => canPlayCard(g, p.hand, c));
+      if (!playable.length) {
+        hostDraw(id);
+        return;
+      }
+      const next = g.players[nextSeat(g, g.turn)];
+      const top = faceOf(g, topCard(g));
+      let choice = null;
+      if (next.hand.length <= 2) {
+        choice = playable.find((c) => {
+          const t = faceOf(g, c).type;
+          return t === "wildDrawTwo" || t === "wildDrawColor" || t === "drawOne" || t === "drawFive" || t === "skip" || t === "skipEveryone" || t === "flip";
+        });
+      }
+      choice = choice
+        || playable.find((c) => { const f = faceOf(g, c); return f.color === g.currentColor && f.type === "number"; })
+        || playable.find((c) => faceOf(g, c).color === g.currentColor)
+        || playable.find((c) => { const f = faceOf(g, c); return f.value === top.value && f.color !== "wild"; })
+        || playable.find((c) => faceOf(g, c).type === "wild")
+        || playable.find((c) => { const t = faceOf(g, c).type; return t === "wildDrawTwo" || t === "wildDrawColor"; })
+        || playable[0];
+      if (p.hand.length === 2) hostUno(id);
+      hostPlay(id, choice.id);
+    }
+
+    function maybeBot() {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      clearTimeout(state.botTimer);
+      if (g.choosingColor) {
+        const p = g.players.find((x) => x.id === g.choosingColor);
+        if (p && p.bot) state.botTimer = setTimeout(() => hostChooseColor(p.id, botColor(p)), 550);
+        return;
+      }
+      if (g.stackChoice) {
+        const p = g.players.find((x) => x.id === g.stackChoice);
+        if (p && p.bot) state.botTimer = setTimeout(() => botAct(p.id), 700 + Math.random() * 250);
+        return;
+      }
+      const p = g.players[g.turn];
+      if (p && p.bot) state.botTimer = setTimeout(() => botAct(p.id), 900 + Math.random() * 350);
+    }
+
+    function applyView(view) {
+      const prevTop = state.view && state.view.top;
+      state.view = view;
+      if (view.phase === "lobby") {
+        renderLobby(view);
+        showScreen("lobby");
+        $("turn-pop").classList.remove("show");
+        $("stack-pick").classList.remove("show");
+        $("away-pick").classList.remove("show");
+        updateMicUi();
+        connectVoiceToAll();
+        return;
+      }
+      if (view.phase === "end") {
+        renderEnd(view);
+        showScreen("end");
+        $("color-pick").classList.remove("show");
+        $("stack-pick").classList.remove("show");
+        $("away-pick").classList.remove("show");
+        $("turn-pop").classList.remove("show");
+        updateMicUi();
+        connectVoiceToAll();
+        return;
+      }
+      if (view.phase === "playing") {
+        showScreen("game");
+        $("game-code").textContent = view.room || state.room;
+        if (view.startedAt && view.startedAt !== state.hintGameAt) {
+          state.hintGameAt = view.startedAt;
+          state.seenUnoHintSeq = 0;
+        }
+        if (view.unoHintSeq && view.unoHintSeq !== state.seenUnoHintSeq) {
+          state.seenUnoHintSeq = view.unoHintSeq;
+          toast("👀 Someone might have forgotten UNO...");
+        }
+        if (state.pendingLocalPlay && view.you && (view.you.hand || []).some((c) => c.id === state.pendingLocalPlay)) {
+          state.pendingLocalPlay = 0;
+        }
+        // Two-row banner: who is playing (top), action text (bottom)
+        const turnPlayer = view.players.find((p) => p.isTurn);
+        $("banner-turn").textContent = (view.side === "dark" ? "🌙 Dark · " : "☀️ Light · ") + (turnPlayer
+          ? (turnPlayer.id === view.you.id ? "Your turn" : turnPlayer.name + "'s turn")
+          : "");
+        $("banner").textContent = view.banner || "";
+        document.body.setAttribute("data-side", view.side === "dark" ? "dark" : "light");
+        $("draw-count").textContent = view.drawCount + " left";
+        $("dir").textContent = view.direction === 1 ? "↻" : "↺";
+        $("color-chip").style.background = COLOR_HEX[view.currentColor] || "#1a1a1a";
+        const swatchColors = view.side === "dark" ? DARK_COLORS : LIGHT_COLORS;
+        document.querySelectorAll("#color-pick .swatches button").forEach((btn, i) => {
+          const col = swatchColors[i];
+          if (!col) return;
+          btn.className = col;
+          btn.setAttribute("data-color", col);
+          btn.setAttribute("aria-label", col);
+        });
+        renderOpponents(view);
+        renderHand(view);
+        $("btn-uno").disabled = view.you.hand.length > 2 || view.you.calledUno;
+        $("btn-uno").classList.toggle("pulse", view.you.hand.length === 2 && !view.you.calledUno);
+        $("btn-pass").style.display = view.drawnCardId ? "inline-flex" : "none";
+        $("btn-caught").style.display = "inline-flex";
+        $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId || view.stackChoice === view.you.id || !!view.paused;
+        $("color-pick").classList.toggle("show", view.choosingColor === view.you.id && !view.paused);
+        const stackAsk = view.stackChoice === view.you.id && !view.paused;
+        $("stack-pick").classList.toggle("show", stackAsk);
+        if (stackAsk) {
+          const n = view.pendingDraw || 0;
+          $("stack-title").textContent = "Draw " + n + " or use a + card?";
+          $("stack-sub").textContent = view.pendingKind === "wildDrawColor"
+            ? "You can play Wild Draw Color to pass it on."
+            : view.pendingKind === "wildDraw2"
+              ? "You can play Wild +2 to pass it on. +1 cannot go on +2."
+              : view.pendingKind === "draw5"
+                ? "You can play +5 or Wild Draw Color to pass it on."
+                : "You can play +1 or Wild +2 to pass it on.";
+          $("btn-stack-take").textContent = "Pick " + n + " from pile";
+        }
+        const awayList = (view.away || []).filter((p) => p.id && p.id !== "host");
+        const othersAway = awayList.filter((p) => p.id !== view.you.id);
+        if (awayList.some((p) => p.id === view.you.id) && !state.isHost) sendPing();
+        const paused = !!view.paused;
+        const showAway = paused && othersAway.length && !state.reconnecting;
+        $("away-pick").classList.toggle("show", !!showAway);
+        if (showAway) {
+          const names = othersAway.map((p) => p.name).join(", ");
+          $("away-title").textContent = names + " lost connection";
+          $("away-sub").textContent = "It's their turn. Wait a moment — if they stay gone, the turn is skipped. You cannot kick the host.";
+          const box = $("away-actions");
+          box.replaceChildren();
+          othersAway.forEach((p) => {
+            if (p.id === "host") return;
+            const btn = document.createElement("button");
+            btn.className = "btn";
+            btn.type = "button";
+            btn.textContent = "Kick " + p.name;
+            btn.onclick = () => sendAction({ type: "kick", playerId: p.id });
+            box.append(btn);
+          });
+        }
+        if (view.startedAt && !state.timerId) startTimer(view.startedAt);
+        const play = view.lastPlay;
+        if (play && play.seq && play.seq !== state.seenPlaySeq) {
+          const alreadyFlew = state.pendingLocalPlay && play.card && play.card.id === state.pendingLocalPlay;
+          state.seenPlaySeq = play.seq;
+          state.pendingLocalPlay = 0;
+          if (alreadyFlew || linkIsSlow()) {
+            renderDiscard(view.top);
+          } else {
+            renderDiscard(prevTop || view.top);
+            flyToPile(play.card, originRect(play), () => renderDiscard(view.top));
+          }
+        } else {
+          renderDiscard(view.top);
+        }
+        connectVoiceToAll();
+        updateMicUi();
+      }
+    }
+
+    function originRect(play) {
+      if (state.pendingFly && state.pendingFly.card.id === play.card.id) {
+        const r = state.pendingFly.from;
+        state.pendingFly = null;
+        return r;
+      }
+      const seat = document.querySelector('.opp[data-pid="' + play.playerId + '"]');
+      if (seat) return seat.getBoundingClientRect();
+      return null;
+    }
+
+    function flyToPile(card, from, done) {
+      const pile = $("discard");
+      const to = pile.getBoundingClientRect();
+      if (!from || from.width < 4 || to.width < 4) {
+        if (done) done();
+        return;
+      }
+      const el = makeCardEl(card);
+      el.classList.add("flying");
+      el.style.cssText = [
+        "position:fixed",
+        "left:" + from.left + "px",
+        "top:" + from.top + "px",
+        "width:" + from.width + "px",
+        "height:" + from.height + "px",
+        "z-index:200",
+        "margin:0",
+        "pointer-events:none",
+        "transform-origin:center center",
+        "transition:transform .48s cubic-bezier(.2,.85,.2,1)",
+      ].join(";");
+      document.body.append(el);
+      const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+      const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+      const sc = Math.max(0.4, to.width / from.width);
+      requestAnimationFrame(() => {
+        el.style.transform = "translate(" + dx + "px," + dy + "px) scale(" + sc + ") rotate(8deg)";
+      });
+      setTimeout(() => {
+        el.remove();
+        if (done) done();
+      }, 500);
+    }
+
+    function renderDiscard(card) {
+      const box = $("discard");
+      box.replaceChildren();
+      if (card) box.append(makeCardEl(card, "lg"));
+    }
+
+    const OPP_SLOTS = {
+      1: ["top"],
+      2: ["left", "right"],
+      3: ["left", "top", "right"],
+      4: ["left", "topLeft", "top", "right"],
+      5: ["left", "topLeft", "top", "topRight", "right"],
+    };
+
+    function renderOpponents(view) {
+      ["topLeft", "top", "topRight", "left", "right"].forEach((name) => {
+        const slot = $("slot-" + name);
+        if (slot) slot.replaceChildren();
+      });
+      const youIndex = view.players.findIndex((p) => p.id === view.you.id);
+      const n = view.players.length;
+      const around = [];
+      for (let i = 1; i < n; i++) around.push(view.players[(youIndex - i + n) % n]);
+      const slots = OPP_SLOTS[Math.min(around.length, 5)] || OPP_SLOTS[5];
+      around.forEach((p, i) => {
+        const slot = $("slot-" + (slots[i] || "top"));
+        if (!slot) return;
+        slot.append(makeOppEl(p));
+      });
+    }
+
+    function makeOppEl(p) {
+      const wrap = document.createElement("div");
+      wrap.className = "opp" + (p.isTurn ? " turn" : "") + (p.calledUno && p.count === 1 ? " uno" : "") + (p.mic ? " mic" : "");
+      wrap.dataset.pid = p.id;
+      const hold = document.createElement("div");
+      hold.className = "opp-fan-wrap";
+      const fan = document.createElement("div");
+      fan.className = "opp-fan";
+      const show = Math.min(Math.max(p.count, 0), 12);
+      for (let i = 0; i < show; i++) fan.append(makeCardEl({ _back: true }, "tiny"));
+      hold.append(fan);
+      const meta = document.createElement("div");
+      meta.className = "opp-meta";
+      const b = document.createElement("b");
+      b.textContent = p.name;
+      const s = document.createElement("span");
+      s.textContent = String(p.count);
+      meta.append(b, s);
+      wrap.append(hold, meta);
+      requestAnimationFrame(() => layoutFan(fan, { overlap: 0.52, maxRot: 20, arc: 7 }));
+      return wrap;
+    }
+
+    function isTouchUi() {
+      return window.matchMedia("(hover: none), (pointer: coarse)").matches;
+    }
+
+    function clearRaised() {
+      state.raisedCardId = null;
+      $("hand").querySelectorAll(".ucard.raised").forEach((el) => el.classList.remove("raised"));
+    }
+
+    function raiseCard(id) {
+      const el = $("hand");
+      el.querySelectorAll(".ucard.raised").forEach((c) => c.classList.remove("raised"));
+      const btn = el.querySelector('[data-card-id="' + id + '"]');
+      if (!btn) return;
+      btn.classList.add("raised");
+      btn.style.zIndex = "90";
+      state.raisedCardId = id;
+    }
+
+    function layoutFan(row, opts) {
+      const cards = [...row.querySelectorAll(".ucard")];
+      const n = cards.length;
+      if (!n) return;
+      const cw = cards[0].offsetWidth || 36;
+      const overlapRatio = (opts && opts.overlap) || 0.5;
+      const overlap = n < 2 ? 0 : cw * overlapRatio;
+      const mid = (n - 1) / 2;
+      const maxRot = Math.min((opts && opts.maxRot) || 22, 5 + n * 1.7);
+      const arc = (opts && opts.arc) != null ? opts.arc : 8;
+      cards.forEach((el, i) => {
+        const t = n === 1 ? 0 : (i - mid) / Math.max(mid, 1);
+        el.style.marginLeft = i === 0 ? "0px" : (-overlap) + "px";
+        el.style.setProperty("--fan-rot", (t * maxRot) + "deg");
+        el.style.setProperty("--fan-y", (Math.abs(t) * arc) + "px");
+        if (!el.classList.contains("raised")) el.style.zIndex = String(10 + i);
+      });
+    }
+
+    function layoutHand() {
+      layoutFan($("hand"), { overlap: 0.42, maxRot: 24, arc: 10 });
+      if (state.raisedCardId) raiseCard(state.raisedCardId);
+    }
+
+    function shakeCard(cardId) {
+      const btn = $("hand").querySelector('[data-card-id="' + cardId + '"]');
+      if (!btn) return;
+      btn.classList.remove("shake");
+      void btn.offsetWidth;
+      btn.classList.add("shake");
+      setTimeout(() => btn.classList.remove("shake"), 400);
+    }
+
+    function showWaitHint() {
+      const view = state.view;
+      const current = view && view.players.find((p) => p.isTurn);
+      const name = current ? current.name : "another player";
+      const picking = view && view.choosingColor && view.choosingColor !== view.you.id;
+      $("turn-pop-name").textContent = picking
+        ? name + " is picking a color"
+        : name + " is playing";
+      const el = $("turn-pop");
+      el.classList.add("show");
+      clearTimeout(state.turnHintTimer);
+      state.turnHintTimer = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function denyOffTurn(cardId) {
+      shakeCard(cardId);
+      showWaitHint();
+      sfx("bad");
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    function onHandClick(cardId) {
+      if (state.handDragged) {
+        state.handDragged = false;
+        return;
+      }
+      const view = state.view;
+      if (view && view.phase === "playing" && !view.you.isTurn) {
+        denyOffTurn(cardId);
+        return;
+      }
+      if (isTouchUi()) {
+        if (state.raisedCardId === cardId) {
+          onPlay(cardId);
+          return;
+        }
+        raiseCard(cardId);
+        return;
+      }
+      onPlay(cardId);
+    }
+
+    function renderHand(view) {
+      const el = $("hand");
+      const ids = view.you.hand.map((c) => c.id);
+      const prev = (el.dataset.ids || "").split(",").filter(Boolean).map(Number);
+      const same = prev.length === ids.length && prev.every((id, i) => id === ids[i]);
+
+      if (!same) {
+        el.replaceChildren();
+        view.you.hand.forEach((card) => {
+          const btn = makeCardEl(card, "", "button");
+          btn.dataset.cardId = String(card.id);
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            onHandClick(card.id);
+          };
+          el.append(btn);
+        });
+        el.dataset.ids = ids.join(",");
+        if (!ids.includes(state.raisedCardId)) state.raisedCardId = null;
+      }
+
+      view.you.hand.forEach((card) => {
+        const btn = el.querySelector('[data-card-id="' + card.id + '"]');
+        if (!btn) return;
+        const legal = view.legal.includes(card.id);
+        btn.classList.toggle("playable", legal);
+        btn.classList.toggle("dead", !legal);
+        btn.classList.toggle("drawn", view.drawnCardId === card.id);
+      });
+
+      if (view.drawnCardId && isTouchUi()) state.raisedCardId = view.drawnCardId;
+
+      requestAnimationFrame(layoutHand);
+    }
+
+    function renderLobby(view) {
+      $("lobby-code").textContent = view.room || state.room;
+      MiniGames.renderPlayerList(view.players, state.myId, (p) =>
+        p.connected ? (p.mic ? "mic on" : "connected") : "offline"
+      );
+      $("host-settings").style.display = state.isHost ? "grid" : "none";
+      $("lobby-hint").textContent = state.isHost
+        ? "Need 2–" + MAX_PLAYERS + " players. Tap 🎤 to talk."
+        : "Waiting for the host to start. Tap 🎤 to talk.";
+      MiniGames.setQr(inviteUrl());
+    }
+
+    function renderEnd(view) {
+      const winner = view.players.find((p) => p.id === view.winnerId);
+      const youWin = view.winnerId === view.you.id;
+      $("end-emoji").textContent = youWin ? "🏆" : "⭐";
+      $("end-title").textContent = winner ? winner.name + " wins!" : "Game over";
+      const elapsed = Math.max(0, Date.now() - (view.startedAt || Date.now()));
+      $("end-sub").textContent = formatTime(elapsed);
+      const box = $("end-scores");
+      box.replaceChildren();
+      const ranked = view.players.slice().sort((a, b) => a.count - b.count);
+      for (const p of ranked) {
+        const row = document.createElement("div");
+        row.className = "seat" + (p.id === view.winnerId ? " win" : "");
+        row.style.margin = "6px 0";
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = p.color;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const b = document.createElement("b");
+        b.textContent = p.name;
+        const s = document.createElement("span");
+        s.textContent = p.count + " card" + (p.count === 1 ? "" : "s") + " left";
+        meta.append(b, s);
+        row.append(dot, meta);
+        box.append(row);
+      }
+      $("btn-again").style.display = state.isHost || state.solo ? "inline-flex" : "none";
+      stopTimer();
+    }
+
+    function formatTime(ms) {
+      const s = Math.floor(ms / 1000);
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+    function startTimer(from) {
+      stopTimer();
+      const tick = () => { $("timer").textContent = formatTime(Date.now() - from); };
+      tick();
+      state.timerId = setInterval(tick, 250);
+    }
+    function stopTimer() {
+      clearInterval(state.timerId);
+      state.timerId = 0;
+    }
+
+    function sendAction(msg) {
+      if (state.solo || state.isHost) {
+        if (msg.type === "play") hostPlay(state.myId, msg.cardId);
+        else if (msg.type === "draw") hostDraw(state.myId);
+        else if (msg.type === "pass") hostPass(state.myId);
+        else if (msg.type === "uno") hostUno(state.myId);
+        else if (msg.type === "caught") hostCaught(state.myId);
+        else if (msg.type === "color") hostChooseColor(state.myId, msg.color);
+        else if (msg.type === "stack") hostStack(state.myId, msg.action);
+        else if (msg.type === "kick") hostKick(msg.playerId);
+        else if (msg.type === "leave") hostPlayerLeave(state.myId);
+        else if (msg.type === "voice") {
+          state.micOn = !!msg.on;
+          publishVoice();
+        }
+        return;
+      }
+      const hostConn = state.conns.get("host") || [...state.conns.values()][0];
+      if (hostConn && hostConn.open) hostConn.send(msg);
+    }
+
+    function onPlay(cardId) {
+      const view = state.view;
+      if (!view || view.phase !== "playing") return;
+      if (!view.you.isTurn) {
+        denyOffTurn(cardId);
+        return;
+      }
+      if (!view.legal.includes(cardId)) {
+        shakeCard(cardId);
+        sfx("bad");
+        if (navigator.vibrate) navigator.vibrate(50);
+        return;
+      }
+      const btn = $("hand").querySelector('[data-card-id="' + cardId + '"]');
+      const card = view.you.hand.find((c) => c.id === cardId);
+      if (btn && card) {
+        const r = btn.getBoundingClientRect();
+        state.pendingFly = { card, from: { left: r.left, top: r.top, width: r.width, height: r.height } };
+        if (!linkIsSlow()) flyToPile(card, r, () => renderDiscard(card));
+        else renderDiscard(card);
+      }
+      state.raisedCardId = null;
+      state.pendingLocalPlay = cardId;
+      view.you.hand = view.you.hand.filter((c) => c.id !== cardId);
+      view.legal = [];
+      view.you.isTurn = false;
+      renderHand(view);
+      sendAction({ type: "play", cardId });
+    }
+
+    function lobbySnapshot() {
+      const voice = voiceRoster();
+      const micOf = (pid) => voice.some((v) => v.pid === pid && v.on);
+      const players = [{ id: "host", name: state.myName, color: SEAT[0], connected: true, mic: micOf("host") }];
+      let i = 1;
+      for (const [id, meta] of guests) {
+        players.push({ id, name: meta.name, color: SEAT[i++ % SEAT.length], connected: true, mic: micOf(meta.playerId || id) });
+      }
+      return { phase: "lobby", room: state.room, players, you: { id: "host" }, voice };
+    }
+
+    function sendLobby() {
+      const snap = lobbySnapshot();
+      applyView({ ...snap, you: { id: state.myId } });
+      for (const [id, conn] of state.conns) {
+        sendPackedState(conn, { ...snap, you: { id } });
+      }
+      saveSession();
+    }
+
+    function cancelDrop(peerId) {
+      clearTimeout(dropTimers.get(peerId));
+      dropTimers.delete(peerId);
+    }
+
+    function noteSeen(playerId) {
+      if (playerId && playerId !== "host") lastSeen.set(playerId, Date.now());
+    }
+
+    function noteAlive(playerId) {
+      if (!playerId || playerId === "host") return;
+      noteSeen(playerId);
+      const g = state.game;
+      if (!g || !g.players) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.kicked || p.bot) return;
+      p.connected = true;
+      if ((g.awayIds || []).includes(playerId)) {
+        clearAway(playerId);
+        g.banner = p.name + " is back";
+        hostBroadcast();
+      }
+    }
+
+    function markPlayerAway(playerId) {
+      const g = state.game;
+      if (!g || !g.players) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.bot || p.kicked || p.id === "host") return;
+      if (playerConnOpen(playerId)) return;
+      p.connected = false;
+      if (g.phase !== "playing") return;
+      if (!g.awayIds) g.awayIds = [];
+      if (!g.awayIds.includes(p.id)) g.awayIds.push(p.id);
+      p.awayAt = Date.now();
+      g.banner = p.name + " lost connection";
+    }
+
+    function skipAwayTurn(g) {
+      if (!g || g.phase !== "playing") return false;
+      const p = g.players[g.turn];
+      if (!p || p.id === "host" || p.bot) return false;
+      const away = (g.awayIds || []).filter((id) => id && id !== "host");
+      const stuckId = (g.choosingColor && away.includes(g.choosingColor) && g.choosingColor)
+        || (g.stackChoice && away.includes(g.stackChoice) && g.stackChoice)
+        || (away.includes(p.id) && p.id);
+      if (!stuckId) return false;
+      const who = g.players.find((x) => x.id === stuckId) || p;
+      if (g.choosingColor && away.includes(g.choosingColor)) {
+        if (!tableColors(g).includes(g.currentColor)) g.currentColor = tableColors(g)[0];
+        g.choosingColor = null;
+        const card = topCard(g);
+        if (card && (faceOf(g, card).type === "wildDrawTwo" || faceOf(g, card).type === "wildDrawColor")) passPlusToNext(g, card);
+        else {
+          g.drawnCardId = null;
+          g.turn = nextSeat(g, g.turn);
+        }
+      } else if ((g.stackChoice && away.includes(g.stackChoice)) || ((g.pendingDraw || g.pendingKind === "wildDrawColor") && away.includes(p.id))) {
+        resolvePendingDraw(g);
+      } else {
+        g.drawnCardId = null;
+        g.turn = nextSeat(g, g.turn);
+      }
+      g.banner = who.name + " is away — turn skipped";
+      return true;
+    }
+
+    function clearAway(playerId) {
+      const g = state.game;
+      if (!g) return;
+      g.awayIds = (g.awayIds || []).filter((id) => id !== playerId);
+      const p = g.players && g.players.find((x) => x.id === playerId);
+      if (p) p.awayAt = 0;
+    }
+
+    function onPeerGone(peerId) {
+      const playerId = playerIdFromPeer(peerId);
+      if (playerId === "host") return;
+      if (state.conns.get(peerId)) state.conns.delete(peerId);
+      if (state.game && state.game.players) {
+        markPlayerAway(playerId);
+        hostBroadcast();
+        return;
+      }
+      guests.delete(peerId);
+      sendLobby();
+    }
+
+    function handleJoin(conn, msg) {
+      const name = String(msg.name || "Player").slice(0, 16);
+      const token = String(msg.token || "").slice(0, 80) || conn.peer;
+      cancelDrop(conn.peer);
+
+      if (state.game && state.game.players) {
+        const kicked = state.game.players.find((p) => p.token && p.token === token && p.kicked);
+        if (kicked) {
+          try { conn.send({ type: "error", message: "You were kicked from this game" }); } catch (e) {}
+          return;
+        }
+        const seated = state.game.players.find((p) => p.token && p.token === token && !p.kicked);
+        if (seated) {
+          for (const [peer, meta] of [...guests.entries()]) {
+            if (peer !== conn.peer && (meta.token === token || meta.playerId === seated.id)) {
+              cancelDrop(peer);
+              const old = state.conns.get(peer);
+              if (old && old !== conn) {
+                try { old.close(); } catch (e) {}
+              }
+              state.conns.delete(peer);
+              guests.delete(peer);
+            }
+          }
+          guests.set(conn.peer, { name: seated.name, token, playerId: seated.id });
+          seated.connected = true;
+          seated.name = name || seated.name;
+          clearAway(seated.id);
+          noteSeen(seated.id);
+          state.game.banner = seated.name + " is back";
+          hostBroadcast();
+          return;
+        }
+        if (state.game.phase === "playing" || state.game.phase === "end") {
+          try { conn.send({ type: "error", message: "Game already started" }); } catch (e) {}
+          return;
+        }
+      }
+
+      for (const [peer, meta] of [...guests.entries()]) {
+        if (peer !== conn.peer && meta.token === token) {
+          cancelDrop(peer);
+          const old = state.conns.get(peer);
+          if (old && old !== conn) {
+            try { old.close(); } catch (e) {}
+          }
+          state.conns.delete(peer);
+          guests.delete(peer);
+        }
+      }
+      const others = [...guests.keys()].filter((id) => id !== conn.peer).length;
+      if (1 + others >= MAX_PLAYERS && !guests.has(conn.peer)) {
+        try { conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" }); } catch (e) {}
+        return;
+      }
+      guests.set(conn.peer, { name, token, playerId: conn.peer });
+      noteSeen(conn.peer);
+      sendLobby();
+    }
+
+    function attachHostConn(conn) {
+      conn.on("data", (msg) => {
+        if (!msg || typeof msg !== "object") return;
+        const pid = playerIdFromPeer(conn.peer);
+        if (msg.type === "join") {
+          handleJoin(conn, msg);
+          return;
+        }
+        noteAlive(pid);
+        if (msg.type === "ping") {
+          if (msg.rtt) noteRtt(pid, msg.rtt);
+          try { conn.send({ type: "pong", t: msg.t || Date.now() }); } catch (e) {}
+          return;
+        }
+        if (msg.type === "play") hostPlay(pid, msg.cardId);
+        if (msg.type === "draw") hostDraw(pid);
+        if (msg.type === "pass") hostPass(pid);
+        if (msg.type === "uno") hostUno(pid);
+        if (msg.type === "caught") hostCaught(pid);
+        if (msg.type === "color") hostChooseColor(pid, msg.color);
+        if (msg.type === "stack") hostStack(pid, msg.action);
+        if (msg.type === "kick") hostKick(msg.playerId);
+        if (msg.type === "leave") hostPlayerLeave(pid);
+        if (msg.type === "voice") {
+          const meta = guests.get(conn.peer);
+          if (meta) meta.voiceOn = !!msg.on;
+          if (state.game) hostBroadcast();
+          else sendLobby();
+        }
+      });
+      conn.on("close", () => {
+        if (state.conns.get(conn.peer) !== conn) return;
+        cancelDrop(conn.peer);
+        dropTimers.set(conn.peer, setTimeout(() => {
+          dropTimers.delete(conn.peer);
+          onPeerGone(conn.peer);
+        }, dropGraceMs()));
+      });
+    }
+
+    function destroyNetwork(opts) {
+      dropTimers.forEach((t) => clearTimeout(t));
+      dropTimers.clear();
+      clearTimeout(state.botTimer);
+      clearJoinWait();
+      closeVoiceCalls();
+      if (!(opts && opts.keepGuests)) {
+        if (state.micStream) {
+          state.micStream.getTracks().forEach((t) => t.stop());
+          state.micStream = null;
+        }
+        state.micOn = false;
+        updateMicUi();
+      }
+      state.replacingPeer = true;
+      state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
+      state.conns.clear();
+      if (!(opts && opts.keepGuests)) guests.clear();
+      if (state.peer) {
+        try { state.peer.destroy(); } catch (e) {}
+        state.peer = null;
+      }
+      state.replacingPeer = false;
+    }
+
+    function destroyPeer() {
+      stopTimer();
+      clearAllCatchWindows();
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(false);
+      destroyNetwork();
+      state.game = null;
+      state.view = null;
+    }
+
+    function bindHostPeer(peer) {
+      state.peer = peer;
+      bindVoice(peer);
+      netlog("host peer create", PEER_PREFIX + state.room, netInfo());
+      peer.on("open", () => {
+        netlog("host peer open", peer.id);
+        hideWarmup();
+        if (state.game) hostBroadcast();
+        else {
+          sendLobby();
+          toast("Room " + state.room + " ready");
+        }
+        saveSession();
+        if (state.micOn) connectVoiceToAll();
+        updateMicUi();
+      });
+      peer.on("connection", (conn) => {
+        netlog("host incoming", conn.peer);
+        cancelDrop(conn.peer);
+        state.conns.set(conn.peer, conn);
+        watchRtc("in:" + String(conn.peer).slice(0, 8), conn);
+        attachHostConn(conn);
+      });
+      peer.on("disconnected", () => {
+        netlog("host peer disconnected");
+        if (state.leaving || state.replacingPeer) return;
+        toast("Network hiccup. Reconnecting…");
+        try { peer.reconnect(); } catch (e) {}
+      });
+      peer.on("close", () => {
+        netlog("host peer close");
+        if (state.leaving || state.replacingPeer) return;
+        if (state.peer !== peer) return;
+        recreateHostPeer();
+      });
+      peer.on("error", (err) => {
+        netlog("host peer error", err && err.type, err && err.message);
+        if (err && err.type === "unavailable-id") {
+          if (state.game) {
+            setTimeout(recreateHostPeer, 1500);
+            return;
+          }
+          state.room = randomCode();
+          destroyPeer();
+          createRoom(true);
+          return;
+        }
+        if (state.game) {
+          toast("Host connection issue. Retrying…");
+          setTimeout(recreateHostPeer, 1500);
+          return;
+        }
+        showError("home-error", "Could not create room. Try again.");
+        hideWarmup();
+        showScreen("home");
+      });
+    }
+
+    function recreateHostPeer() {
+      if (!state.isHost || state.solo || !state.room || state.leaving) return;
+      destroyNetwork({ keepGuests: true });
+      bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+    }
+
+    function createRoom(isRetry) {
+      if (state.connecting && !isRetry) return;
+      const name = requireName();
+      if (!name) return;
+      state.connecting = true;
+      showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      waitForPeer(function () {
+        state.leaving = false;
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.myName = name;
+        rememberName(state.myName);
+        state.room = isRetry ? (state.room || randomCode()) : randomCode();
+        clearHostGoneClock();
+        showError("home-error", "");
+        setJoinStatus("", "");
+        destroyPeer();
+        bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+      }, function () {
+        hideWarmup();
+        showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+      });
+    }
+
+    function scheduleGuestReconnect() {
+      if (state.leaving || state.isHost || state.solo || !state.room) return;
+      if (hostGoneTimedOut()) {
+        showHostLost();
+        return;
+      }
+      if (state.reconnectTimer) return;
+      beginHostGoneClock();
+      state.reconnectAttempt = (state.reconnectAttempt || 0) + 1;
+      const delay = reconnectDelayMs();
+      const left = Math.max(0, state.hostLostDeadline - Date.now());
+      const mins = Math.ceil(left / 60000);
+      setReconnectUi(true, "Connection dropped. Trying to get you back in… (" + mins + " min left)");
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = 0;
+        if (hostGoneTimedOut()) {
+          showHostLost();
+          return;
+        }
+        joinRoom(state.room, true);
+      }, delay);
+    }
+
+    function joinRoom(code, reconnect) {
+      if (state.connecting && !reconnect) return;
+      const name = reconnect ? (state.myName || requireName()) : requireName();
+      if (!name) return;
+      code = (code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (code.length !== 4) {
+        setJoinStatus("fail", "Enter a 4-character room code.");
+        $("join-code").focus();
+        return;
+      }
+      state.connecting = true;
+      if (!reconnect) {
+        showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      }
+      waitForPeer(function () {
+        startJoin(code, name, reconnect);
+      }, function () {
+        hideWarmup();
+        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
+        if (reconnect) scheduleGuestReconnect();
+      });
+    }
+
+    function startJoin(code, name, reconnect) {
+      state.leaving = false;
+      state.isHost = false;
+      state.solo = false;
+      state.myName = name;
+      rememberName(state.myName);
+      state.room = code;
+      beginHostGoneClock();
+      showError("home-error", "");
+      if (reconnect) destroyNetwork();
+      else destroyPeer();
+      if (reconnect) setReconnectUi(true, "Finding the room again…");
+      else setJoinStatus("connecting", "Finding room " + code + "…");
+      clearJoinWait();
+      state.joinTimer = setTimeout(() => {
+        if (reconnect) {
+          setReconnectUi(true, "Still trying to rejoin…");
+          scheduleGuestReconnect();
+          return;
+        }
+        beginHostGoneClock();
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
+        setJoinStatus("fail", wifiJoinHint());
+        netlog("join timeout", code, netInfo());
+        $("btn-join").disabled = false;
+        destroyNetwork();
+      }, joinWaitMs(reconnect));
+      netlog(reconnect ? "rejoin" : "join", code, netInfo());
+      const peer = new Peer(peerOptions());
+      state.peer = peer;
+      bindVoice(peer);
+      peer.on("open", () => {
+        state.myId = peer.id;
+        netlog("guest peer open", peer.id, "→", PEER_PREFIX + code);
+        if (reconnect) setReconnectUi(true, "Connecting to the host…");
+        else setJoinStatus("joining", "Connecting to the host…");
+        if (!reconnect) showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+        const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+        state.conns.set("host", conn);
+        watchRtc("to-host", conn);
+        conn.on("open", () => {
+          netlog("guest datachannel open");
+          if (reconnect) setReconnectUi(true, "Rejoining your seat…");
+          else setJoinStatus("joining", "Joining the lobby…");
+          conn.send({ type: "join", name: state.myName, token: myToken() });
+        });
+        conn.on("data", (msg) => {
+          if (!msg || typeof msg !== "object") return;
+          state.lastRxAt = Date.now();
+          if (msg.type === "pong") {
+            if (msg.t) noteRtt(state.myId || "me", Date.now() - msg.t);
+            return;
+          }
+          if (msg.type === "state" || msg.t === "s") {
+            clearJoinWait();
+            clearHostGoneClock();
+            setReconnectUi(false);
+            setJoinStatus("ok", "You're in!");
+            hideWarmup();
+            netlog("guest in", state.view && state.view.phase);
+            ingestState(msg);
+            if (state.view && state.view.you && state.view.you.id) state.myId = state.view.you.id;
+            return;
+          }
+          if (msg.type === "host-left") {
+            onHostLeft();
+          }
+          if (msg.type === "error") {
+            clearJoinWait();
+            setReconnectUi(false);
+            const text = msg.message || "Could not join this room.";
+            netlog("join rejected", text);
+            if (/already started|kicked|left/i.test(text)) {
+              sessionDenied(text);
+              return;
+            }
+            setJoinStatus("fail", text);
+            toast(text);
+            beginHostGoneClock();
+            if (hostGoneTimedOut()) expireHostWait();
+          }
+        });
+        conn.on("close", () => {
+          netlog("guest datachannel close");
+          if (state.leaving) return;
+          if (state.conns.get("host") !== conn) return;
+          if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby" || state.view.phase === "end")) {
+            scheduleGuestReconnect();
+            return;
+          }
+          if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
+            clearJoinWait();
+            if (reconnect) scheduleGuestReconnect();
+            else setJoinStatus("fail", "Connection closed. The host may have left.");
+          }
+        });
+        conn.on("error", (err) => {
+          netlog("guest conn error", err && err.type, err && err.message);
+          if (reconnect) {
+            scheduleGuestReconnect();
+            return;
+          }
+          clearJoinWait();
+          setJoinStatus("fail", "Could not reach the host." + wifiJoinHint());
+        });
+      });
+      peer.on("disconnected", () => {
+        netlog("guest peer disconnected");
+        if (state.leaving || state.replacingPeer) return;
+        try { peer.reconnect(); } catch (e) { scheduleGuestReconnect(); }
+      });
+      peer.on("close", () => {
+        netlog("guest peer close");
+        if (state.leaving || state.replacingPeer) return;
+        if (state.peer !== peer) return;
+        scheduleGuestReconnect();
+      });
+      peer.on("error", (err) => {
+        netlog("guest peer error", err && err.type, err && err.message);
+        if (reconnect || (state.view && state.view.phase && state.view.phase !== "home")) {
+          scheduleGuestReconnect();
+          return;
+        }
+        clearJoinWait();
+        beginHostGoneClock();
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
+        setJoinStatus("fail", "Could not join." + wifiJoinHint());
+        $("btn-join").disabled = false;
+      });
+    }
+
+    function startHostGame() {
+      if (!state.isHost) return;
+      const players = [{ id: "host", name: state.myName, token: myToken() }];
+      for (const [id, meta] of guests) players.push({ id, name: meta.name, token: meta.token || id });
+      if (players.length < 2) {
+        toast("Need at least 2 players");
+        return;
+      }
+      state.game = createGame(players);
+      hostBroadcast();
+    }
+
+    function playAgain() {
+      if (state.solo) {
+        startSolo();
+        return;
+      }
+      if (!state.isHost) return;
+      clearAllCatchWindows();
+      state.game = null;
+      stopTimer();
+      sendLobby();
+    }
+
+    function startSolo() {
+      const name = requireName();
+      if (!name) return;
+      state.leaving = false;
+      state.solo = true;
+      state.isHost = true;
+      state.myId = "host";
+      state.myName = name;
+      rememberName(state.myName);
+      state.room = "SOLO";
+      setJoinStatus("", "");
+      const n = Math.max(1, Math.min(3, Number($("bot-count").value) || 2));
+      const players = [{ id: "host", name: state.myName }];
+      for (let i = 0; i < n; i++) players.push({ id: "bot-" + i, name: BOT_NAMES[i], bot: true });
+      state.game = createGame(players);
+      hostBroadcast();
+      updateMicUi();
+    }
+
+    function goHome() {
+      state.leaving = true;
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      clearHostGoneClock();
+      setReconnectUi(false);
+      clearSession();
+      destroyPeer();
+      state.isHost = false;
+      state.solo = false;
+      state.room = "";
+      $("color-pick").classList.remove("show");
+      $("stack-pick").classList.remove("show");
+      $("away-pick").classList.remove("show");
+      $("reconnect-pick").classList.remove("show");
+      $("turn-pop").classList.remove("show");
+      document.body.removeAttribute("data-side");
+      setJoinStatus("", "");
+      $("btn-join").disabled = false;
+      hideWarmup();
+      $("join-code").value = "";
+      stripRoomFromUrl();
+      setInviteHome("");
+      updateMicUi();
+      showScreen("home");
+    }
+
+    $("btn-debug").onclick = openDebug;
+    $("btn-debug-close").onclick = () => $("debug-pick").classList.remove("show");
+    $("btn-debug-copy").onclick = shareDebugLog;
+    $("btn-debug-probe").onclick = runIceProbe;
+    $("btn-turn-save").onclick = saveTurnFromMetered;
+    MiniGames.init({
+      nameKey: "unoflip-name",
+      hubHref: "index.html",
+      maxPlayers: MAX_PLAYERS,
+      setBusy(v) { state.connecting = v; },
+      isBusy() { return state.connecting; },
+    });
+    MiniGames.bindHome({
+      onCreate: createRoom,
+      onJoin: (code) => joinRoom(code),
+      onSolo: startSolo,
+      onLeave: leaveRoom,
+      onHome: goHome,
+      onAgain: playAgain,
+      onStart: startHostGame,
+      inviteUrl: inviteUrl,
+    });
+    $("btn-mic-lobby").onclick = toggleMic;
+    $("btn-mic-game").onclick = toggleMic;
+    $("btn-mute").onclick = () => {
+      muted = !muted;
+      $("btn-mute").textContent = muted ? "🔇" : "🔊";
+      if (!muted) ctx().resume();
+    };
+    $("btn-uno").onclick = () => sendAction({ type: "uno" });
+    $("btn-caught").onclick = () => sendAction({ type: "caught" });
+    $("btn-pass").onclick = () => sendAction({ type: "pass" });
+    $("draw-pile").onclick = () => sendAction({ type: "draw" });
+    $("btn-stack-play").onclick = () => sendAction({ type: "stack", action: "play" });
+    $("btn-stack-take").onclick = () => sendAction({ type: "stack", action: "take" });
+    $("btn-away-wait").onclick = () => {
+      toast("Waiting for them to rejoin…");
+      const g = state.game;
+      if (state.isHost && g && g.players) {
+        for (const p of g.players) {
+          if ((g.awayIds || []).includes(p.id)) p.awayAt = Date.now();
+        }
+      }
+    };
+    $("btn-reconnect-extend").onclick = () => {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      state.hostLostDeadline = Date.now() + HOST_GONE_EXTEND_MS;
+      setReconnectUi(true, "Waiting 2 more minutes for the host…");
+      saveSession();
+      scheduleGuestReconnect();
+    };
+    $("color-pick").addEventListener("click", (e) => {
+      const color = e.target.getAttribute("data-color");
+      if (color) sendAction({ type: "color", color });
+    });
+
+    $("hand-wrap").addEventListener("pointerdown", (e) => {
+      state.handDragged = false;
+      state._hx = e.clientX;
+    });
+    $("hand-wrap").addEventListener("pointermove", (e) => {
+      if (state._hx == null) return;
+      if (Math.abs(e.clientX - state._hx) > 12) state.handDragged = true;
+    });
+    $("hand-wrap").addEventListener("pointerup", () => { state._hx = null; });
+    $("hand-wrap").addEventListener("pointercancel", () => { state._hx = null; });
+    $("hand-wrap").addEventListener("click", (e) => {
+      if (e.target.closest(".ucard")) return;
+      if (isTouchUi()) clearRaised();
+    });
+    window.addEventListener("resize", () => {
+      if (!screens.game.classList.contains("active")) return;
+      layoutHand();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (!screens.game.classList.contains("active")) return;
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")) return;
+      const cards = [...$("hand").querySelectorAll(".ucard")];
+      if (!cards.length) return;
+      const i = cards.findIndex((c) => Number(c.dataset.cardId) === state.raisedCardId);
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const next = cards[i < 0 ? 0 : Math.max(0, i - 1)];
+        if (next) raiseCard(Number(next.dataset.cardId));
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const next = cards[i < 0 ? 0 : Math.min(cards.length - 1, i + 1)];
+        if (next) raiseCard(Number(next.dataset.cardId));
+      }
+      if ((e.key === "Enter" || e.key === " ") && (state.raisedCardId || cards.length)) {
+        e.preventDefault();
+        onPlay(state.raisedCardId || Number(cards[0].dataset.cardId));
+      }
+      if (e.key === "Escape") clearRaised();
+    });
+
+    (function homeDecor() {
+      const wrap = $("home-deco");
+      const samples = [
+        { id: 0, color: "red", value: 7 },
+        { id: 1, color: "yellow", value: "flip" },
+        { id: 2, color: "blue", value: "draw1" },
+        { id: 3, color: "pink", value: "draw5" },
+      ];
+      for (const c of samples) wrap.append(makeCardEl(c, "sm"));
+    })();
+
+    const THEME_KEY = "unoflip-theme";
+
+    function applyTheme(theme) {
+      const dark = theme === "dark";
+      document.body.classList.toggle("dark", dark);
+      $("btn-theme").textContent = dark ? "☀️" : "🌙";
+      $("btn-theme").title = dark ? "Switch to light mode" : "Switch to dark mode";
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute("content", dark ? "#111827" : "#5b1d8a");
+      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    }
+
+    $("btn-theme").onclick = () => {
+      applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
+    };
+
+    applyTheme(localStorage.getItem(THEME_KEY) || "light");
+
+    function sendPing() {
+      const hostConn = state.conns.get("host");
+      if (!hostConn || !hostConn.open) return false;
+      const now = Date.now();
+      if (state.lastPingAt && now - state.lastPingAt < 2000) return true;
+      state.lastPingAt = now;
+      try { hostConn.send({ type: "ping", t: now, rtt: state.myRtt || 0 }); } catch (e) {}
+      return true;
+    }
+
+    function tryResumeConnection() {
+      if (state.leaving || state.solo) return;
+      if (state.isHost) {
+        const peer = state.peer;
+        if (!peer) {
+          recreateHostPeer();
+          return;
+        }
+        if (peer.disconnected) {
+          try { peer.reconnect(); } catch (e) { recreateHostPeer(); }
+        }
+        return;
+      }
+      if (!state.room) return;
+      const hostConn = state.conns.get("host");
+      if (hostConn && hostConn.open) {
+        sendPing();
+        return;
+      }
+      scheduleGuestReconnect();
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) tryResumeConnection();
+    });
+    window.addEventListener("online", tryResumeConnection);
+    window.addEventListener("pageshow", tryResumeConnection);
+    document.addEventListener("resume", tryResumeConnection);
+    setInterval(() => {
+      if (state.leaving || state.solo) return;
+      if (state.isHost && state.game && state.game.phase === "playing") {
+        const now = Date.now();
+        let changed = false;
+        for (const p of state.game.players) {
+          if (p.bot || p.id === "host" || p.kicked) continue;
+          const seen = lastSeen.get(p.id) || 0;
+          if (playerConnOpen(p.id)) {
+            if ((state.game.awayIds || []).includes(p.id)) {
+              noteAlive(p.id);
+            } else {
+              noteSeen(p.id);
+            }
+            continue;
+          }
+          if (p.connected !== false && seen && now - seen > awayGraceFor(p.id)) {
+            markPlayerAway(p.id);
+            changed = true;
+          }
+          if ((state.game.awayIds || []).includes(p.id) && p.awayAt && now - p.awayAt > AWAY_TURN_SKIP_MS) {
+            if (skipAwayTurn(state.game)) changed = true;
+          }
+          if ((state.game.awayIds || []).includes(p.id) && p.awayAt && now - p.awayAt > AWAY_AUTO_KICK_MS) {
+            hostKick(p.id);
+            changed = false;
+          }
+        }
+        if (changed) hostBroadcast();
+        return;
+      }
+      if (!state.isHost && state.room) {
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
+        const hostConn = state.conns.get("host");
+        if (hostConn && hostConn.open) {
+          sendPing();
+        } else if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby")) {
+          scheduleGuestReconnect();
+        }
+      }
+    }, 4000);
+
+    const saved = localStorage.getItem("unoflip-name");
+    if (saved) $("name").value = saved;
+    const params = new URLSearchParams(location.search);
+    const roomParam = (params.get("room") || "").toUpperCase();
+    if (roomParam.length === 4) {
+      $("join-code").value = roomParam;
+      setInviteHome(roomParam);
+      $("name").focus();
+    }
+
+    netlog("boot", netInfo(), iceSummary());
+    window.addEventListener("offline", () => netlog("offline"));
+    window.addEventListener("online", () => netlog("online", netInfo()));
+    const netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (netConn && netConn.addEventListener) {
+      netConn.addEventListener("change", () => netlog("net-change", netInfo()));
+    }
+
+    (function restoreSession() {
+      const snap = loadSession();
+      if (!snap || !snap.room || snap.room === "SOLO") return;
+      if (snap.savedAt && Date.now() - snap.savedAt > 4 * 60 * 60 * 1000) {
+        clearSession();
+        return;
+      }
+      if (snap.name) {
+        state.myName = snap.name;
+        $("name").value = snap.name;
+      }
+      if (roomParam.length === 4 && snap.room !== roomParam && snap.role !== "host") {
+        return;
+      }
+      if (snap.hostLostDeadline) state.hostLostDeadline = snap.hostLostDeadline;
+      if (snap.role === "host" && snap.game) {
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.room = snap.room;
+        state.game = snap.game;
+        rearmCatchWindows(state.game);
+        guests.clear();
+        if (snap.guests) {
+          for (const [id, meta] of snap.guests) guests.set(id, meta);
+        }
+        if (state.game.players) {
+          state.game.awayIds = [];
+          const now = Date.now();
+          for (const p of state.game.players) {
+            if (p.id !== "host" && !p.bot && !p.kicked) {
+              p.connected = false;
+              p.awayAt = now;
+              state.game.awayIds.push(p.id);
+            }
+          }
+        }
+        bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+        applyView(playerView(state.game, "host"));
+        return;
+      }
+      if (snap.role === "guest") {
+        $("join-code").value = snap.room;
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          showHostLost();
+          return;
+        }
+        joinRoom(snap.room, true);
+      }
+    })();
+  </script>
+</body>
+</html>

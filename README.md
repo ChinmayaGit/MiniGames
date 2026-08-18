@@ -11,6 +11,7 @@ The hub is [index.html](index.html): a grid of every title. Open that first, or 
 | **Hub** | Playable | [index.html](index.html) |
 | **Dobble** | Playable | [Dobble.html](Dobble.html) |
 | **Uno** | Playable | [Uno.html](Uno.html) |
+| **Uno Flip** | Playable | [unoflip.html](unoflip.html) |
 | More minigames | Coming soon | — |
 
 How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
@@ -98,6 +99,23 @@ The first player with **no cards left** wins. After the match, the host can play
 - The host must stay on the page. If the host closes the tab, the room ends.
 - You cannot join a game that has already started. Wait for the next round.
 - Wild Draw Four is only legal if you have no card of the current color.
+
+---
+
+## How to play Uno Flip
+
+Same lobby, UNO call, Caught window, stacking, and voice as Uno. Open [unoflip.html](unoflip.html).
+
+The deck is **112 double-sided cards**. Each physical card has a Light face and a Dark face. Playing Flip turns every hand, the draw pile, and the discard to the other side.
+
+**Light** (red / yellow / green / blue): numbers **1–9** twice per color (no 0s), plus Skip, Reverse, Draw One (+1), Flip, Wild, and Wild Draw Two (+2).
+
+**Dark** (pink / teal / orange / purple): numbers **1–9** twice per color, plus Skip Everyone, Reverse, Draw Five (+5), Flip, Wild, and Wild Draw Color.
+
+- Skip Everyone means you play again. Wild Draw Color: the next player draws until they get the chosen color.
+- +1 stacks with +1 or Wild +2. +5 stacks with +5 or Wild Draw Color.
+
+Everyone must open the **same** `unoflip.html` page (Uno rooms do not mix with Flip rooms).
 
 ---
 

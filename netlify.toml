@@ -27,3 +27,13 @@
   from = "/dobble.html"
   to = "/Dobble.html"
   status = 200
+
+[[redirects]]
+  from = "/unoflip"
+  to = "/unoflip.html"
+  status = 200
+
+[[redirects]]
+  from = "/UnoFlip.html"
+  to = "/unoflip.html"
+  status = 200
