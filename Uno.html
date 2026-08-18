@@ -1036,7 +1036,7 @@
         <button class="btn row yellow" id="btn-uno" type="button">UNO!</button>
         <button class="btn row mic" id="btn-mic-game" type="button" title="Turn on microphone" aria-pressed="false">🎤 Mic</button>
         <button class="btn row ghost" id="btn-pass" type="button">Keep</button>
-        <button class="btn row" id="btn-caught" type="button" style="display:none;background:#7c3aed">Caught!</button>
+        <button class="btn row" id="btn-caught" type="button" style="background:#7c3aed">Caught!</button>
       </div>
       <div class="hand-wrap" id="hand-wrap">
         <div class="hand" id="hand"></div>
@@ -1133,6 +1133,9 @@
     const HOST_GONE_EXTEND_MS = 2 * 60 * 1000;
     const AWAY_AUTO_KICK_MS = 3 * 60 * 1000;
     const AWAY_TURN_SKIP_MS = 15 * 1000;
+    const CATCH_WINDOW_MIN_MS = 1500;
+    const CATCH_WINDOW_MAX_MS = 2000;
+    const UNO_HINT_CHANCE = 0.28;
     const FACE = {
       skip: "⊘",
       reverse: "⇄",
@@ -1507,12 +1510,15 @@
       lastPingAt: 0,
       lastRxAt: 0,
       pendingLocalPlay: 0,
+      seenUnoHintSeq: 0,
+      hintGameAt: 0,
       myRtt: 0,
       micOn: false,
       micStream: null,
     };
     const guests = new Map();
     const dropTimers = new Map();
+    const catchTimers = new Map();
     const lastSeen = new Map();
     const rttById = new Map();
     const voiceCalls = new Map();
@@ -1858,6 +1864,7 @@
       if (g) g.awayIds = (g.awayIds || []).filter((id) => id !== p.id);
       lastSeen.delete(p.id);
       rttById.delete(p.id);
+      closeCatchWindow(p.id);
       for (const [peer, meta] of [...guests.entries()]) {
         if (meta.playerId === p.id || peer === p.id) {
           const conn = state.conns.get(peer);
@@ -2048,6 +2055,7 @@
       }
       player.hand.push(...got);
       if (player.hand.length > 1) player.calledUno = false;
+      if (player.hand.length !== 1) closeCatchWindow(player.id);
       return got;
     }
 
@@ -2097,7 +2105,7 @@
         legal,
         lastPlay: game.lastPlay || null,
         playSeq: game.playSeq || 0,
-        catchable: game.players.some((x) => x.id !== id && !x.kicked && x.hand.length === 1 && !x.calledUno),
+        unoHintSeq: catchHintSeqFor(game, id),
         paused,
         away: (game.awayIds || []).filter((aid) => aid && aid !== "host").map((aid) => {
           const x = game.players.find((p) => p.id === aid);
@@ -2164,7 +2172,8 @@
         g: view.legal || [],
         lp: view.lastPlay ? [view.lastPlay.seq, view.lastPlay.playerId, packCard(view.lastPlay.card)] : 0,
         q: view.playSeq || 0,
-        h: view.catchable ? 1 : 0,
+        h: 0,
+        uh: view.unoHintSeq || 0,
         ps: view.paused ? 1 : 0,
         aw: (view.away || []).map((x) => [x.id, x.name]),
         pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0, x.mic ? 1 : 0]),
@@ -2210,7 +2219,7 @@
         legal: raw.g || [],
         lastPlay: raw.lp ? { seq: raw.lp[0], playerId: raw.lp[1], card: unpackCard(raw.lp[2]) } : null,
         playSeq: raw.q || 0,
-        catchable: !!raw.h,
+        unoHintSeq: raw.uh || 0,
         paused: !!raw.ps,
         away: (raw.aw || []).filter((x) => x[0] && x[0] !== "host").map((x) => ({ id: x[0], name: x[1] })),
         players: (raw.pl || []).map((x) => ({
@@ -2248,6 +2257,7 @@
     }
 
     function createGame(people) {
+      clearAllCatchWindows();
       const deck = shuffle(buildDeck());
       const players = people.map((p, i) => ({
         id: p.id,
@@ -2289,6 +2299,8 @@
         players,
         playSeq: 0,
         lastPlay: null,
+        catchWindows: {},
+        unoHintSeq: 0,
       };
     }
 
@@ -2322,6 +2334,7 @@
 
     function finishGame(winnerId) {
       const g = state.game;
+      clearAllCatchWindows();
       const winner = g.players.find((p) => p.id === winnerId);
       g.phase = "end";
       g.winnerId = winnerId;
@@ -2379,10 +2392,7 @@
     }
 
     function afterPlay(g, player, card) {
-      if (player.hand.length === 1 && !player.calledUno) {
-        drawCards(g, player, 2);
-        g.banner = player.name + " forgot UNO! Draw 2";
-      }
+      if (player.hand.length === 1 && !player.calledUno) openCatchWindow(g, player);
       if (!player.hand.length) {
         if (card.value === "wild" || card.value === "wild4") return;
         if (card.value === "draw2") {
@@ -2416,7 +2426,7 @@
         g.turn = nextSeat(g, g.turn);
       }
       const next = g.players[g.turn];
-      if (!g.banner.includes("forgot UNO")) g.banner = next.name + "'s turn";
+      g.banner = next.name + "'s turn";
     }
 
     function hostPlay(playerId, cardId) {
@@ -2440,10 +2450,7 @@
         g.stackChoice = null;
         g.banner = p.name + " played Wild" + (card.value === "wild4" ? " +4" : "") + ". Pick a color";
         if (!p.hand.length) g.banner = p.name + " wins after picking a color";
-        if (p.hand.length === 1 && !p.calledUno) {
-          drawCards(g, p, 2);
-          g.banner = p.name + " forgot UNO! Draw 2. Pick a color";
-        }
+        if (p.hand.length === 1 && !p.calledUno) openCatchWindow(g, p);
         hostBroadcast();
         return;
       }
@@ -2498,6 +2505,80 @@
       hostBroadcast();
     }
 
+    function catchWindowMs() {
+      return CATCH_WINDOW_MIN_MS + Math.floor(Math.random() * (CATCH_WINDOW_MAX_MS - CATCH_WINDOW_MIN_MS + 1));
+    }
+
+    function catchHintSeqFor(game, viewerId) {
+      const windows = game.catchWindows || {};
+      const now = Date.now();
+      const show = Object.keys(windows).some((id) => {
+        const w = windows[id];
+        return w && w.hint && id !== viewerId && w.until > now;
+      });
+      return show ? (game.unoHintSeq || 0) : 0;
+    }
+
+    function closeCatchWindow(victimId) {
+      const t = catchTimers.get(victimId);
+      if (t) clearTimeout(t);
+      catchTimers.delete(victimId);
+      const g = state.game;
+      if (g && g.catchWindows) delete g.catchWindows[victimId];
+    }
+
+    function clearAllCatchWindows() {
+      catchTimers.forEach((t) => clearTimeout(t));
+      catchTimers.clear();
+      if (state.game) {
+        state.game.catchWindows = {};
+      }
+    }
+
+    function expireCatchWindow(victimId) {
+      const g = state.game;
+      const hadHint = !!(g && g.catchWindows && g.catchWindows[victimId] && g.catchWindows[victimId].hint);
+      closeCatchWindow(victimId);
+      if (hadHint && g && g.phase === "playing") hostBroadcast();
+    }
+
+    function openCatchWindow(g, player) {
+      if (!g || g.phase !== "playing" || !player || player.kicked) return;
+      if (player.hand.length !== 1 || player.calledUno) return;
+      closeCatchWindow(player.id);
+      const ms = catchWindowMs();
+      const hint = Math.random() < UNO_HINT_CHANCE;
+      g.catchWindows = g.catchWindows || {};
+      g.catchWindows[player.id] = { until: Date.now() + ms, hint };
+      if (hint) g.unoHintSeq = (g.unoHintSeq || 0) + 1;
+      catchTimers.set(player.id, setTimeout(() => expireCatchWindow(player.id), ms));
+    }
+
+    function activeCatchVictim(g, callerId) {
+      const now = Date.now();
+      const windows = Object.entries(g.catchWindows || {})
+        .filter(([id, w]) => id !== callerId && w && w.until > now)
+        .sort((a, b) => b[1].until - a[1].until);
+      for (const [id] of windows) {
+        const p = g.players.find((x) => x.id === id && !x.kicked && x.hand.length === 1 && !x.calledUno);
+        if (p) return p;
+      }
+      return null;
+    }
+
+    function rearmCatchWindows(g) {
+      catchTimers.forEach((t) => clearTimeout(t));
+      catchTimers.clear();
+      if (!g || !g.catchWindows) return;
+      const now = Date.now();
+      for (const id of Object.keys(g.catchWindows)) {
+        const w = g.catchWindows[id];
+        const left = (w && w.until || 0) - now;
+        if (left <= 0) delete g.catchWindows[id];
+        else catchTimers.set(id, setTimeout(() => expireCatchWindow(id), left));
+      }
+    }
+
     function hostUno(playerId) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
@@ -2505,6 +2586,7 @@
       const p = g.players.find((x) => x.id === playerId);
       if (!p || p.hand.length > 2) return;
       p.calledUno = true;
+      closeCatchWindow(playerId);
       sfx("uno");
       g.banner = p.name + " says UNO!";
       hostBroadcast();
@@ -2513,13 +2595,17 @@
     function hostCaught(callerId) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
-      if (isPaused()) return;
-      const victim = g.players.find((p) => p.hand.length === 1 && !p.calledUno && p.id !== callerId);
-      if (!victim) return;
-      drawCards(g, victim, 2);
+      if (g.catchLock) return;
       const caller = g.players.find((p) => p.id === callerId);
-      g.banner = (caller ? caller.name : "Someone") + " caught " + victim.name + "! Draw 2";
+      if (!caller || caller.kicked) return;
+      const victim = activeCatchVictim(g, callerId);
+      if (!victim) return;
+      g.catchLock = true;
+      closeCatchWindow(victim.id);
+      drawCards(g, victim, 2);
+      g.banner = caller.name + " caught " + victim.name + "! Draw 2";
       sfx("bad");
+      g.catchLock = false;
       hostBroadcast();
     }
 
@@ -2688,6 +2774,14 @@
       if (view.phase === "playing") {
         showScreen("game");
         $("game-code").textContent = view.room || state.room;
+        if (view.startedAt && view.startedAt !== state.hintGameAt) {
+          state.hintGameAt = view.startedAt;
+          state.seenUnoHintSeq = 0;
+        }
+        if (view.unoHintSeq && view.unoHintSeq !== state.seenUnoHintSeq) {
+          state.seenUnoHintSeq = view.unoHintSeq;
+          toast("👀 Someone might have forgotten UNO...");
+        }
         if (state.pendingLocalPlay && view.you && (view.you.hand || []).some((c) => c.id === state.pendingLocalPlay)) {
           state.pendingLocalPlay = 0;
         }
@@ -2707,7 +2801,7 @@
         $("btn-uno").disabled = view.you.hand.length > 2 || view.you.calledUno;
         $("btn-uno").classList.toggle("pulse", view.you.hand.length === 2 && !view.you.calledUno);
         $("btn-pass").style.display = view.drawnCardId ? "inline-flex" : "none";
-        $("btn-caught").style.display = view.catchable ? "inline-flex" : "none";
+        $("btn-caught").style.display = "inline-flex";
         $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId || view.stackChoice === view.you.id || !!view.paused;
         $("color-pick").classList.toggle("show", view.choosingColor === view.you.id && !view.paused);
         const stackAsk = view.stackChoice === view.you.id && !view.paused;
@@ -3334,6 +3428,7 @@
 
     function destroyPeer() {
       stopTimer();
+      clearAllCatchWindows();
       clearTimeout(state.reconnectTimer);
       state.reconnectTimer = 0;
       setReconnectUi(false);
@@ -3632,6 +3727,7 @@
         return;
       }
       if (!state.isHost) return;
+      clearAllCatchWindows();
       state.game = null;
       stopTimer();
       sendLobby();
@@ -3931,6 +4027,7 @@
         state.myId = "host";
         state.room = snap.room;
         state.game = snap.game;
+        rearmCatchWindows(state.game);
         guests.clear();
         if (snap.guests) {
           for (const [id, meta] of snap.guests) guests.set(id, meta);

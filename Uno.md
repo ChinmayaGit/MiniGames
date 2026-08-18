@@ -15,7 +15,7 @@ How to play from a player’s point of view is in the collection [README](README
 - **Invite URLs** — `?room=ABCD` prefills join and hides Create until you leave the invite.
 - **Classic table** — fanned hands, play-to-pile animation, color chip, dark mode.
 - **+2 / +4 stacking** — +2 on +2, +4 on +2 or +4, not +2 on +4. Prompt only if the next player has a legal + card.
-- **UNO / Caught!** — call before going to one card; others can catch a miss.
+- **UNO / Caught!** — call before going to one card. Forgetting is silent unless someone taps **Caught!** in a short window.
 - **Voice** — **🎤 Mic** in the lobby (under the player list) and in-game (next to UNO). 🔊 is game SFX only.
 - **Leave** — lobby, game, reconnect overlay, and invite home. Last remaining player wins.
 - **Reconnect** — seat token in `localStorage`; same hand after lock/refresh. Host gone: retry 3 minutes, optional +2, then Leave so Create room shows again.
@@ -284,7 +284,11 @@ Whoever finally takes it draws the full stacked amount and misses their turn.
 
 ### UNO
 
-When you have **2 cards**, tap **UNO!** before playing down to one. If you play to a single card without calling it, you draw 2 as a penalty. Other players can tap **Caught!** if you forget.
+When you have **2 cards**, tap **UNO!** before playing down to one. **Caught!** stays on the table the whole game.
+
+If you drop to one card without calling it, nothing is announced. Other players have a hidden **1.5–2 second** window to tap **Caught!** and make you draw 2. If nobody does, you get away — no penalty, no reveal.
+
+Sometimes (not always) others see a quiet hint: `👀 Someone might have forgotten UNO...`. Tune `UNO_HINT_CHANCE` in `Uno.html` (default `0.28`). Window length is `CATCH_WINDOW_MIN_MS`–`CATCH_WINDOW_MAX_MS`.
 
 Bots always call UNO on time.
 
@@ -297,7 +301,7 @@ The first player whose hand is empty wins. If the last card is Draw Two or Wild 
 - Stacking Draw Twos and Wild Draw Fours, with +2 allowed on +2, and +4 allowed on +2 or +4, but **not** +2 on +4.
 - No challenging a Wild Draw Four.
 - Starting card is always a number.
-- Forgotten UNO can be caught by other players.
+- Forgotten UNO is only punished if another player taps **Caught!** during the short hidden window.
 
 ### Host authority (anti-desync)
 
@@ -354,7 +358,7 @@ Tiny JSON over the PeerJS data channel:
 | Guest → host | `draw` | Draw one card, or take a pending + stack |
 | Guest → host | `pass` | Keep a just-drawn card |
 | Guest → host | `uno` | Call UNO (hand size ≤ 2) |
-| Guest → host | `caught` | Catch a player who forgot UNO |
+| Guest → host | `caught` | Catch a player during the hidden UNO window |
 | Guest → host | `color` | Chosen color after a wild |
 | Guest → host | `stack` | `play` or `take` a pending + stack |
 | Guest → host | `kick` | Remove an away player (never the host) |
