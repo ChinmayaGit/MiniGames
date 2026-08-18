@@ -83,11 +83,31 @@ Everyone loads the same static page. Multiplayer is **browser-to-browser WebRTC*
 
 This is the most reliable path. The lobby even hints that same Wi‑Fi works best.
 
+### Different countries (India and UK, etc.)
+
+There is **no region lock**. A host in India and a guest in the UK load the same page, use the same 4-letter code, and PeerJS introduces them. Game messages then go **browser to browser** (or through a TURN relay if a direct path is blocked).
+
+Uno is turn-based, so 150–300 ms of extra latency is fine. You do not need a server in each country.
+
+### Slow links (ships, satellite, mid-ocean)
+
+If someone has internet but it is very slow (VSAT, Starlink at sea, high delay), the game still works. It measures round-trip time and then:
+
+- Sends a **compact** table snapshot instead of bulky JSON
+- Lets you play a card **immediately**; the host still confirms
+- Pings less often and waits longer before marking someone away (so lag is not treated as a disconnect)
+- Reconnects with backoff instead of retrying every second (which would flood a tiny pipe)
+- Gives join/rejoin more time to finish
+
+They still need a working data connection. If the link drops for minutes, use Leave / Wait as usual. A ship with only a few kb/s will feel sluggish between turns, but a play is one small message.
+
+What *can* fail is NAT, not distance: some mobile carriers and office networks block direct P2P. The game now tries several global STUN servers and a public TURN fallback so those joins still work more often. Both players still need HTTPS (GitHub Pages / Netlify) and the host tab must stay open.
+
 ### Different networks (internet, mobile data, another house)
 
 1. Guests still connect to `unohost-XXXX` through PeerJS signaling. They do not need the host’s IP.
-2. Google STUN (`stun.l.google.com`, `stun1.l.google.com`) helps each browser discover its public address through NAT.
-3. WebRTC then tries a **direct** peer-to-peer data channel across the internet.
+2. STUN (Google, Cloudflare, Metered) helps each browser discover its public address through NAT.
+3. WebRTC then tries a **direct** peer-to-peer data channel. If both sides are behind a hard NAT, it can relay via TURN.
 
 Invite options that work across networks:
 
@@ -101,7 +121,7 @@ The host tab must stay open. Guests talk to the host, not to a cloud game server
 
 ### What this setup does *not* do
 
-There is **no TURN relay**. If both sides are behind strict symmetric NATs (some offices, some mobile carriers), STUN may not be enough and the join can fail. Same Wi‑Fi almost always works; cross-network usually works on typical home routers.
+There is still **no game server in the cloud**. If TURN is also blocked or the public relay is down, a few office/mobile pairs still cannot join. Same Wi‑Fi almost always works; home broadband across countries usually works; some LTE/CGNAT pairs need the TURN fallback.
 
 HTTPS is required for WebRTC in modern browsers, which is why GitHub Pages / Netlify are a good fit.
 
@@ -161,14 +181,29 @@ Bots always call UNO on time.
 
 The first player whose hand is empty wins. If the last card is Draw Two or Wild Draw Four, the next player still draws, then the game ends.
 
-### Disconnects, phone lock, wait or kick
+### Disconnects, leave, and host timeout
 
 WebRTC drops when a phone locks or the tab is backgrounded. The game treats that as **away**, not logged out.
 
 - Each player has a hidden seat token in `localStorage`. Rejoining the same room (auto-retry, unlock, or refresh) restores that seat and hand.
 - The host tab keeps the authoritative game. If the host’s connection dies, it re-registers the same `unohost-XXXX` room so guests can find it again.
-- While someone is away, play **pauses**. Everyone still in the room sees **Wait for them** or **Kick [name]**.
-- Wait is the default: the table stays frozen until they rejoin. Kick removes them so the others can continue. You cannot kick the host; if the host is gone, guests keep trying to reconnect.
+- While someone is away, play **pauses**. Everyone still in the room sees **Wait for them** or **Kick [name]**. Away seats are auto-kicked after **3 minutes**.
+- **Leave** is always available (lobby, game, reconnect overlay, and invite links). Leaving vacates the seat immediately. The same token cannot reclaim a kicked/left seat.
+- If only **one player remains**, they win and the game ends.
+- You cannot kick the host. If the host **leaves**, guests get `host-left` and stop retrying. If the host **disappears**, guests retry for **3 minutes**, then can **Leave** or **Wait 2 more minutes**. After Leave, **Create room** is shown again (invite `?room=` is stripped from the URL).
+
+#### Session scenarios
+
+| Situation | What happens |
+| --- | --- |
+| Guest leaves lobby | Host drops them from the lobby list. Guest home shows Create room. |
+| Guest leaves mid-game | Seat is vacated. Turn skips them. Last remaining player wins. |
+| Host leaves | Guests get `host-left`. Overlay: Leave table (no endless retry). |
+| Host tab dies / offline | Guests retry for 3 min (extend +2). Then Leave or keep waiting. |
+| Guest phone lock | 6s grace, then away + pause. Rejoin restores the same hand. Auto-kick at 3 min. |
+| Invite link, host gone | Join fails. **Leave this invite** (or 3 min timeout) reveals Create room. |
+| Kicked / already started | Guest is sent home and can create a new room. |
+| Reload mid-session | Host restores the table; guests reconnect. Host-gone clock is persisted. |
 
 ### House rules this build uses
 
@@ -218,8 +253,12 @@ Tiny JSON over the PeerJS data channel:
 | Guest → host | `color` | Chosen color after a wild |
 | Guest → host | `stack` | `play` or `take` a pending + stack |
 | Guest → host | `kick` | Remove an away player |
-| Host → guest | `state` | Lobby or in-game view |
-| Host → guest | `error` | e.g. game already started |
+| Guest → host | `leave` | Vacate seat / drop from lobby |
+| Guest → host | `ping` | Keepalive + measured RTT |
+| Host → guest | `pong` | Echo of ping timestamp |
+| Host → guest | `state` | Compact lobby or in-game view (`v`) |
+| Host → guest | `error` | e.g. game already started, kicked |
+| Host → guest | `host-left` | Host closed the room; stop retrying |
 
 That is the entire network API.
 

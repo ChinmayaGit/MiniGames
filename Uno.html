@@ -952,6 +952,7 @@
         </div>
         <div class="join-bar"><i></i></div>
       </div>
+      <button class="btn ghost" id="btn-invite-leave" type="button" style="display:none;margin-top:10px">Leave this invite</button>
       <div class="row" id="solo-home-row">
         <div style="flex:1">
           <label for="bot-count">Practice vs bots</label>
@@ -975,6 +976,7 @@
         <div class="code-pill" id="lobby-code">----</div>
       </div>
       <button class="btn row ghost" id="btn-copy">Copy link</button>
+      <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
     </div>
     <div class="lobby-grid">
       <div class="panel" style="width:auto;margin:0">
@@ -1000,6 +1002,7 @@
       <div class="code-pill" id="game-code">----</div>
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:#fff">0:00</div>
       <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
         <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
@@ -1094,7 +1097,9 @@
     <div class="panel">
       <b id="reconnect-title">Rejoining…</b>
       <p class="hint" id="reconnect-sub">Connection dropped. Trying to get you back in.</p>
-      <div class="join-bar" style="display:block;margin-top:14px"><i></i></div>
+      <div class="join-bar" id="reconnect-bar" style="display:block;margin-top:14px"><i></i></div>
+      <button class="btn ghost" id="btn-reconnect-extend" type="button" style="display:none">Wait 2 more minutes</button>
+      <button class="btn" id="btn-reconnect-leave" type="button">Leave table</button>
     </div>
   </div>
 
@@ -1109,6 +1114,9 @@
     const SEAT = ["#c41e3a", "#1b5eaa", "#c9a400", "#2e8b3a", "#7c3aed", "#0f766e"];
     const BOT_NAMES = ["Rita", "Leo", "Maya"];
     const PEER_PREFIX = "unohost-";
+    const HOST_GONE_MS = 3 * 60 * 1000;
+    const HOST_GONE_EXTEND_MS = 2 * 60 * 1000;
+    const AWAY_AUTO_KICK_MS = 3 * 60 * 1000;
     const FACE = {
       skip: "⊘",
       reverse: "⇄",
@@ -1156,9 +1164,10 @@
       $("btn-create").style.display = invite ? "none" : "";
       $("solo-home-row").style.display = invite ? "none" : "";
       $("btn-solo").style.display = invite ? "none" : "";
+      $("btn-invite-leave").style.display = invite ? "" : "none";
       $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join friends";
       $("home-hint").textContent = invite
-        ? "You're joining a friend's room. Enter your name, then tap Join."
+        ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite to create your own room."
         : "Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.";
     }
 
@@ -1304,10 +1313,62 @@
       leaving: false,
       replacingPeer: false,
       reconnecting: false,
+      hostLostDeadline: 0,
+      hostWaitExpired: false,
+      hostLeftExplicit: false,
+      reconnectAttempt: 0,
+      bcastTimer: 0,
+      lastPingAt: 0,
+      lastRxAt: 0,
+      pendingLocalPlay: 0,
+      myRtt: 0,
     };
     const guests = new Map();
     const dropTimers = new Map();
     const lastSeen = new Map();
+    const rttById = new Map();
+
+    function noteRtt(id, ms) {
+      const n = Number(ms);
+      if (!id || !n || n < 20 || n > 20000) return;
+      rttById.set(id, n);
+      if (id === state.myId || id === "me") state.myRtt = n;
+    }
+
+    function worstRtt() {
+      let m = state.myRtt || 0;
+      for (const v of rttById.values()) if (v > m) m = v;
+      return m;
+    }
+
+    function linkIsSlow() {
+      return worstRtt() >= 400 || state.reconnectAttempt > 2;
+    }
+
+    function pingEveryMs() {
+      return linkIsSlow() ? 10000 : 4000;
+    }
+
+    function awayGraceFor(playerId) {
+      const rtt = rttById.get(playerId) || 0;
+      const ping = (rtt >= 400 || linkIsSlow()) ? 10000 : 4000;
+      return Math.max(ping * 3, 10000 + rtt * 8);
+    }
+
+    function dropGraceMs() {
+      return linkIsSlow() ? 20000 : 8000;
+    }
+
+    function reconnectDelayMs() {
+      const n = Math.min(state.reconnectAttempt || 0, 6);
+      const base = linkIsSlow() ? 2800 : 1600;
+      return Math.min(18000, Math.round(base * Math.pow(1.55, n)));
+    }
+
+    function joinWaitMs(reconnect) {
+      if (linkIsSlow()) return reconnect ? 32000 : 24000;
+      return reconnect ? 12000 : 14000;
+    }
 
     function myToken() {
       let t = localStorage.getItem("uno-token");
@@ -1328,6 +1389,7 @@
         myId: state.myId,
         game: state.isHost ? state.game : null,
         guests: state.isHost ? [...guests.entries()] : null,
+        hostLostDeadline: state.hostLostDeadline || 0,
         savedAt: Date.now(),
       });
       try { sessionStorage.setItem("uno-session", payload); } catch (e) {}
@@ -1363,15 +1425,214 @@
       if (!el) return;
       el.classList.toggle("show", !!on);
       if (text) $("reconnect-sub").textContent = text;
+      const lost = !!on && state.hostLostDeadline && Date.now() >= state.hostLostDeadline;
+      $("reconnect-title").textContent = state.hostLeftExplicit
+        ? "Host left"
+        : (lost ? "Host didn't come back" : "Rejoining…");
+      $("reconnect-bar").style.display = lost || state.hostLeftExplicit ? "none" : "block";
+      $("btn-reconnect-extend").style.display = lost && !state.hostLeftExplicit ? "" : "none";
+    }
+
+    function stripRoomFromUrl() {
+      try {
+        const u = new URL(location.href);
+        if (!u.searchParams.has("room")) return;
+        u.searchParams.delete("room");
+        const q = u.searchParams.toString();
+        history.replaceState({}, "", u.pathname + (q ? "?" + q : "") + u.hash);
+      } catch (e) {}
+    }
+
+    // Session handler: leave, last-player win, host-gone timeout (3 min + optional 2).
+    // Guests never retry forever. Invite links can be abandoned so Create room returns.
+    function remainingPlayers(g) {
+      return (g.players || []).filter((p) => !p.kicked);
+    }
+
+    function endIfLastPlayer(g) {
+      if (!g || g.phase !== "playing") return false;
+      const left = remainingPlayers(g);
+      if (left.length >= 2) return false;
+      if (left.length === 1) {
+        g.banner = "Everyone else left — " + left[0].name + " wins";
+        finishGame(left[0].id);
+        return true;
+      }
+      g.phase = "end";
+      g.winnerId = null;
+      g.banner = "Everyone left";
+      hostBroadcast();
+      return true;
+    }
+
+    function vacateSeat(g, p) {
+      if (!p) return;
+      p.kicked = true;
+      p.connected = false;
+      p.left = true;
+      if (g) g.awayIds = (g.awayIds || []).filter((id) => id !== p.id);
+      lastSeen.delete(p.id);
+      rttById.delete(p.id);
+      for (const [peer, meta] of [...guests.entries()]) {
+        if (meta.playerId === p.id || peer === p.id) {
+          const conn = state.conns.get(peer);
+          if (conn) {
+            try { conn.close(); } catch (e) {}
+          }
+          state.conns.delete(peer);
+          guests.delete(peer);
+        }
+      }
+      if (!g || g.phase !== "playing") return;
+      if (g.choosingColor === p.id) {
+        g.currentColor = "red";
+        g.choosingColor = null;
+      }
+      if (g.stackChoice === p.id) g.stackChoice = null;
+      if (g.players[g.turn] && g.players[g.turn].id === p.id) {
+        if (g.pendingDraw) resolvePendingDraw(g);
+        else g.turn = nextSeat(g, g.turn);
+      }
+    }
+
+    function hostPlayerLeave(playerId) {
+      if (playerId === "host") {
+        notifyHostLeft();
+        return;
+      }
+      if (!state.game) {
+        for (const [peer, meta] of [...guests.entries()]) {
+          if (meta.playerId === playerId || peer === playerId) {
+            const conn = state.conns.get(peer);
+            if (conn) {
+              try { conn.close(); } catch (e) {}
+            }
+            state.conns.delete(peer);
+            guests.delete(peer);
+          }
+        }
+        sendLobby();
+        return;
+      }
+      const p = state.game.players.find((x) => x.id === playerId);
+      if (!p || p.kicked || p.bot) return;
+      vacateSeat(state.game, p);
+      if (endIfLastPlayer(state.game)) return;
+      state.game.banner = p.name + " left";
+      hostBroadcast();
+    }
+
+    function notifyHostLeft() {
+      for (const [, conn] of state.conns) {
+        if (conn && conn.open) {
+          try { conn.send({ type: "host-left" }); } catch (e) {}
+        }
+      }
+    }
+
+    function onHostLeft() {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      state.hostLeftExplicit = true;
+      state.hostLostDeadline = Date.now() - 1;
+      setReconnectUi(true, "The host left the table. You can leave and create your own room.");
+    }
+
+    function beginHostGoneClock() {
+      if (!state.hostLostDeadline) state.hostLostDeadline = Date.now() + HOST_GONE_MS;
+      saveSession();
+    }
+
+    function clearHostGoneClock() {
+      state.hostLostDeadline = 0;
+      state.hostWaitExpired = false;
+      state.hostLeftExplicit = false;
+    }
+
+    function hostGoneTimedOut() {
+      return !!(state.hostLostDeadline && Date.now() >= state.hostLostDeadline);
+    }
+
+    function showHostLost() {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(true, state.hostLeftExplicit
+        ? "The host left the table. You can leave and create your own room."
+        : "No response for 3 minutes. Leave, or wait 2 more minutes.");
+    }
+
+    function expireHostWait() {
+      if (state.leaving) return;
+      const inTable = !!(state.view && (state.view.phase === "playing" || state.view.phase === "lobby" || state.view.phase === "end"));
+      if (inTable || state.reconnecting) {
+        showHostLost();
+        return;
+      }
+      if (state.hostWaitExpired) return;
+      state.hostWaitExpired = true;
+      clearJoinWait();
+      destroyNetwork();
+      clearSession();
+      stripRoomFromUrl();
+      setInviteHome("");
+      setJoinStatus("fail", "The host didn't come back after 3 minutes. Create your own room, or try the code again.");
+    }
+
+    const SESSION_FLUSH_MS = 220;
+
+    function leaveRoom() {
+      if (state.leaving) return;
+      state.leaving = true;
+      if (state.solo) {
+        goHome();
+        return;
+      }
+      if (state.isHost) {
+        notifyHostLeft();
+        setTimeout(goHome, SESSION_FLUSH_MS);
+        return;
+      }
+      const hostConn = state.conns.get("host");
+      if (hostConn && hostConn.open) {
+        try { hostConn.send({ type: "leave" }); } catch (e) {}
+        setTimeout(goHome, SESSION_FLUSH_MS);
+        return;
+      }
+      goHome();
+    }
+
+    function sessionDenied(message) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(false);
+      toast(message || "You can't join this table");
+      goHome();
     }
 
     function peerOptions() {
+      // Signaling is global (PeerJS cloud). Game traffic is browser-to-browser.
+      // Extra STUN + public TURN help India↔UK and other cross-region NATs.
       return {
         debug: 0,
+        secure: true,
         config: {
+          iceCandidatePoolSize: 8,
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun.cloudflare.com:3478" },
+            { urls: "stun:stun.relay.metered.ca:80" },
+            {
+              urls: [
+                "turn:openrelay.metered.ca:80",
+                "turn:openrelay.metered.ca:443",
+                "turn:openrelay.metered.ca:443?transport=tcp",
+                "turns:openrelay.metered.ca:443?transport=tcp",
+              ],
+              username: "openrelayproject",
+              credential: "openrelayproject",
+            },
           ],
         },
       };
@@ -1491,12 +1752,12 @@
         legal,
         lastPlay: game.lastPlay || null,
         playSeq: game.playSeq || 0,
-        catchable: game.players.some((x) => x.id !== id && x.hand.length === 1 && !x.calledUno),
+        catchable: game.players.some((x) => x.id !== id && !x.kicked && x.hand.length === 1 && !x.calledUno),
         away: (game.awayIds || []).map((aid) => {
           const x = game.players.find((p) => p.id === aid);
           return { id: aid, name: x ? x.name : "Player" };
         }),
-        players: game.players.map((x) => ({
+        players: game.players.filter((x) => !x.kicked).map((x) => ({
           id: x.id,
           name: x.name,
           color: x.seatColor,
@@ -1505,9 +1766,125 @@
           calledUno: x.calledUno,
           isTurn: game.players[game.turn].id === x.id,
           bot: !!x.bot,
-          kicked: !!x.kicked,
         })),
       };
+    }
+
+    const C1 = { r: "red", y: "yellow", g: "green", b: "blue", w: "wild" };
+    const V1 = { s: "skip", r: "reverse", d: "draw2", w: "wild", f: "wild4" };
+
+    function packCard(c) {
+      if (!c) return 0;
+      const v = typeof c.value === "number" ? c.value : { skip: "s", reverse: "r", draw2: "d", wild: "w", wild4: "f" }[c.value];
+      return [c.id, c.color[0], v];
+    }
+
+    function unpackCard(a) {
+      if (!a) return null;
+      const value = typeof a[2] === "number" ? a[2] : (V1[a[2]] || a[2]);
+      return { id: a[0], color: C1[a[1]] || a[1], value };
+    }
+
+    function packView(view) {
+      if (!view) return null;
+      if (view.phase === "lobby") {
+        return {
+          p: "l",
+          r: view.room,
+          y: view.you && view.you.id,
+          pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.connected === false ? 0 : 1]),
+        };
+      }
+      return {
+        p: view.phase === "end" ? "e" : "g",
+        r: view.room,
+        b: view.banner || "",
+        a: view.startedAt || 0,
+        w: view.winnerId || 0,
+        d: view.direction,
+        c: view.currentColor ? view.currentColor[0] : "r",
+        t: packCard(view.top),
+        n: view.drawCount || 0,
+        u: view.turnId,
+        k: view.choosingColor || 0,
+        dr: view.drawnCardId || 0,
+        pd: view.pendingDraw || 0,
+        pk: view.pendingKind || 0,
+        sc: view.stackChoice || 0,
+        y: [view.you.id, (view.you.hand || []).map(packCard), view.you.calledUno ? 1 : 0, view.you.isTurn ? 1 : 0],
+        g: view.legal || [],
+        lp: view.lastPlay ? [view.lastPlay.seq, view.lastPlay.playerId, packCard(view.lastPlay.card)] : 0,
+        q: view.playSeq || 0,
+        h: view.catchable ? 1 : 0,
+        aw: (view.away || []).map((x) => [x.id, x.name]),
+        pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0]),
+      };
+    }
+
+    function unpackView(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      if (raw.phase) return raw;
+      if (raw.p === "l") {
+        return {
+          phase: "lobby",
+          room: raw.r,
+          you: { id: raw.y },
+          players: (raw.pl || []).map((x) => ({ id: x[0], name: x[1], color: x[2], connected: !!x[3] })),
+        };
+      }
+      const you = raw.y || [];
+      return {
+        phase: raw.p === "e" ? "end" : "playing",
+        room: raw.r,
+        banner: raw.b || "",
+        startedAt: raw.a || 0,
+        winnerId: raw.w || null,
+        direction: raw.d,
+        currentColor: C1[raw.c] || raw.c || "red",
+        top: unpackCard(raw.t),
+        drawCount: raw.n || 0,
+        turnId: raw.u,
+        choosingColor: raw.k || null,
+        drawnCardId: raw.dr || null,
+        pendingDraw: raw.pd || 0,
+        pendingKind: raw.pk || null,
+        stackChoice: raw.sc || null,
+        you: {
+          id: you[0],
+          hand: (you[1] || []).map(unpackCard),
+          calledUno: !!you[2],
+          isTurn: !!you[3],
+        },
+        legal: raw.g || [],
+        lastPlay: raw.lp ? { seq: raw.lp[0], playerId: raw.lp[1], card: unpackCard(raw.lp[2]) } : null,
+        playSeq: raw.q || 0,
+        catchable: !!raw.h,
+        away: (raw.aw || []).map((x) => ({ id: x[0], name: x[1] })),
+        players: (raw.pl || []).map((x) => ({
+          id: x[0],
+          name: x[1],
+          color: x[2],
+          count: x[3],
+          connected: !!x[4],
+          calledUno: !!x[5],
+          isTurn: !!x[6],
+          bot: !!x[7],
+        })),
+      };
+    }
+
+    function sendPackedState(conn, view) {
+      if (!conn || !conn.open) return;
+      try { conn.send({ type: "state", v: packView(view) }); } catch (e) {}
+    }
+
+    function ingestState(msg) {
+      const view = unpackView(msg && (msg.v || msg.view));
+      if (!view) return;
+      state.lastRxAt = Date.now();
+      state.reconnectAttempt = 0;
+      applyView(view);
+      saveSession();
     }
 
     function createGame(people) {
@@ -1555,30 +1932,45 @@
       };
     }
 
-    function hostBroadcast() {
+    function flushBroadcast() {
+      state.bcastTimer = 0;
+      if (!state.game) return;
+      applyView(playerView(state.game, "host"));
+      if (!state.solo) {
+        for (const [peer, conn] of state.conns) {
+          sendPackedState(conn, playerView(state.game, playerIdFromPeer(peer)));
+        }
+      }
+      saveSession();
+      maybeBot();
+    }
+
+    function hostBroadcast(immediate) {
       if (state.solo) {
         applyView(playerView(state.game, "host"));
         maybeBot();
         return;
       }
-      applyView(playerView(state.game, "host"));
-      for (const [peer, conn] of state.conns) {
-        if (conn.open) {
-          try { conn.send({ type: "state", view: playerView(state.game, playerIdFromPeer(peer)) }); }
-          catch (e) {}
-        }
+      if (immediate) {
+        clearTimeout(state.bcastTimer);
+        flushBroadcast();
+        return;
       }
-      saveSession();
+      if (state.bcastTimer) return;
+      state.bcastTimer = setTimeout(flushBroadcast, linkIsSlow() ? 80 : 24);
     }
 
     function finishGame(winnerId) {
       const g = state.game;
+      const winner = g.players.find((p) => p.id === winnerId);
       g.phase = "end";
       g.winnerId = winnerId;
       g.choosingColor = null;
-      g.banner = g.players.find((p) => p.id === winnerId).name + " wins!";
+      g.stackChoice = null;
+      g.awayIds = [];
+      g.banner = winner ? winner.name + " wins!" : "Game over";
       sfx("win");
-      hostBroadcast();
+      hostBroadcast(true);
     }
 
     function nameOf(g, id) {
@@ -1795,36 +2187,8 @@
       if (!g || g.phase !== "playing") return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || p.id === "host" || p.bot || p.kicked) return;
-      p.kicked = true;
-      p.connected = false;
-      g.awayIds = (g.awayIds || []).filter((id) => id !== p.id);
-      for (const [peer, meta] of [...guests.entries()]) {
-        if (meta.playerId === p.id || peer === p.id) {
-          const conn = state.conns.get(peer);
-          if (conn) {
-            try { conn.close(); } catch (e) {}
-          }
-          state.conns.delete(peer);
-          guests.delete(peer);
-        }
-      }
-      if (g.choosingColor === p.id) {
-        g.currentColor = "red";
-        g.choosingColor = null;
-      }
-      if (g.stackChoice === p.id) g.stackChoice = null;
-      if (g.players[g.turn].id === p.id) {
-        if (g.pendingDraw) resolvePendingDraw(g);
-        else g.turn = nextSeat(g, g.turn);
-      }
-      const stillIn = g.players.filter((x) => !x.kicked);
-      if (stillIn.length < 2) {
-        const winner = stillIn[0];
-        if (winner) {
-          finishGame(winner.id);
-          return;
-        }
-      }
+      vacateSeat(g, p);
+      if (endIfLastPlayer(g)) return;
       g.banner = p.name + " was kicked";
       hostBroadcast();
     }
@@ -1960,6 +2324,9 @@
       if (view.phase === "playing") {
         showScreen("game");
         $("game-code").textContent = view.room || state.room;
+        if (state.pendingLocalPlay && view.you && (view.you.hand || []).some((c) => c.id === state.pendingLocalPlay)) {
+          state.pendingLocalPlay = 0;
+        }
         // Two-row banner: who is playing (top), action text (bottom)
         const turnPlayer = view.players.find((p) => p.isTurn);
         $("banner-turn").textContent = turnPlayer
@@ -2010,9 +2377,15 @@
         if (view.startedAt && !state.timerId) startTimer(view.startedAt);
         const play = view.lastPlay;
         if (play && play.seq && play.seq !== state.seenPlaySeq) {
+          const alreadyFlew = state.pendingLocalPlay && play.card && play.card.id === state.pendingLocalPlay;
           state.seenPlaySeq = play.seq;
-          renderDiscard(prevTop || view.top);
-          flyToPile(play.card, originRect(play), () => renderDiscard(view.top));
+          state.pendingLocalPlay = 0;
+          if (alreadyFlew || linkIsSlow()) {
+            renderDiscard(view.top);
+          } else {
+            renderDiscard(prevTop || view.top);
+            flyToPile(play.card, originRect(play), () => renderDiscard(view.top));
+          }
         } else {
           renderDiscard(view.top);
         }
@@ -2331,9 +2704,10 @@
         else if (msg.type === "color") hostChooseColor(state.myId, msg.color);
         else if (msg.type === "stack") hostStack(state.myId, msg.action);
         else if (msg.type === "kick") hostKick(msg.playerId);
+        else if (msg.type === "leave") hostPlayerLeave(state.myId);
         return;
       }
-      const hostConn = [...state.conns.values()][0];
+      const hostConn = state.conns.get("host") || [...state.conns.values()][0];
       if (hostConn && hostConn.open) hostConn.send(msg);
     }
 
@@ -2355,8 +2729,15 @@
       if (btn && card) {
         const r = btn.getBoundingClientRect();
         state.pendingFly = { card, from: { left: r.left, top: r.top, width: r.width, height: r.height } };
+        if (!linkIsSlow()) flyToPile(card, r, () => renderDiscard(card));
+        else renderDiscard(card);
       }
       state.raisedCardId = null;
+      state.pendingLocalPlay = cardId;
+      view.you.hand = view.you.hand.filter((c) => c.id !== cardId);
+      view.legal = [];
+      view.you.isTurn = false;
+      renderHand(view);
       sendAction({ type: "play", cardId });
     }
 
@@ -2373,10 +2754,7 @@
       const snap = lobbySnapshot();
       applyView({ ...snap, you: { id: state.myId } });
       for (const [id, conn] of state.conns) {
-        if (conn.open) {
-          try { conn.send({ type: "state", view: { ...snap, you: { id } } }); }
-          catch (e) {}
-        }
+        sendPackedState(conn, { ...snap, you: { id } });
       }
       saveSession();
     }
@@ -2399,6 +2777,7 @@
       if (g.phase !== "playing") return;
       if (!g.awayIds) g.awayIds = [];
       if (!g.awayIds.includes(p.id)) g.awayIds.push(p.id);
+      p.awayAt = Date.now();
       g.banner = p.name + " lost connection";
     }
 
@@ -2406,6 +2785,8 @@
       const g = state.game;
       if (!g) return;
       g.awayIds = (g.awayIds || []).filter((id) => id !== playerId);
+      const p = g.players && g.players.find((x) => x.id === playerId);
+      if (p) p.awayAt = 0;
     }
 
     function onPeerGone(peerId) {
@@ -2484,7 +2865,11 @@
           return;
         }
         noteSeen(pid);
-        if (msg.type === "ping") return;
+        if (msg.type === "ping") {
+          if (msg.rtt) noteRtt(pid, msg.rtt);
+          try { conn.send({ type: "pong", t: msg.t || Date.now() }); } catch (e) {}
+          return;
+        }
         if (msg.type === "play") hostPlay(pid, msg.cardId);
         if (msg.type === "draw") hostDraw(pid);
         if (msg.type === "pass") hostPass(pid);
@@ -2493,6 +2878,7 @@
         if (msg.type === "color") hostChooseColor(pid, msg.color);
         if (msg.type === "stack") hostStack(pid, msg.action);
         if (msg.type === "kick") hostKick(msg.playerId);
+        if (msg.type === "leave") hostPlayerLeave(pid);
       });
       conn.on("close", () => {
         if (state.conns.get(conn.peer) !== conn) return;
@@ -2500,7 +2886,7 @@
         dropTimers.set(conn.peer, setTimeout(() => {
           dropTimers.delete(conn.peer);
           onPeerGone(conn.peer);
-        }, 6000));
+        }, dropGraceMs()));
       });
     }
 
@@ -2596,6 +2982,7 @@
       state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = randomCode();
+      clearHostGoneClock();
       showError("home-error", "");
       setJoinStatus("", "");
       destroyPeer();
@@ -2608,12 +2995,25 @@
 
     function scheduleGuestReconnect() {
       if (state.leaving || state.isHost || state.solo || !state.room) return;
+      if (hostGoneTimedOut()) {
+        showHostLost();
+        return;
+      }
       if (state.reconnectTimer) return;
-      setReconnectUi(true, "Connection dropped. Trying to get you back in…");
+      beginHostGoneClock();
+      state.reconnectAttempt = (state.reconnectAttempt || 0) + 1;
+      const delay = reconnectDelayMs();
+      const left = Math.max(0, state.hostLostDeadline - Date.now());
+      const mins = Math.ceil(left / 60000);
+      setReconnectUi(true, "Connection dropped. Trying to get you back in… (" + mins + " min left)");
       state.reconnectTimer = setTimeout(() => {
         state.reconnectTimer = 0;
+        if (hostGoneTimedOut()) {
+          showHostLost();
+          return;
+        }
         joinRoom(state.room, true);
-      }, 1400);
+      }, delay);
     }
 
     function joinRoom(code, reconnect) {
@@ -2636,6 +3036,7 @@
       state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = code;
+      beginHostGoneClock();
       showError("home-error", "");
       if (reconnect) destroyNetwork();
       else destroyPeer();
@@ -2648,10 +3049,15 @@
           scheduleGuestReconnect();
           return;
         }
-        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+        beginHostGoneClock();
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
+        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby. You can leave this invite and create your own room.");
         $("btn-join").disabled = false;
         destroyNetwork();
-      }, reconnect ? 8000 : 12000);
+      }, joinWaitMs(reconnect));
       const peer = new Peer(peerOptions());
       state.peer = peer;
       peer.on("open", () => {
@@ -2666,23 +3072,36 @@
           conn.send({ type: "join", name: state.myName, token: myToken() });
         });
         conn.on("data", (msg) => {
-          if (msg.type === "state") {
+          if (!msg || typeof msg !== "object") return;
+          state.lastRxAt = Date.now();
+          if (msg.type === "pong") {
+            if (msg.t) noteRtt(state.myId || "me", Date.now() - msg.t);
+            return;
+          }
+          if (msg.type === "state" || msg.t === "s") {
             clearJoinWait();
+            clearHostGoneClock();
             setReconnectUi(false);
             setJoinStatus("ok", "You're in!");
-            if (msg.view && msg.view.you) state.myId = msg.view.you.id;
-            applyView(msg.view);
-            saveSession();
+            ingestState(msg);
+            if (state.view && state.view.you && state.view.you.id) state.myId = state.view.you.id;
+            return;
+          }
+          if (msg.type === "host-left") {
+            onHostLeft();
           }
           if (msg.type === "error") {
             clearJoinWait();
             setReconnectUi(false);
-            setJoinStatus("fail", msg.message || "Could not join this room.");
-            toast(msg.message);
-            if (reconnect && /already started|kicked/i.test(String(msg.message || ""))) {
-              clearTimeout(state.reconnectTimer);
-              state.reconnectTimer = 0;
+            const text = msg.message || "Could not join this room.";
+            if (/already started|kicked|left/i.test(text)) {
+              sessionDenied(text);
+              return;
             }
+            setJoinStatus("fail", text);
+            toast(text);
+            beginHostGoneClock();
+            if (hostGoneTimedOut()) expireHostWait();
           }
         });
         conn.on("close", () => {
@@ -2722,8 +3141,13 @@
           return;
         }
         clearJoinWait();
-        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
-        showScreen("home");
+        beginHostGoneClock();
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
+        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby. Leave this invite to create your own room.");
+        $("btn-join").disabled = false;
       });
     }
 
@@ -2753,6 +3177,7 @@
     function startSolo() {
       const name = requireName();
       if (!name) return;
+      state.leaving = false;
       state.solo = true;
       state.isHost = true;
       state.myId = "host";
@@ -2771,11 +3196,13 @@
       state.leaving = true;
       clearTimeout(state.reconnectTimer);
       state.reconnectTimer = 0;
+      clearHostGoneClock();
       setReconnectUi(false);
       clearSession();
       destroyPeer();
       state.isHost = false;
       state.solo = false;
+      state.room = "";
       $("color-pick").classList.remove("show");
       $("stack-pick").classList.remove("show");
       $("away-pick").classList.remove("show");
@@ -2783,6 +3210,9 @@
       $("turn-pop").classList.remove("show");
       setJoinStatus("", "");
       $("btn-join").disabled = false;
+      $("join-code").value = "";
+      stripRoomFromUrl();
+      setInviteHome("");
       showScreen("home");
     }
 
@@ -2817,7 +3247,27 @@
     $("draw-pile").onclick = () => sendAction({ type: "draw" });
     $("btn-stack-play").onclick = () => sendAction({ type: "stack", action: "play" });
     $("btn-stack-take").onclick = () => sendAction({ type: "stack", action: "take" });
-    $("btn-away-wait").onclick = () => toast("Waiting for them to rejoin…");
+    $("btn-away-wait").onclick = () => {
+      toast("Waiting for them to rejoin…");
+      const g = state.game;
+      if (state.isHost && g && g.players) {
+        for (const p of g.players) {
+          if ((g.awayIds || []).includes(p.id)) p.awayAt = Date.now();
+        }
+      }
+    };
+    $("btn-lobby-leave").onclick = leaveRoom;
+    $("btn-game-leave").onclick = leaveRoom;
+    $("btn-reconnect-leave").onclick = leaveRoom;
+    $("btn-invite-leave").onclick = leaveRoom;
+    $("btn-reconnect-extend").onclick = () => {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      state.hostLostDeadline = Date.now() + HOST_GONE_EXTEND_MS;
+      setReconnectUi(true, "Waiting 2 more minutes for the host…");
+      saveSession();
+      scheduleGuestReconnect();
+    };
     $("color-pick").addEventListener("click", (e) => {
       const color = e.target.getAttribute("data-color");
       if (color) sendAction({ type: "color", color });
@@ -2893,6 +3343,17 @@
 
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
 
+    function sendPing() {
+      const hostConn = state.conns.get("host");
+      if (!hostConn || !hostConn.open) return false;
+      const now = Date.now();
+      if (state.lastPingAt && now - state.lastPingAt < pingEveryMs() - 250) return true;
+      if (state.lastRxAt && now - state.lastRxAt < pingEveryMs()) return true;
+      state.lastPingAt = now;
+      try { hostConn.send({ type: "ping", t: now, rtt: state.myRtt || 0 }); } catch (e) {}
+      return true;
+    }
+
     function tryResumeConnection() {
       if (state.leaving || state.solo) return;
       if (state.isHost) {
@@ -2909,7 +3370,7 @@
       if (!state.room) return;
       const hostConn = state.conns.get("host");
       if (hostConn && hostConn.open) {
-        try { hostConn.send({ type: "ping" }); } catch (e) {}
+        sendPing();
         return;
       }
       scheduleGuestReconnect();
@@ -2927,25 +3388,33 @@
         const now = Date.now();
         let changed = false;
         for (const p of state.game.players) {
-          if (p.bot || p.id === "host" || p.kicked || p.connected === false) continue;
+          if (p.bot || p.id === "host" || p.kicked) continue;
           const seen = lastSeen.get(p.id) || 0;
-          if (seen && now - seen > 9000) {
+          if (p.connected !== false && seen && now - seen > awayGraceFor(p.id)) {
             markPlayerAway(p.id);
             changed = true;
+          }
+          if ((state.game.awayIds || []).includes(p.id) && p.awayAt && now - p.awayAt > AWAY_AUTO_KICK_MS) {
+            hostKick(p.id);
+            changed = false;
           }
         }
         if (changed) hostBroadcast();
         return;
       }
       if (!state.isHost && state.room) {
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          return;
+        }
         const hostConn = state.conns.get("host");
         if (hostConn && hostConn.open) {
-          try { hostConn.send({ type: "ping" }); } catch (e) {}
+          sendPing();
         } else if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby")) {
           scheduleGuestReconnect();
         }
       }
-    }, 3000);
+    }, 4000);
 
     const saved = localStorage.getItem("uno-name");
     if (saved) $("name").value = saved;
@@ -2971,6 +3440,7 @@
       if (roomParam.length === 4 && snap.room !== roomParam && snap.role !== "host") {
         return;
       }
+      if (snap.hostLostDeadline) state.hostLostDeadline = snap.hostLostDeadline;
       if (snap.role === "host" && snap.game) {
         state.isHost = true;
         state.solo = false;
@@ -2983,9 +3453,11 @@
         }
         if (state.game.players) {
           state.game.awayIds = [];
+          const now = Date.now();
           for (const p of state.game.players) {
             if (p.id !== "host" && !p.bot && !p.kicked) {
               p.connected = false;
+              p.awayAt = now;
               state.game.awayIds.push(p.id);
             }
           }
@@ -2996,6 +3468,11 @@
       }
       if (snap.role === "guest") {
         $("join-code").value = snap.room;
+        if (hostGoneTimedOut()) {
+          expireHostWait();
+          showHostLost();
+          return;
+        }
         joinRoom(snap.room, true);
       }
     })();
