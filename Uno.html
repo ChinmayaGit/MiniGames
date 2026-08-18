@@ -431,14 +431,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: clamp(10px, 2vw, 16px);
       pointer-events: none;
     }
     .table-center .pile { pointer-events: auto; }
     .draw-pile-slot {
       position: absolute;
-      left: 0;
-      bottom: 0;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) translateX(calc(-1 * (var(--card-lg-w) + 18px)));
       z-index: 3;
     }
 
@@ -511,7 +511,8 @@
       height: calc(var(--card-tiny-h) * 2.6);
     }
     .seat-slot.left .opp-fan { transform: rotate(90deg); }
-    .seat-slot.right .opp-fan { transform: rotate(-90deg); }
+    .seat-slot.right .opp-fan { transform: translateX(-42px) rotate(-90deg); }
+    .seat-slot.right .opp-meta { position: relative; z-index: 2; }
     .seat-slot.top .opp-fan { transform: rotate(180deg); }
     .seat-slot.topLeft .opp-fan { transform: rotate(135deg); }
     .seat-slot.topRight .opp-fan { transform: rotate(-135deg); }
@@ -737,12 +738,21 @@
     /* hand-hint is always visible */
 
     .banner-wrap {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .banner-text {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 2px;
-      margin-top: 6px;
-      flex-shrink: 0;
+      min-width: 0;
     }
     .banner-turn {
       font-size: 13px;
@@ -751,6 +761,7 @@
       text-transform: uppercase;
       color: var(--uno-yellow);
       min-height: 18px;
+      text-align: center;
     }
     .banner {
       min-height: 22px;
@@ -758,6 +769,21 @@
       font-weight: 700;
       color: rgba(255,255,255,.9);
       text-align: center;
+    }
+    .banner-color {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .banner-color .color-chip {
+      width: 28px;
+      height: 28px;
+    }
+    .banner-color .dir {
+      font-size: 18px;
+      line-height: 1;
     }
 
     .toast {
@@ -989,11 +1015,6 @@
             <div class="tag">Discard</div>
             <div id="discard"></div>
           </div>
-          <div class="pile">
-            <div class="tag">Color</div>
-            <div class="color-chip" id="color-chip"></div>
-            <div class="dir" id="dir">↻</div>
-          </div>
         </div>
         <div class="pile draw-pile-slot">
           <div class="tag">Draw</div>
@@ -1006,8 +1027,14 @@
       <div class="seat-slot right" id="slot-right"></div>
     </div>
     <div class="banner-wrap">
-      <div class="banner-turn" id="banner-turn"></div>
-      <div class="banner" id="banner">Match the color or number</div>
+      <div class="banner-text">
+        <div class="banner-turn" id="banner-turn"></div>
+        <div class="banner" id="banner">Match the color or number</div>
+      </div>
+      <div class="banner-color">
+        <div class="color-chip" id="color-chip"></div>
+        <div class="dir" id="dir">↻</div>
+      </div>
     </div>
     <div class="hand-dock">
       <div class="actions">
