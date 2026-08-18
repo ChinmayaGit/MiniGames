@@ -4,7 +4,23 @@ A real-time multiplayer [Uno](https://en.wikipedia.org/wiki/Uno_(card_game)) gam
 
 Match the **color** or **number**. First to empty their hand wins.
 
-How to play from a player’s point of view is in the collection [README](README.md). This file covers rooms, networking, and the rules engine.
+How to play from a player’s point of view is in the collection [README](README.md). This file covers rooms, networking, rules, and the problems this build already ran into.
+
+---
+
+## Features in this build
+
+- **Solo vs bots** — 1–3 bots, no PeerJS.
+- **Multiplayer rooms** — 4-letter code, copy-link, QR. Host-authoritative; guests only send actions.
+- **Invite URLs** — `?room=ABCD` prefills join and hides Create until you leave the invite.
+- **Classic table** — fanned hands, play-to-pile animation, color chip, dark mode.
+- **+2 / +4 stacking** — +2 on +2, +4 on +2 or +4, not +2 on +4. Prompt only if the next player has a legal + card.
+- **UNO / Caught!** — call before going to one card; others can catch a miss.
+- **Voice** — **🎤 Mic** in the lobby (under the player list) and in-game (next to UNO). 🔊 is game SFX only.
+- **Leave** — lobby, game, reconnect overlay, and invite home. Last remaining player wins.
+- **Reconnect** — seat token in `localStorage`; same hand after lock/refresh. Host gone: retry 3 minutes, optional +2, then Leave so Create room shows again.
+- **Slow links** — compact snapshots, optimistic play, longer timeouts, ping/pong RTT, reconnect backoff.
+- **Debug** — bottom-left **Debug** button: ICE/join log, Copy, Test ICE, optional Metered TURN key.
 
 ---
 
@@ -45,10 +61,10 @@ PeerJS only allows one live peer per ID. If `unohost-W7K2` is already taken, the
 
 ### Why rooms still do not clash during play
 
-- **Host is the only source of truth.** Game state (draw pile, discard, hands, whose turn, current color, direction) lives in the host’s tab. Guests do not run the rules engine.
-- **Each guest gets a private view.** The host does not broadcast one global blob. For every connection it builds `playerView(game, thatPlayerId)` so each person only sees **their own hand** plus public table data (top card, counts, turn).
-- **Joining mid-game is rejected.** A `join` after start gets `"Game already started"`. Late arrivals cannot inject themselves into an in-progress match.
-- **Disconnects are local.** If a guest drops, that seat is marked offline and skipped. Other rooms are unaffected because they never shared a socket.
+- **Host is the only source of truth.** Game state lives in the host’s tab. Guests do not run the rules engine.
+- **Each guest gets a private view.** The host builds `playerView(game, thatPlayerId)` so each person only sees **their own hand** plus public table data.
+- **Joining mid-game is rejected.** A new player after start gets `"Game already started"`. A returning seat token is allowed back in.
+- **Disconnects are local.** Other rooms are unaffected because they never shared a socket.
 
 Closing the host tab ends that room. Other rooms keep running in their own browsers.
 
@@ -56,7 +72,7 @@ Closing the host tab ends that room. Other rooms keep running in their own brows
 
 ## Joining from the same network or a different one
 
-Everyone loads the same static page. Multiplayer is **browser-to-browser WebRTC** via [PeerJS](https://peerjs.com/). The page is only the UI; the PeerJS cloud and STUN servers help peers find each other.
+Everyone loads the same static page. Multiplayer is **browser-to-browser WebRTC** via [PeerJS](https://peerjs.com/). The page is only the UI; the PeerJS cloud and STUN servers help peers find each other. Distance (next room, 5 km, another country) is not a region lock.
 
 ```
                     ┌─────────────────────┐
@@ -81,53 +97,144 @@ Everyone loads the same static page. Multiplayer is **browser-to-browser WebRTC*
 3. ICE gathers **local** candidates (`192.168.x.x`, etc.).
 4. The data channel often stays on the LAN: low latency, no extra hops.
 
-This is the most reliable path. The lobby even hints that same Wi‑Fi works best.
+This is the most reliable path.
 
-### Different countries (India and UK, etc.)
+### Same ISP, two different home Wi‑Fi (common failure)
 
-There is **no region lock**. A host in India and a guest in the UK load the same page, use the same 4-letter code, and PeerJS introduces them. Game messages then go **browser to browser** (or through a TURN relay if a direct path is blocked).
+This is the case that looks like a bug: code, link, and QR all fail together, then **mobile data works**.
 
-Uno is turn-based, so 150–300 ms of extra latency is fine. You do not need a server in each country.
+Two houses (or two routers in the same town) on the **same internet provider** often sit behind **CGNAT / symmetric NAT**. The phones *find* the room (signaling works) and even get a public STUN address, but they cannot open a direct data channel. **Distance does not fix this** — 50 metres or 5 km is the same NAT problem.
 
-### Slow links (ships, satellite, mid-ocean)
+**What to do:**
 
-If someone has internet but it is very slow (VSAT, Starlink at sea, high delay), the game still works. It measures round-trip time and then:
+| Setup | Usually |
+| --- | --- |
+| Everyone on the **same Wi‑Fi** | Works |
+| Two **different home Wi‑Fi**, same ISP | Often fails |
+| One phone on **mobile data** | Works |
+| Different ISPs, or far apart on different networks | Often works |
+| Both on home Wi‑Fi **plus a working TURN relay** | Works at any distance |
 
-- Sends a **compact** table snapshot instead of bulky JSON
-- Lets you play a card **immediately**; the host still confirms
-- Pings less often and waits longer before marking someone away (so lag is not treated as a disconnect)
-- Reconnects with backoff instead of retrying every second (which would flood a tiny pipe)
-- Gives join/rejoin more time to finish
+The home and lobby screens show this as a **Wi‑Fi tip**. Join timeout text says the same thing. There is **no brand-specific ISP** — any provider that uses CGNAT can do this.
 
-They still need a working data connection. If the link drops for minutes, use Leave / Wait as usual. A ship with a few kb/s will feel sluggish between turns, but a play is one small message.
+### Different countries (any long-distance link)
+
+There is **no region lock**. A host in one country and a guest in another use the same page and code. Game messages go browser to browser (or through TURN if the direct path is blocked). Uno is turn-based, so extra delay is fine. You do not need a server in each country.
+
+### Slow links (ships, satellite, high delay)
+
+If someone has internet but it is very slow, the game still tries to stay playable:
+
+- Compact table snapshots instead of bulky JSON
+- Your card plays on screen immediately; the host still confirms
+- Pings less often; lag is not treated as “they left”
+- Reconnect backoff so a tiny pipe is not flooded
+- Longer join/rejoin waits
+
+They still need a working data connection. A few kb/s feels sluggish between turns; a play is one small message.
 
 ### Voice (microphone)
 
-Tap **🎤** in the lobby or during a game. That asks for microphone permission and sends your voice over WebRTC to the other people at the table (same mesh as the cards). Tap again to mute. The 🔊 button is still only for game sound effects. Solo vs bots has no mic. HTTPS is required (GitHub Pages / Netlify).
+Tap **🎤 Mic** in the lobby (under the player list) or in the game (next to **UNO!**). That asks for microphone permission and sends voice over WebRTC. Tap again to mute. The 🔊 button is only game sound effects. Solo vs bots has no mic. HTTPS is required.
 
-What *can* fail is NAT, not distance: some mobile carriers and office networks block direct P2P. The game now tries several global STUN servers and a public TURN fallback so those joins still work more often. Both players still need HTTPS (GitHub Pages / Netlify) and the host tab must stay open.
-
-### Different networks (internet, mobile data, another house)
-
-1. Guests still connect to `unohost-XXXX` through PeerJS signaling. They do not need the host’s IP.
-2. STUN (Google, Cloudflare, Metered) helps each browser discover its public address through NAT.
-3. WebRTC then tries a **direct** peer-to-peer data channel. If both sides are behind a hard NAT, it can relay via TURN.
-
-Invite options that work across networks:
+### Invite options
 
 | Method | What happens |
 | --- | --- |
 | 4-letter code | Guest opens the same URL, types `W7K2`, joins `unohost-W7K2`. |
 | Copy link | URL is `https://yoursite/Uno.html?room=W7K2`. The join field is prefilled. |
-| QR code | Encodes that invite URL. Phones on cellular can scan it from the host’s screen. |
+| QR code | Encodes that invite URL. |
 
-The host tab must stay open. Guests talk to the host, not to a cloud game server.
+The host tab must stay open. Guests talk to the host, not to a cloud game server. HTTPS is required for WebRTC, which is why GitHub Pages / Netlify are a good fit.
 
-### What this setup does *not* do
+---
 
-There is still **no game server in the cloud**. If TURN is also blocked or the public relay is down, a few office/mobile pairs still cannot join. Same Wi‑Fi almost always works; home broadband across countries usually works; some LTE/CGNAT pairs need the TURN fallback.
+## Issues we hit, and how this build handles them
 
-HTTPS is required for WebRTC in modern browsers, which is why GitHub Pages / Netlify are a good fit.
+### 1. Same ISP, different home Wi‑Fi — cannot join (code / link / QR all fail)
+
+**What happened:** Signaling succeeded (`guest peer open → unohost-XXXX`). STUN produced `host` and `srflx` candidates. ICE stayed on `checking` until timeout. Mobile data then worked.
+
+**What the debug log showed:**
+
+- `400 TURN allocate error` on the public relay — old shared passwords are rejected
+- `701` host lookup on dead relay hostnames — DNS gone
+- No `relay` candidates, so two hard NATs never connected
+
+**How we handle it:**
+
+- Home/lobby **Wi‑Fi tip** (any ISP, not a named brand)
+- Join timeout tells people to use **mobile data** or the **same Wi‑Fi**
+- Bottom-left **Debug**: live ICE/join log, **Copy log**, **Test ICE**
+- Dead public TURN URLs removed so ICE is not wasted on 701s
+- Optional **Metered TURN** (app name + API key in Debug). After Save, Test ICE should show `relay`. **Both** phones should save TURN **before** the host creates the room
+
+### 2. Host “disconnected” overlay — Kick yourself / Kick the host — game stuck
+
+**What happened:** A short WebRTC drop (or a skipped ping) marked someone away. The overlay covered the table. Kick buttons could appear for **you** or the **host**. Kick-host does nothing, so the game sat paused.
+
+**How we handle it:**
+
+- Never kick the host; never show Kick for yourself
+- Play **continues** unless it is the missing player’s turn
+- After **15 seconds** on an away turn, that turn is **skipped** (they can still rejoin)
+- Auto-kick only after **3 minutes** away
+- If the data channel is still open, they are **not** marked away
+- Any ping/action from them clears away (`noteAlive`) so a false disconnect does not last forever
+- Guests keep pinging even if they recently received state (receiving state does not prove to the *host* that the guest is alive)
+
+### 3. Host gone — guests retry forever; Create room hidden on invite links
+
+**What happened:** Invite `?room=` hid Create room. If the host left or the tab died, guests kept reconnecting and could not start their own room.
+
+**How we handle it:**
+
+- **Leave** in lobby, game, reconnect overlay, and **Leave this invite** on home
+- Host leave sends `host-left`; guests stop retrying
+- Host missing: retry **3 minutes**, optional **Wait 2 more minutes**, then Leave
+- Leave strips `?room=` from the URL so Create room and solo show again
+- Last remaining player **wins**
+
+### 4. Mic button missing
+
+**What happened:** A 42px mic sat in a cramped top bar and was clipped on phones.
+
+**How we handle it:** Labeled **🎤 Mic** under the lobby player list and in the bottom action row next to UNO.
+
+### 5. Slow or high-latency internet
+
+Compact `state` payloads (`v`), optimistic local play, RTT-aware away grace, join waits up to ~24–32s on slow links, reconnect backoff.
+
+### 6. Phone lock / tab background
+
+Seat **token** in `localStorage`. Rejoin restores the same hand. Host re-binds `unohost-XXXX`. Guests ping; host marks away only if the connection is actually gone.
+
+---
+
+## Disconnects, leave, and host timeout
+
+WebRTC drops when a phone locks or the tab is backgrounded. The game treats that as **away**, not logged out.
+
+- Hidden seat token in `localStorage`. Rejoin restores that seat and hand.
+- Host tab is authoritative. If the host peer dies, it re-registers the same `unohost-XXXX`.
+- **Leave** always vacates the seat. A kicked/left token cannot reclaim it.
+- If only **one player remains**, they win.
+- You cannot kick the host. Host **leaves** → `host-left`. Host **disappears** → 3 min retry, then Leave / +2 min.
+
+#### Session scenarios
+
+| Situation | What happens |
+| --- | --- |
+| Guest leaves lobby | Host drops them from the list. Guest home shows Create room. |
+| Guest leaves mid-game | Seat vacated. Last remaining player wins. |
+| Host leaves | Guests get `host-left`. Leave table; no endless retry. |
+| Host tab dies / offline | Guests retry 3 min (extend +2). Then Leave or keep waiting. |
+| Guest phone lock | Grace, then away if the channel is really down. Rejoin restores the hand. Skip their turn after 15s; auto-kick at 3 min. |
+| False away (still connected) | Ping/open channel clears away. No Kick-self / Kick-host. |
+| Invite link, host gone | **Leave this invite** (or 3 min) reveals Create room. |
+| Kicked / already started | Guest is sent home and can create a new room. |
+| Reload mid-session | Host restores the table; guests reconnect. Host-gone clock is persisted. |
+| Same ISP, two home Wi‑Fi | Often cannot join. Mobile data or same Wi‑Fi. Debug log if it still fails. |
 
 ---
 
@@ -146,7 +253,7 @@ Classic 108-card Uno:
 | Wild | 4 |
 | Wild Draw Four | 4 |
 
-Each player is dealt **7** cards. The rest is the draw pile. The first discard is flipped until it is a **number** card (action and wild starts are shuffled back) so the opening color is unambiguous. The host (or you, in solo) goes first.
+Each player is dealt **7** cards. The rest is the draw pile. The first discard is flipped until it is a **number** card (action and wild starts are shuffled back). The host (or you, in solo) goes first.
 
 If the draw pile runs out, the discard pile except the top card is shuffled back into the deck.
 
@@ -183,31 +290,7 @@ Bots always call UNO on time.
 
 ### Winning
 
-The first player whose hand is empty wins. If the last card is Draw Two or Wild Draw Four, the next player still draws, then the game ends.
-
-### Disconnects, leave, and host timeout
-
-WebRTC drops when a phone locks or the tab is backgrounded. The game treats that as **away**, not logged out.
-
-- Each player has a hidden seat token in `localStorage`. Rejoining the same room (auto-retry, unlock, or refresh) restores that seat and hand.
-- The host tab keeps the authoritative game. If the host’s connection dies, it re-registers the same `unohost-XXXX` room so guests can find it again.
-- While someone is away, play **pauses**. Everyone still in the room sees **Wait for them** or **Kick [name]**. Away seats are auto-kicked after **3 minutes**.
-- **Leave** is always available (lobby, game, reconnect overlay, and invite links). Leaving vacates the seat immediately. The same token cannot reclaim a kicked/left seat.
-- If only **one player remains**, they win and the game ends.
-- You cannot kick the host. If the host **leaves**, guests get `host-left` and stop retrying. If the host **disappears**, guests retry for **3 minutes**, then can **Leave** or **Wait 2 more minutes**. After Leave, **Create room** is shown again (invite `?room=` is stripped from the URL).
-
-#### Session scenarios
-
-| Situation | What happens |
-| --- | --- |
-| Guest leaves lobby | Host drops them from the lobby list. Guest home shows Create room. |
-| Guest leaves mid-game | Seat is vacated. Turn skips them. Last remaining player wins. |
-| Host leaves | Guests get `host-left`. Overlay: Leave table (no endless retry). |
-| Host tab dies / offline | Guests retry for 3 min (extend +2). Then Leave or keep waiting. |
-| Guest phone lock | 6s grace, then away + pause. Rejoin restores the same hand. Auto-kick at 3 min. |
-| Invite link, host gone | Join fails. **Leave this invite** (or 3 min timeout) reveals Create room. |
-| Kicked / already started | Guest is sent home and can create a new room. |
-| Reload mid-session | Host restores the table; guests reconnect. Host-gone clock is persisted. |
+The first player whose hand is empty wins. If the last card is Draw Two or Wild Draw Four, the next player still draws, then the game ends. If everyone else leaves, the last player still in the table wins.
 
 ### House rules this build uses
 
@@ -234,11 +317,29 @@ The host’s own taps call `hostPlay` / `hostDraw` directly. Solo mode is the sa
 
 ### What each player actually sees
 
-`playerView` is a stripped snapshot:
+`playerView` is a stripped snapshot, then packed for the wire (`type: "state", v: …`):
 
 - Public: top of discard, current color, direction, draw-pile size, whose turn, card counts, banner.
 - Private: **your** hand only — never opponents’ cards.
-- `legal` — card ids you may play right now, so the client can highlight them without trusting itself for the outcome.
+- `legal` — card ids you may play right now.
+
+---
+
+## Debug log (how to read it)
+
+Bottom-left **Debug**. After a failed join, Copy log.
+
+| Line | Meaning |
+| --- | --- |
+| `guest peer open … → unohost-XXXX` | Signaling worked; the room exists |
+| `cand host` / `cand srflx` | STUN found local / public addresses |
+| `cand relay` | TURN relay is working (needed for two hard home NATs) |
+| `ice-error 400 TURN allocate` | Relay rejected credentials (old public passwords) |
+| `ice-error 701` | Relay hostname/DNS failed |
+| `ice=checking` then `join timeout` | Hole punch failed; no relay |
+| `guest datachannel open` | You are in |
+
+**Test ICE** should list `relay` after a Metered key is saved. Save TURN on **both** phones, then create the room.
 
 ---
 
@@ -256,7 +357,7 @@ Tiny JSON over the PeerJS data channel:
 | Guest → host | `caught` | Catch a player who forgot UNO |
 | Guest → host | `color` | Chosen color after a wild |
 | Guest → host | `stack` | `play` or `take` a pending + stack |
-| Guest → host | `kick` | Remove an away player |
+| Guest → host | `kick` | Remove an away player (never the host) |
 | Guest → host | `leave` | Vacate seat / drop from lobby |
 | Guest → host | `ping` | Keepalive + measured RTT |
 | Guest → host | `voice` | Mic on/off for the roster |
@@ -285,7 +386,7 @@ npx serve .
 
 Then visit `http://localhost:3000/Uno.html`.
 
-For friends on other networks, put the file on any static HTTPS host. PeerJS is loaded from a CDN; players need internet for signaling even on LAN.
+For friends on other networks, put the file on any static **HTTPS** host. PeerJS is loaded from a CDN; players need internet for signaling even on LAN.
 
 ## License
 

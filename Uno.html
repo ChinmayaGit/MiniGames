@@ -252,6 +252,22 @@
       padding: 10px 12px;
       font-size: 14px;
     }
+    .error.show { display: block; }
+    .net-warn {
+      margin-top: 14px;
+      background: #fff8e1;
+      color: #7c4a03;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: left;
+    }
+    body.dark .net-warn {
+      background: #3d3419;
+      color: #fde68a;
+    }
+    .net-warn b { display: block; margin-bottom: 4px; }
     input.bad { border-color: var(--uno-red); background: #fff5f5; }
     .join-status {
       display: none;
@@ -330,14 +346,28 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 8px;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
     .topbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .icon-btn, .btn.mic {
+      flex-shrink: 0;
+    }
+    .btn.mic {
+      min-width: 76px;
+    }
+    .btn.mic.live {
+      background: #166534;
+      color: #fff;
+      box-shadow: 0 4px 0 #0f3d1f;
     }
     .code-pill, .icon-btn {
       background: var(--surface);
@@ -869,6 +899,37 @@
     #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
     #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
     #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    #btn-debug {
+      position: fixed;
+      left: max(10px, env(safe-area-inset-left));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 22;
+      width: auto;
+      height: 36px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    #debug-pick { z-index: 24; }
+    #debug-pick .panel {
+      width: min(420px, 100%);
+      text-align: left;
+    }
+    #debug-log {
+      margin-top: 10px;
+      max-height: min(42vh, 280px);
+      overflow: auto;
+      background: #0b1220;
+      color: #d1fae5;
+      border-radius: 10px;
+      padding: 10px;
+      font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #debug-pick .hint { margin-top: 8px; }
+    #debug-pick label { margin-top: 10px; }
+    #debug-pick input { width: 100%; }
     .swatches {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -981,7 +1042,11 @@
       </div>
       <button class="btn yellow" id="btn-solo">Practice solo</button>
       <div class="error" id="home-error"></div>
-      <p class="hint" id="home-hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
+      <div class="net-warn" id="net-warn">
+        <b>Wi‑Fi tip</b>
+        Same Wi‑Fi is easiest. Two <em>different</em> home Wi‑Fi on the <em>same ISP</em> (two routers, even a few km apart) often cannot connect. Put one phone on <strong>mobile data</strong>, or join the <strong>same Wi‑Fi</strong>. Different ISPs, or one person on mobile data, usually work at any distance.
+      </div>
+      <p class="hint" id="home-hint">Share a 4-letter room code. Friends open this same page and join.</p>
     </div>
   </div>
 
@@ -991,9 +1056,10 @@
         <div class="room-label">Room</div>
         <div class="code-pill" id="lobby-code">----</div>
       </div>
-      <button class="btn row ghost" id="btn-copy">Copy link</button>
-      <button class="icon-btn" id="btn-mic-lobby" type="button" title="Turn on microphone" aria-pressed="false">🎤</button>
-      <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-copy">Copy link</button>
+        <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
+      </div>
     </div>
     <div class="lobby-grid">
       <div class="panel" style="width:auto;margin:0">
@@ -1005,7 +1071,12 @@
             <button class="btn teal" id="btn-start">Start game</button>
           </div>
         </div>
+        <button class="btn mic" id="btn-mic-lobby" type="button" title="Turn on microphone" aria-pressed="false">🎤 Mic</button>
         <p class="hint" id="lobby-hint">Waiting for the host to start…</p>
+        <div class="net-warn">
+          <b>If friends cannot join</b>
+          Same ISP + different home Wi‑Fi (two separate routers) often fails. One person should switch to <strong>mobile data</strong>, or everyone use the <strong>same Wi‑Fi</strong>.
+        </div>
       </div>
       <div class="qr">
         <img id="qr" alt="Invite QR code" />
@@ -1020,8 +1091,7 @@
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:#fff">0:00</div>
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
-        <button class="icon-btn" id="btn-mic-game" type="button" title="Turn on microphone" aria-pressed="false">🎤</button>
-        <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
+        <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
     </div>
@@ -1060,6 +1130,7 @@
     <div class="hand-dock">
       <div class="actions">
         <button class="btn row yellow" id="btn-uno" type="button">UNO!</button>
+        <button class="btn row mic" id="btn-mic-game" type="button" title="Turn on microphone" aria-pressed="false">🎤 Mic</button>
         <button class="btn row ghost" id="btn-pass" type="button">Keep</button>
         <button class="btn row" id="btn-caught" type="button" style="display:none;background:#7c3aed">Caught!</button>
       </div>
@@ -1125,7 +1196,25 @@
     <b id="turn-pop-name">Wait for your turn</b>
   </div>
 
-  <div id="voice-audio" hidden></div>
+  <div class="overlay" id="debug-pick">
+    <div class="panel">
+      <b>Connection debug</b>
+      <p class="hint" id="debug-hint" style="text-align:left">Two home Wi‑Fi networks often need a TURN relay. The old public relay is dead (your log: TURN 400 / DNS 701). Paste a free Metered TURN key below, tap Save, then Test ICE — you should see <code>relay</code> candidates.</p>
+      <label for="turn-app">Metered app name</label>
+      <input id="turn-app" placeholder="your-app" autocomplete="off" />
+      <label for="turn-key">Metered TURN API key</label>
+      <input id="turn-key" placeholder="from metered.ca dashboard" autocomplete="off" />
+      <button class="btn teal" id="btn-turn-save" type="button">Save TURN</button>
+      <pre id="debug-log"></pre>
+      <div class="row">
+        <button class="btn row teal" id="btn-debug-copy" type="button">Copy log</button>
+        <button class="btn row blue" id="btn-debug-probe" type="button">Test ICE</button>
+        <button class="btn row ghost" id="btn-debug-close" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="icon-btn" id="btn-debug" type="button" title="Connection debug log">Debug</button>
 
   <div class="toast" id="toast"></div>
 
@@ -1137,6 +1226,7 @@
     const HOST_GONE_MS = 3 * 60 * 1000;
     const HOST_GONE_EXTEND_MS = 2 * 60 * 1000;
     const AWAY_AUTO_KICK_MS = 3 * 60 * 1000;
+    const AWAY_TURN_SKIP_MS = 15 * 1000;
     const FACE = {
       skip: "⊘",
       reverse: "⇄",
@@ -1187,8 +1277,8 @@
       $("btn-invite-leave").style.display = invite ? "" : "none";
       $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join friends";
       $("home-hint").textContent = invite
-        ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite to create your own room."
-        : "Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.";
+        ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
+        : "Share a 4-letter room code. Friends open this same page and join.";
     }
 
     function setJoinStatus(kind, text) {
@@ -1207,6 +1297,197 @@
       const el = $(id);
       el.textContent = msg;
       el.classList.toggle("show", !!msg);
+      if (msg) netlog("ui-error", id, msg);
+    }
+
+    const netLogs = [];
+    let turnIce = [];
+    try {
+      const raw = localStorage.getItem("uno-turn-ice");
+      if (raw) turnIce = JSON.parse(raw) || [];
+    } catch (e) { turnIce = []; }
+    (function loadNetLogs() {
+      try {
+        const saved = sessionStorage.getItem("uno-netlog");
+        if (saved) saved.split("\n").forEach((line) => { if (line) netLogs.push(line); });
+      } catch (e) {}
+    })();
+
+    function netInfo() {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const bits = [
+        "online=" + navigator.onLine,
+        "https=" + !!window.isSecureContext,
+        c ? ("net=" + (c.type || c.effectiveType || "?") + (c.downlink != null ? " " + c.downlink + "Mb" : "")) : "net=?",
+        "role=" + (state.solo ? "solo" : state.isHost ? "host" : "guest"),
+        "room=" + (state.room || "-"),
+        "turn=" + (turnIce.length ? turnIce.length + " extra" : "none"),
+      ];
+      return bits.join(" ");
+    }
+
+    function summarizeCandidate(cand) {
+      if (!cand) return "end";
+      const t = cand.type || "?";
+      const proto = cand.protocol || cand.transport || "";
+      const addr = String(cand.address || cand.ip || "");
+      const v = addr.indexOf(":") >= 0 ? "v6" : "v4";
+      return t + " " + proto + " " + v;
+    }
+
+    function iceSummary() {
+      try {
+        return peerOptions().config.iceServers.map((s) => {
+          const u = [].concat(s.urls || s.url || []);
+          return u.map((x) => String(x).split("?")[0].replace(/:\/\/.*@/, "://")).join(",");
+        }).join(" | ");
+      } catch (e) {
+        return "?";
+      }
+    }
+
+    function debugDump() {
+      return [
+        "UNO debug " + new Date().toISOString(),
+        netInfo(),
+        "ice=" + iceSummary(),
+        "ua=" + String(navigator.userAgent || "").slice(0, 140),
+        "url=" + location.origin + location.pathname,
+        "---",
+        netLogs.slice(-220).join("\n"),
+      ].join("\n");
+    }
+
+    async function saveTurnFromMetered() {
+      const app = ($("turn-app").value || "").trim()
+        .replace(/^https?:\/\//, "")
+        .replace(/\.metered\.live.*$/i, "");
+      const key = ($("turn-key").value || "").trim();
+      if (!app || !key) {
+        toast("Enter Metered app name and API key");
+        return;
+      }
+      try { localStorage.setItem("uno-turn-app", app); } catch (e) {}
+      try { localStorage.setItem("uno-turn-key", key); } catch (e) {}
+      netlog("turn fetch", app);
+      try {
+        const url = "https://" + app + ".metered.live/api/v1/turn/credentials?apiKey=" + encodeURIComponent(key);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const ice = await res.json();
+        if (!Array.isArray(ice) || !ice.length) throw new Error("empty iceServers");
+        turnIce = ice;
+        try { localStorage.setItem("uno-turn-ice", JSON.stringify(ice)); } catch (e) {}
+        netlog("turn saved", iceSummary());
+        toast("TURN saved. Tap Test ICE — look for relay. Then join again.");
+        renderDebugLog();
+      } catch (e) {
+        netlog("turn fetch fail", e && e.message);
+        toast("Could not fetch TURN. Check app name and API key.");
+      }
+    }
+
+    function renderDebugLog() {
+      const pre = $("debug-log");
+      if (!pre) return;
+      pre.textContent = debugDump();
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    function netlog() {
+      const msg = Array.prototype.slice.call(arguments).join(" ");
+      const line = new Date().toISOString().slice(11, 23) + " " + msg;
+      netLogs.push(line);
+      if (netLogs.length > 250) netLogs.shift();
+      try { sessionStorage.setItem("uno-netlog", netLogs.join("\n")); } catch (e) {}
+      const panel = $("debug-pick");
+      if (panel && panel.classList.contains("show")) renderDebugLog();
+    }
+
+    function watchRtc(label, conn) {
+      if (!conn) return;
+      if (conn._unoWatch) return;
+      conn._unoWatch = true;
+      conn.on("iceStateChanged", (s) => netlog(label, "iceState", s));
+      const hook = () => {
+        const pc = conn.peerConnection;
+        if (!pc || pc._unoWatched) return;
+        pc._unoWatched = true;
+        const dump = (why) => netlog(label, why, "ice=" + pc.iceConnectionState, "pc=" + (pc.connectionState || ""), "g=" + pc.iceGatheringState);
+        pc.addEventListener("iceconnectionstatechange", () => dump("ice"));
+        pc.addEventListener("connectionstatechange", () => dump("pc"));
+        pc.addEventListener("icegatheringstatechange", () => dump("gather"));
+        pc.addEventListener("icecandidateerror", (e) => netlog(label, "ice-error", e.errorCode, e.errorText || "", e.url || ""));
+        pc.addEventListener("icecandidate", (e) => {
+          if (e.candidate) netlog(label, "cand", summarizeCandidate(e.candidate));
+          else netlog(label, "cand-done");
+        });
+        dump("watch");
+      };
+      hook();
+      setTimeout(hook, 300);
+      setTimeout(hook, 1200);
+    }
+
+    async function runIceProbe() {
+      netlog("probe start", netInfo());
+      toast("Testing ICE…");
+      let pc;
+      try {
+        pc = new RTCPeerConnection(peerOptions().config);
+        pc.createDataChannel("probe");
+        const seen = { host: 0, srflx: 0, relay: 0, prflx: 0 };
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) {
+            netlog("probe done", JSON.stringify(seen));
+            if (!seen.relay) netlog("probe WARN no TURN relay — two home Wi‑Fi networks may fail. Try mobile data on one phone.");
+            if (!seen.srflx && !seen.relay) netlog("probe WARN no public STUN candidates");
+            try { pc.close(); } catch (err) {}
+            renderDebugLog();
+            return;
+          }
+          const t = e.candidate.type || "host";
+          if (seen[t] != null) seen[t]++;
+          netlog("probe cand", summarizeCandidate(e.candidate));
+        };
+        pc.onicecandidateerror = (e) => netlog("probe ice-error", e.errorCode, e.url || "");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        setTimeout(() => { try { if (pc.signalingState !== "closed") pc.close(); } catch (e) {} }, 7000);
+      } catch (e) {
+        netlog("probe fail", e && e.message);
+        toast("ICE test failed");
+      }
+    }
+
+    async function shareDebugLog() {
+      const text = debugDump();
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Uno connection log", text });
+          return;
+        } catch (e) {}
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Debug log copied");
+      } catch (e) {
+        toast("Could not copy — select the log text");
+      }
+    }
+
+    function openDebug() {
+      netlog("debug open", netInfo(), iceSummary());
+      try { $("turn-app").value = localStorage.getItem("uno-turn-app") || ""; } catch (e) {}
+      try { $("turn-key").value = localStorage.getItem("uno-turn-key") || ""; } catch (e) {}
+      $("debug-pick").classList.add("show");
+      renderDebugLog();
+    }
+
+    function wifiJoinHint() {
+      return turnIce.length
+        ? " Timed out. TURN is saved but ICE did not connect. Tap Debug, Test ICE, and share the log."
+        : " Timed out. Same ISP with two different home Wi‑Fi often fails. Put one phone on mobile data, or use the same Wi‑Fi.";
     }
 
     function shuffle(arr, rng = Math.random) {
@@ -1406,13 +1687,14 @@
 
     function updateMicUi() {
       const on = !!state.micOn;
-      const show = !state.solo && !!state.room;
+      const show = !state.solo;
       ["btn-mic-lobby", "btn-mic-game"].forEach((id) => {
         const el = $(id);
         if (!el) return;
-        el.style.display = show ? "" : "none";
+        el.hidden = !show;
         el.classList.toggle("live", on);
         el.classList.toggle("mic-off", !on);
+        el.textContent = on ? "🎤 On" : "🎤 Mic";
         el.title = on ? "Mute microphone" : "Turn on microphone";
         el.setAttribute("aria-pressed", on ? "true" : "false");
       });
@@ -1621,8 +1903,30 @@
       return (meta && meta.playerId) || peerId;
     }
 
+    function playerConnOpen(playerId) {
+      if (!playerId || playerId === "host") return true;
+      for (const [peer, meta] of guests) {
+        if (meta.playerId === playerId || peer === playerId) {
+          const conn = state.conns.get(peer);
+          if (conn && conn.open) return true;
+        }
+      }
+      return false;
+    }
+
+    function turnIsBlocked(g) {
+      if (!g || !g.awayIds || !g.awayIds.length) return false;
+      const away = g.awayIds.filter((id) => id && id !== "host");
+      if (!away.length) return false;
+      const turnId = g.players[g.turn] && g.players[g.turn].id;
+      if (away.includes(turnId)) return true;
+      if (g.choosingColor && away.includes(g.choosingColor)) return true;
+      if (g.stackChoice && away.includes(g.stackChoice)) return true;
+      return false;
+    }
+
     function isPaused() {
-      return !!(state.game && state.game.awayIds && state.game.awayIds.length);
+      return turnIsBlocked(state.game);
     }
 
     function setReconnectUi(on, text) {
@@ -1818,8 +2122,6 @@
     }
 
     function peerOptions() {
-      // Signaling is global (PeerJS cloud). Game traffic is browser-to-browser.
-      // Extra STUN + public TURN help India↔UK and other cross-region NATs.
       return {
         debug: 0,
         secure: true,
@@ -1830,18 +2132,8 @@
             { urls: "stun:stun1.l.google.com:19302" },
             { urls: "stun:stun2.l.google.com:19302" },
             { urls: "stun:stun.cloudflare.com:3478" },
-            { urls: "stun:stun.relay.metered.ca:80" },
-            {
-              urls: [
-                "turn:openrelay.metered.ca:80",
-                "turn:openrelay.metered.ca:443",
-                "turn:openrelay.metered.ca:443?transport=tcp",
-                "turns:openrelay.metered.ca:443?transport=tcp",
-              ],
-              username: "openrelayproject",
-              credential: "openrelayproject",
-            },
-          ],
+            { urls: "stun:global.stun.twilio.com:3478" },
+          ].concat(turnIce),
         },
       };
     }
@@ -1931,7 +2223,7 @@
     function playerView(game, id) {
       const p = game.players.find((x) => x.id === id);
       const hand = p ? p.hand : [];
-      const paused = (game.awayIds || []).length > 0;
+      const paused = turnIsBlocked(game);
       const legal = p && game.players[game.turn].id === id && !game.choosingColor && !game.stackChoice && !paused
         ? hand.filter((c) => canPlayCard(game, hand, c)).map((c) => c.id)
         : [];
@@ -1963,7 +2255,8 @@
         lastPlay: game.lastPlay || null,
         playSeq: game.playSeq || 0,
         catchable: game.players.some((x) => x.id !== id && !x.kicked && x.hand.length === 1 && !x.calledUno),
-        away: (game.awayIds || []).map((aid) => {
+        paused,
+        away: (game.awayIds || []).filter((aid) => aid && aid !== "host").map((aid) => {
           const x = game.players.find((p) => p.id === aid);
           return { id: aid, name: x ? x.name : "Player" };
         }),
@@ -2029,6 +2322,7 @@
         lp: view.lastPlay ? [view.lastPlay.seq, view.lastPlay.playerId, packCard(view.lastPlay.card)] : 0,
         q: view.playSeq || 0,
         h: view.catchable ? 1 : 0,
+        ps: view.paused ? 1 : 0,
         aw: (view.away || []).map((x) => [x.id, x.name]),
         pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0, x.mic ? 1 : 0]),
         vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
@@ -2074,7 +2368,8 @@
         lastPlay: raw.lp ? { seq: raw.lp[0], playerId: raw.lp[1], card: unpackCard(raw.lp[2]) } : null,
         playSeq: raw.q || 0,
         catchable: !!raw.h,
-        away: (raw.aw || []).map((x) => ({ id: x[0], name: x[1] })),
+        paused: !!raw.ps,
+        away: (raw.aw || []).filter((x) => x[0] && x[0] !== "host").map((x) => ({ id: x[0], name: x[1] })),
         players: (raw.pl || []).map((x) => ({
           id: x[0],
           name: x[1],
@@ -2570,9 +2865,9 @@
         $("btn-uno").classList.toggle("pulse", view.you.hand.length === 2 && !view.you.calledUno);
         $("btn-pass").style.display = view.drawnCardId ? "inline-flex" : "none";
         $("btn-caught").style.display = view.catchable ? "inline-flex" : "none";
-        $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId || view.stackChoice === view.you.id || !!(view.away && view.away.length);
-        $("color-pick").classList.toggle("show", view.choosingColor === view.you.id && !(view.away && view.away.length));
-        const stackAsk = view.stackChoice === view.you.id && !(view.away && view.away.length);
+        $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId || view.stackChoice === view.you.id || !!view.paused;
+        $("color-pick").classList.toggle("show", view.choosingColor === view.you.id && !view.paused);
+        const stackAsk = view.stackChoice === view.you.id && !view.paused;
         $("stack-pick").classList.toggle("show", stackAsk);
         if (stackAsk) {
           const n = view.pendingDraw || 0;
@@ -2582,16 +2877,20 @@
             : "You can play +2 or +4 to pass it on.";
           $("btn-stack-take").textContent = "Pick " + n + " from pile";
         }
-        const awayList = view.away || [];
-        const showAway = awayList.length && !state.reconnecting;
+        const awayList = (view.away || []).filter((p) => p.id && p.id !== "host");
+        const othersAway = awayList.filter((p) => p.id !== view.you.id);
+        if (awayList.some((p) => p.id === view.you.id) && !state.isHost) sendPing();
+        const paused = !!view.paused;
+        const showAway = paused && othersAway.length && !state.reconnecting;
         $("away-pick").classList.toggle("show", !!showAway);
         if (showAway) {
-          const names = awayList.map((p) => p.name).join(", ");
-          $("away-title").textContent = names + (awayList.length > 1 ? " lost connection" : " lost connection");
-          $("away-sub").textContent = "They may come back (phone lock / network), or they may have left. Wait for them, or kick them so everyone else can keep playing.";
+          const names = othersAway.map((p) => p.name).join(", ");
+          $("away-title").textContent = names + " lost connection";
+          $("away-sub").textContent = "It's their turn. Wait a moment — if they stay gone, the turn is skipped. You cannot kick the host.";
           const box = $("away-actions");
           box.replaceChildren();
-          awayList.forEach((p) => {
+          othersAway.forEach((p) => {
+            if (p.id === "host") return;
             const btn = document.createElement("button");
             btn.className = "btn";
             btn.type = "button";
@@ -2999,7 +3298,22 @@
     }
 
     function noteSeen(playerId) {
-      if (playerId) lastSeen.set(playerId, Date.now());
+      if (playerId && playerId !== "host") lastSeen.set(playerId, Date.now());
+    }
+
+    function noteAlive(playerId) {
+      if (!playerId || playerId === "host") return;
+      noteSeen(playerId);
+      const g = state.game;
+      if (!g || !g.players) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.kicked || p.bot) return;
+      p.connected = true;
+      if ((g.awayIds || []).includes(playerId)) {
+        clearAway(playerId);
+        g.banner = p.name + " is back";
+        hostBroadcast();
+      }
     }
 
     function markPlayerAway(playerId) {
@@ -3007,12 +3321,42 @@
       if (!g || !g.players) return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || p.bot || p.kicked || p.id === "host") return;
+      if (playerConnOpen(playerId)) return;
       p.connected = false;
       if (g.phase !== "playing") return;
       if (!g.awayIds) g.awayIds = [];
       if (!g.awayIds.includes(p.id)) g.awayIds.push(p.id);
       p.awayAt = Date.now();
       g.banner = p.name + " lost connection";
+    }
+
+    function skipAwayTurn(g) {
+      if (!g || g.phase !== "playing") return false;
+      const p = g.players[g.turn];
+      if (!p || p.id === "host" || p.bot) return false;
+      const away = (g.awayIds || []).filter((id) => id && id !== "host");
+      const stuckId = (g.choosingColor && away.includes(g.choosingColor) && g.choosingColor)
+        || (g.stackChoice && away.includes(g.stackChoice) && g.stackChoice)
+        || (away.includes(p.id) && p.id);
+      if (!stuckId) return false;
+      const who = g.players.find((x) => x.id === stuckId) || p;
+      if (g.choosingColor && away.includes(g.choosingColor)) {
+        if (!COLORS.includes(g.currentColor)) g.currentColor = "red";
+        g.choosingColor = null;
+        const card = topCard(g);
+        if (card && card.value === "wild4") passPlusToNext(g, card);
+        else {
+          g.drawnCardId = null;
+          g.turn = nextSeat(g, g.turn);
+        }
+      } else if ((g.stackChoice && away.includes(g.stackChoice)) || (g.pendingDraw && away.includes(p.id))) {
+        resolvePendingDraw(g);
+      } else {
+        g.drawnCardId = null;
+        g.turn = nextSeat(g, g.turn);
+      }
+      g.banner = who.name + " is away — turn skipped";
+      return true;
     }
 
     function clearAway(playerId) {
@@ -3025,6 +3369,7 @@
 
     function onPeerGone(peerId) {
       const playerId = playerIdFromPeer(peerId);
+      if (playerId === "host") return;
       if (state.conns.get(peerId)) state.conns.delete(peerId);
       if (state.game && state.game.players) {
         markPlayerAway(playerId);
@@ -3098,7 +3443,7 @@
           handleJoin(conn, msg);
           return;
         }
-        noteSeen(pid);
+        noteAlive(pid);
         if (msg.type === "ping") {
           if (msg.rtt) noteRtt(pid, msg.rtt);
           try { conn.send({ type: "pong", t: msg.t || Date.now() }); } catch (e) {}
@@ -3168,7 +3513,9 @@
     function bindHostPeer(peer) {
       state.peer = peer;
       bindVoice(peer);
+      netlog("host peer create", PEER_PREFIX + state.room, netInfo());
       peer.on("open", () => {
+        netlog("host peer open", peer.id);
         if (state.game) hostBroadcast();
         else {
           sendLobby();
@@ -3179,21 +3526,26 @@
         updateMicUi();
       });
       peer.on("connection", (conn) => {
+        netlog("host incoming", conn.peer);
         cancelDrop(conn.peer);
         state.conns.set(conn.peer, conn);
+        watchRtc("in:" + String(conn.peer).slice(0, 8), conn);
         attachHostConn(conn);
       });
       peer.on("disconnected", () => {
+        netlog("host peer disconnected");
         if (state.leaving || state.replacingPeer) return;
         toast("Network hiccup. Reconnecting…");
         try { peer.reconnect(); } catch (e) {}
       });
       peer.on("close", () => {
+        netlog("host peer close");
         if (state.leaving || state.replacingPeer) return;
         if (state.peer !== peer) return;
         recreateHostPeer();
       });
       peer.on("error", (err) => {
+        netlog("host peer error", err && err.type, err && err.message);
         if (err && err.type === "unavailable-id") {
           if (state.game) {
             setTimeout(recreateHostPeer, 1500);
@@ -3306,20 +3658,25 @@
           expireHostWait();
           return;
         }
-        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby. You can leave this invite and create your own room.");
+        setJoinStatus("fail", wifiJoinHint());
+        netlog("join timeout", code, netInfo());
         $("btn-join").disabled = false;
         destroyNetwork();
       }, joinWaitMs(reconnect));
+      netlog(reconnect ? "rejoin" : "join", code, netInfo());
       const peer = new Peer(peerOptions());
       state.peer = peer;
       bindVoice(peer);
       peer.on("open", () => {
         state.myId = peer.id;
+        netlog("guest peer open", peer.id, "→", PEER_PREFIX + code);
         if (reconnect) setReconnectUi(true, "Connecting to the host…");
         else setJoinStatus("joining", "Connecting to the host…");
         const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
         state.conns.set("host", conn);
+        watchRtc("to-host", conn);
         conn.on("open", () => {
+          netlog("guest datachannel open");
           if (reconnect) setReconnectUi(true, "Rejoining your seat…");
           else setJoinStatus("joining", "Joining the lobby…");
           conn.send({ type: "join", name: state.myName, token: myToken() });
@@ -3336,6 +3693,7 @@
             clearHostGoneClock();
             setReconnectUi(false);
             setJoinStatus("ok", "You're in!");
+            netlog("guest in", state.view && state.view.phase);
             ingestState(msg);
             if (state.view && state.view.you && state.view.you.id) state.myId = state.view.you.id;
             return;
@@ -3347,6 +3705,7 @@
             clearJoinWait();
             setReconnectUi(false);
             const text = msg.message || "Could not join this room.";
+            netlog("join rejected", text);
             if (/already started|kicked|left/i.test(text)) {
               sessionDenied(text);
               return;
@@ -3358,6 +3717,7 @@
           }
         });
         conn.on("close", () => {
+          netlog("guest datachannel close");
           if (state.leaving) return;
           if (state.conns.get("host") !== conn) return;
           if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby" || state.view.phase === "end")) {
@@ -3370,25 +3730,29 @@
             else setJoinStatus("fail", "Connection closed. The host may have left.");
           }
         });
-        conn.on("error", () => {
+        conn.on("error", (err) => {
+          netlog("guest conn error", err && err.type, err && err.message);
           if (reconnect) {
             scheduleGuestReconnect();
             return;
           }
           clearJoinWait();
-          setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
+          setJoinStatus("fail", "Could not reach the host." + wifiJoinHint());
         });
       });
       peer.on("disconnected", () => {
+        netlog("guest peer disconnected");
         if (state.leaving || state.replacingPeer) return;
         try { peer.reconnect(); } catch (e) { scheduleGuestReconnect(); }
       });
       peer.on("close", () => {
+        netlog("guest peer close");
         if (state.leaving || state.replacingPeer) return;
         if (state.peer !== peer) return;
         scheduleGuestReconnect();
       });
-      peer.on("error", () => {
+      peer.on("error", (err) => {
+        netlog("guest peer error", err && err.type, err && err.message);
         if (reconnect || (state.view && state.view.phase && state.view.phase !== "home")) {
           scheduleGuestReconnect();
           return;
@@ -3399,7 +3763,7 @@
           expireHostWait();
           return;
         }
-        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby. Leave this invite to create your own room.");
+        setJoinStatus("fail", "Could not join." + wifiJoinHint());
         $("btn-join").disabled = false;
       });
     }
@@ -3471,6 +3835,11 @@
       showScreen("home");
     }
 
+    $("btn-debug").onclick = openDebug;
+    $("btn-debug-close").onclick = () => $("debug-pick").classList.remove("show");
+    $("btn-debug-copy").onclick = shareDebugLog;
+    $("btn-debug-probe").onclick = runIceProbe;
+    $("btn-turn-save").onclick = saveTurnFromMetered;
     $("btn-create").onclick = createRoom;
     $("btn-join").onclick = () => joinRoom($("join-code").value);
     $("join-code").addEventListener("keydown", (e) => {
@@ -3604,8 +3973,7 @@
       const hostConn = state.conns.get("host");
       if (!hostConn || !hostConn.open) return false;
       const now = Date.now();
-      if (state.lastPingAt && now - state.lastPingAt < pingEveryMs() - 250) return true;
-      if (state.lastRxAt && now - state.lastRxAt < pingEveryMs()) return true;
+      if (state.lastPingAt && now - state.lastPingAt < 2000) return true;
       state.lastPingAt = now;
       try { hostConn.send({ type: "ping", t: now, rtt: state.myRtt || 0 }); } catch (e) {}
       return true;
@@ -3647,9 +4015,20 @@
         for (const p of state.game.players) {
           if (p.bot || p.id === "host" || p.kicked) continue;
           const seen = lastSeen.get(p.id) || 0;
+          if (playerConnOpen(p.id)) {
+            if ((state.game.awayIds || []).includes(p.id)) {
+              noteAlive(p.id);
+            } else {
+              noteSeen(p.id);
+            }
+            continue;
+          }
           if (p.connected !== false && seen && now - seen > awayGraceFor(p.id)) {
             markPlayerAway(p.id);
             changed = true;
+          }
+          if ((state.game.awayIds || []).includes(p.id) && p.awayAt && now - p.awayAt > AWAY_TURN_SKIP_MS) {
+            if (skipAwayTurn(state.game)) changed = true;
           }
           if ((state.game.awayIds || []).includes(p.id) && p.awayAt && now - p.awayAt > AWAY_AUTO_KICK_MS) {
             hostKick(p.id);
@@ -3681,6 +4060,14 @@
       $("join-code").value = roomParam;
       setInviteHome(roomParam);
       $("name").focus();
+    }
+
+    netlog("boot", netInfo(), iceSummary());
+    window.addEventListener("offline", () => netlog("offline"));
+    window.addEventListener("online", () => netlog("online", netInfo()));
+    const netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (netConn && netConn.addEventListener) {
+      netConn.addEventListener("change", () => netlog("net-change", netInfo()));
     }
 
     (function restoreSession() {
