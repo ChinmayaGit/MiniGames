@@ -132,15 +132,28 @@ You may play one card that matches the discard’s **color** or **value**, or a 
 
 - **Skip** — the next player is skipped.
 - **Reverse** — play order flips. With two players this acts as a skip.
-- **Draw Two** — the next player draws 2 and is skipped.
+- **Draw Two** — starts or adds to a **+ stack**. The next player is asked only if they hold a legal + card.
 - **Wild** — play anytime, then pick the next color.
-- **Wild Draw Four** — only if you have **no card of the current color**. Next player draws 4, is skipped, and you pick the color.
+- **Wild Draw Four** — as a normal play, only if you have **no card of the current color**. As a **stack**, you may play it on +2 or +4 even if you hold the current color. Then pick the color.
 
 If you cannot play, tap the draw pile. You draw **one** card. If that card is legal you may play it or tap **Keep**. If it is not legal, your turn ends.
 
+### + stacking
+
+If someone plays **+2** or **+4**, the penalty is passed to the next player and can be stacked:
+
+- Ask **only if that player has a legal + card**. They choose **Use + card** or **Pick N from the pile**.
+- If they have no legal + card, they automatically draw the stacked total and skip their turn.
+- **+2 then +2** — allowed. Total becomes 4 (then 6, and so on).
+- **+2 then +4** — allowed. Total adds 4, and the stack is now a +4 stack.
+- **+4 then +4** — allowed.
+- **+4 then +2** — not allowed. You cannot put +2 on +4.
+
+Whoever finally takes it draws the full stacked amount and misses their turn.
+
 ### UNO
 
-When you have **2 cards**, tap **UNO!** before playing down to one. If you play to a single card without calling it, you draw 2 as a penalty.
+When you have **2 cards**, tap **UNO!** before playing down to one. If you play to a single card without calling it, you draw 2 as a penalty. Other players can tap **Caught!** if you forget.
 
 Bots always call UNO on time.
 
@@ -148,12 +161,21 @@ Bots always call UNO on time.
 
 The first player whose hand is empty wins. If the last card is Draw Two or Wild Draw Four, the next player still draws, then the game ends.
 
+### Disconnects, phone lock, wait or kick
+
+WebRTC drops when a phone locks or the tab is backgrounded. The game treats that as **away**, not logged out.
+
+- Each player has a hidden seat token in `localStorage`. Rejoining the same room (auto-retry, unlock, or refresh) restores that seat and hand.
+- The host tab keeps the authoritative game. If the host’s connection dies, it re-registers the same `unohost-XXXX` room so guests can find it again.
+- While someone is away, play **pauses**. Everyone still in the room sees **Wait for them** or **Kick [name]**.
+- Wait is the default: the table stays frozen until they rejoin. Kick removes them so the others can continue. You cannot kick the host; if the host is gone, guests keep trying to reconnect.
+
 ### House rules this build uses
 
-- No stacking Draw Twos or Wild Draw Fours.
+- Stacking Draw Twos and Wild Draw Fours, with +2 allowed on +2, and +4 allowed on +2 or +4, but **not** +2 on +4.
 - No challenging a Wild Draw Four.
 - Starting card is always a number.
-- Forgotten UNO is automatic (no separate “catch” button).
+- Forgotten UNO can be caught by other players.
 
 ### Host authority (anti-desync)
 
@@ -187,12 +209,15 @@ Tiny JSON over the PeerJS data channel:
 
 | From | Type | Meaning |
 | --- | --- | --- |
-| Guest → host | `join` | Name for the lobby list |
+| Guest → host | `join` | Name + seat token for lobby or rejoin |
 | Guest → host | `play` | Play `cardId` from hand |
-| Guest → host | `draw` | Draw one card |
+| Guest → host | `draw` | Draw one card, or take a pending + stack |
 | Guest → host | `pass` | Keep a just-drawn card |
 | Guest → host | `uno` | Call UNO (hand size ≤ 2) |
+| Guest → host | `caught` | Catch a player who forgot UNO |
 | Guest → host | `color` | Chosen color after a wild |
+| Guest → host | `stack` | `play` or `take` a pending + stack |
+| Guest → host | `kick` | Remove an away player |
 | Host → guest | `state` | Lobby or in-game view |
 | Host → guest | `error` | e.g. game already started |
 

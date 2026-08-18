@@ -774,6 +774,12 @@
       margin: 0;
       text-align: center;
     }
+    #stack-pick .panel { width: min(320px, 100%); }
+    #stack-pick .hint { margin-top: 8px; }
+    #away-pick, #reconnect-pick { z-index: 16; }
+    #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
+    #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
+    #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
     .swatches {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -994,6 +1000,32 @@
     </div>
   </div>
 
+  <div class="overlay" id="stack-pick">
+    <div class="panel">
+      <b id="stack-title">Draw or use a + card?</b>
+      <p class="hint" id="stack-sub">You can play a + card to pass it on.</p>
+      <button class="btn yellow" id="btn-stack-play" type="button">Use + card</button>
+      <button class="btn" id="btn-stack-take" type="button">Pick from pile</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="away-pick">
+    <div class="panel">
+      <b id="away-title">Player lost connection</b>
+      <p class="hint" id="away-sub">They may come back, or they may have left. Wait for them, or kick them so the game can continue.</p>
+      <div id="away-actions"></div>
+      <button class="btn ghost" id="btn-away-wait" type="button">Wait for them</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="reconnect-pick">
+    <div class="panel">
+      <b id="reconnect-title">Rejoining…</b>
+      <p class="hint" id="reconnect-sub">Connection dropped. Trying to get you back in.</p>
+      <div class="join-bar" style="display:block;margin-top:14px"><i></i></div>
+    </div>
+  </div>
+
   <div class="turn-pop" id="turn-pop">
     <b id="turn-pop-name">Wait for your turn</b>
   </div>
@@ -1185,8 +1217,58 @@
       raisedCardId: null,
       handDragged: false,
       joinTimer: 0,
+      reconnectTimer: 0,
+      leaving: false,
+      replacingPeer: false,
+      reconnecting: false,
     };
     const guests = new Map();
+    const dropTimers = new Map();
+
+    function myToken() {
+      let t = localStorage.getItem("uno-token");
+      if (!t) {
+        t = (crypto.randomUUID && crypto.randomUUID()) || ("t" + Math.random().toString(36).slice(2) + Date.now().toString(36));
+        localStorage.setItem("uno-token", t);
+      }
+      return t;
+    }
+
+    function saveSession() {
+      if (state.solo || !state.room) return;
+      try {
+        sessionStorage.setItem("uno-session", JSON.stringify({
+          role: state.isHost ? "host" : "guest",
+          room: state.room,
+          name: state.myName,
+          token: myToken(),
+          myId: state.myId,
+          game: state.isHost ? state.game : null,
+          guests: state.isHost ? [...guests.entries()] : null,
+        }));
+      } catch (e) {}
+    }
+
+    function clearSession() {
+      try { sessionStorage.removeItem("uno-session"); } catch (e) {}
+    }
+
+    function playerIdFromPeer(peerId) {
+      const meta = guests.get(peerId);
+      return (meta && meta.playerId) || peerId;
+    }
+
+    function isPaused() {
+      return !!(state.game && state.game.awayIds && state.game.awayIds.length);
+    }
+
+    function setReconnectUi(on, text) {
+      state.reconnecting = !!on;
+      const el = $("reconnect-pick");
+      if (!el) return;
+      el.classList.toggle("show", !!on);
+      if (text) $("reconnect-sub").textContent = text;
+    }
 
     function peerOptions() {
       return {
@@ -1223,7 +1305,20 @@
       return hand.some((c) => c.id !== exceptId && c.color === color);
     }
 
+    function canStackCard(g, card) {
+      if (!g.pendingDraw) return false;
+      if (g.pendingKind === "wild4") return card.value === "wild4";
+      if (g.pendingKind === "draw2") return card.value === "draw2" || card.value === "wild4";
+      return false;
+    }
+
+    function stackableInHand(g, hand) {
+      return hand.filter((c) => canStackCard(g, c));
+    }
+
     function canPlayCard(g, hand, card) {
+      if (g.stackChoice) return false;
+      if (g.pendingDraw) return canStackCard(g, card);
       if (g.drawnCardId && card.id !== g.drawnCardId) return false;
       if (card.value === "wild") return true;
       if (card.value === "wild4") return !hasColor(hand, g.currentColor, card.id);
@@ -1263,7 +1358,7 @@
       for (let s = 0; s < steps; s++) {
         for (let k = 0; k < n; k++) {
           i = (i + g.direction + n) % n;
-          if (g.players[i].connected !== false) break;
+          if (g.players[i].connected !== false && !g.players[i].kicked) break;
         }
       }
       return i;
@@ -1272,7 +1367,8 @@
     function playerView(game, id) {
       const p = game.players.find((x) => x.id === id);
       const hand = p ? p.hand : [];
-      const legal = p && game.players[game.turn].id === id && !game.choosingColor
+      const paused = (game.awayIds || []).length > 0;
+      const legal = p && game.players[game.turn].id === id && !game.choosingColor && !game.stackChoice && !paused
         ? hand.filter((c) => canPlayCard(game, hand, c)).map((c) => c.id)
         : [];
       return {
@@ -1288,6 +1384,9 @@
         turnId: game.players[game.turn].id,
         choosingColor: game.choosingColor,
         drawnCardId: game.players[game.turn].id === id ? game.drawnCardId : null,
+        pendingDraw: game.pendingDraw || 0,
+        pendingKind: game.pendingKind || null,
+        stackChoice: game.stackChoice || null,
         you: {
           id,
           hand: sortHand(hand),
@@ -1298,6 +1397,10 @@
         lastPlay: game.lastPlay || null,
         playSeq: game.playSeq || 0,
         catchable: game.players.some((x) => x.id !== id && x.hand.length === 1 && !x.calledUno),
+        away: (game.awayIds || []).map((aid) => {
+          const x = game.players.find((p) => p.id === aid);
+          return { id: aid, name: x ? x.name : "Player" };
+        }),
         players: game.players.map((x) => ({
           id: x.id,
           name: x.name,
@@ -1307,6 +1410,7 @@
           calledUno: x.calledUno,
           isTurn: game.players[game.turn].id === x.id,
           bot: !!x.bot,
+          kicked: !!x.kicked,
         })),
       };
     }
@@ -1316,10 +1420,12 @@
       const players = people.map((p, i) => ({
         id: p.id,
         name: p.name,
+        token: p.token || "",
         seatColor: SEAT[i % SEAT.length],
         hand: [],
         connected: true,
         calledUno: false,
+        kicked: false,
         bot: !!p.bot,
       }));
       for (let i = 0; i < 7; i++) {
@@ -1341,6 +1447,10 @@
         turn: 0,
         drawnCardId: null,
         choosingColor: null,
+        pendingDraw: 0,
+        pendingKind: null,
+        stackChoice: null,
+        awayIds: [],
         banner: "Match color or number",
         startedAt: Date.now(),
         winnerId: null,
@@ -1357,12 +1467,13 @@
         return;
       }
       applyView(playerView(state.game, "host"));
-      for (const [id, conn] of state.conns) {
+      for (const [peer, conn] of state.conns) {
         if (conn.open) {
-          try { conn.send({ type: "state", view: playerView(state.game, id) }); }
+          try { conn.send({ type: "state", view: playerView(state.game, playerIdFromPeer(peer)) }); }
           catch (e) {}
         }
       }
+      saveSession();
     }
 
     function finishGame(winnerId) {
@@ -1379,6 +1490,47 @@
       return g.players.find((p) => p.id === id).name;
     }
 
+    function resolvePendingDraw(g) {
+      const p = g.players[g.turn];
+      const n = g.pendingDraw || 0;
+      if (p && n) {
+        drawCards(g, p, n);
+        sfx("draw");
+        g.banner = p.name + " draws " + n;
+      }
+      g.pendingDraw = 0;
+      g.pendingKind = null;
+      g.stackChoice = null;
+      g.drawnCardId = null;
+      g.turn = nextSeat(g, g.turn);
+    }
+
+    function offerStackOrForce(g) {
+      const p = g.players[g.turn];
+      if (!p || !g.pendingDraw) {
+        g.stackChoice = null;
+        return;
+      }
+      if (stackableInHand(g, p.hand).length) {
+        g.stackChoice = p.id;
+        g.banner = p.name + " can stack or draw " + g.pendingDraw;
+        return;
+      }
+      resolvePendingDraw(g);
+    }
+
+    function passPlusToNext(g, card) {
+      const add = card.value === "wild4" ? 4 : 2;
+      g.pendingDraw = (g.pendingDraw || 0) + add;
+      if (!g.pendingKind || card.value === "wild4") g.pendingKind = card.value === "wild4" ? "wild4" : "draw2";
+      g.drawnCardId = null;
+      g.stackChoice = null;
+      g.turn = nextSeat(g, g.turn);
+      const next = g.players[g.turn];
+      g.banner = next.name + " faces +" + g.pendingDraw;
+      offerStackOrForce(g);
+    }
+
     function afterPlay(g, player, card) {
       if (player.hand.length === 1 && !player.calledUno) {
         drawCards(g, player, 2);
@@ -1388,8 +1540,11 @@
         if (card.value === "wild" || card.value === "wild4") return;
         if (card.value === "draw2") {
           const victim = g.players[nextSeat(g, g.turn)];
-          drawCards(g, victim, 2);
+          drawCards(g, victim, (g.pendingDraw || 0) + 2);
         }
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        g.stackChoice = null;
         finishGame(player.id);
         return;
       }
@@ -1408,22 +1563,20 @@
       } else if (card.value === "skip") {
         g.turn = nextSeat(g, g.turn, 2);
       } else if (card.value === "draw2") {
-        const victim = g.players[nextSeat(g, g.turn)];
-        drawCards(g, victim, 2);
-        g.banner = victim.name + " draws 2";
-        g.turn = nextSeat(g, g.turn, 2);
+        passPlusToNext(g, card);
+        return;
       } else {
         g.turn = nextSeat(g, g.turn);
       }
       const next = g.players[g.turn];
-      if (!g.banner.includes("forgot UNO") && card.value !== "draw2") {
-        g.banner = next.name + "'s turn";
-      }
+      if (!g.banner.includes("forgot UNO")) g.banner = next.name + "'s turn";
     }
 
     function hostPlay(playerId, cardId) {
       const g = state.game;
       if (!g || g.phase !== "playing" || g.choosingColor) return;
+      if (isPaused()) return;
+      if (g.stackChoice) return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || g.players[g.turn].id !== playerId) return;
       const card = p.hand.find((c) => c.id === cardId);
@@ -1437,6 +1590,7 @@
       if (card.value === "wild" || card.value === "wild4") {
         g.choosingColor = playerId;
         g.drawnCardId = null;
+        g.stackChoice = null;
         g.banner = p.name + " played Wild" + (card.value === "wild4" ? " +4" : "") + ". Pick a color";
         if (!p.hand.length) g.banner = p.name + " wins after picking a color";
         if (p.hand.length === 1 && !p.calledUno) {
@@ -1454,8 +1608,17 @@
     function hostDraw(playerId) {
       const g = state.game;
       if (!g || g.phase !== "playing" || g.choosingColor) return;
+      if (isPaused()) return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || g.players[g.turn].id !== playerId) return;
+      if (g.pendingDraw) {
+        if (g.stackChoice && g.stackChoice !== playerId) return;
+        g.stackChoice = null;
+        resolvePendingDraw(g);
+        hostBroadcast();
+        return;
+      }
+      if (g.stackChoice) return;
       if (g.drawnCardId) return;
       const got = drawCards(g, p, 1);
       sfx("draw");
@@ -1480,6 +1643,7 @@
     function hostPass(playerId) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
       if (g.players[g.turn].id !== playerId || !g.drawnCardId) return;
       g.drawnCardId = null;
       g.banner = nameOf(g, playerId) + " keeps the card";
@@ -1490,6 +1654,7 @@
     function hostUno(playerId) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || p.hand.length > 2) return;
       p.calledUno = true;
@@ -1501,6 +1666,7 @@
     function hostCaught(callerId) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
       const victim = g.players.find((p) => p.hand.length === 1 && !p.calledUno && p.id !== callerId);
       if (!victim) return;
       drawCards(g, victim, 2);
@@ -1510,9 +1676,68 @@
       hostBroadcast();
     }
 
+    function hostStack(playerId, action) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
+      if (g.stackChoice !== playerId || g.players[g.turn].id !== playerId) return;
+      if (action === "take") {
+        g.stackChoice = null;
+        resolvePendingDraw(g);
+        hostBroadcast();
+        return;
+      }
+      if (action !== "play") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || !stackableInHand(g, p.hand).length) return;
+      g.stackChoice = null;
+      g.banner = p.name + " can play a + card or draw " + g.pendingDraw;
+      hostBroadcast();
+    }
+
+    function hostKick(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.id === "host" || p.bot || p.kicked) return;
+      p.kicked = true;
+      p.connected = false;
+      g.awayIds = (g.awayIds || []).filter((id) => id !== p.id);
+      for (const [peer, meta] of [...guests.entries()]) {
+        if (meta.playerId === p.id || peer === p.id) {
+          const conn = state.conns.get(peer);
+          if (conn) {
+            try { conn.close(); } catch (e) {}
+          }
+          state.conns.delete(peer);
+          guests.delete(peer);
+        }
+      }
+      if (g.choosingColor === p.id) {
+        g.currentColor = "red";
+        g.choosingColor = null;
+      }
+      if (g.stackChoice === p.id) g.stackChoice = null;
+      if (g.players[g.turn].id === p.id) {
+        if (g.pendingDraw) resolvePendingDraw(g);
+        else g.turn = nextSeat(g, g.turn);
+      }
+      const stillIn = g.players.filter((x) => !x.kicked);
+      if (stillIn.length < 2) {
+        const winner = stillIn[0];
+        if (winner) {
+          finishGame(winner.id);
+          return;
+        }
+      }
+      g.banner = p.name + " was kicked";
+      hostBroadcast();
+    }
+
     function hostChooseColor(playerId, color) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
       if (g.choosingColor !== playerId) return;
       if (!COLORS.includes(color)) return;
       g.currentColor = color;
@@ -1522,16 +1747,16 @@
       if (!p.hand.length) {
         if (card.value === "wild4") {
           const victim = g.players[nextSeat(g, g.turn)];
-          drawCards(g, victim, 4);
+          drawCards(g, victim, (g.pendingDraw || 0) + 4);
         }
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        g.stackChoice = null;
         finishGame(p.id);
         return;
       }
       if (card.value === "wild4") {
-        const victim = g.players[nextSeat(g, g.turn)];
-        drawCards(g, victim, 4);
-        g.banner = victim.name + " draws 4 · color is " + color;
-        g.turn = nextSeat(g, g.turn, 2);
+        passPlusToNext(g, card);
       } else {
         g.banner = "Color is " + color;
         g.turn = nextSeat(g, g.turn);
@@ -1552,6 +1777,22 @@
       if (!p || !p.bot || g.players[g.turn].id !== id) return;
       if (g.choosingColor === id) {
         hostChooseColor(id, botColor(p));
+        return;
+      }
+      if (g.stackChoice === id) {
+        const plus = stackableInHand(g, p.hand);
+        if (!plus.length) {
+          hostStack(id, "take");
+          return;
+        }
+        g.stackChoice = null;
+        if (p.hand.length === 2) hostUno(id);
+        const choice = plus.find((c) => c.value === "wild4") || plus[0];
+        hostPlay(id, choice.id);
+        return;
+      }
+      if (g.pendingDraw) {
+        hostDraw(id);
         return;
       }
       if (g.drawnCardId) {
@@ -1585,10 +1826,16 @@
     function maybeBot() {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
+      if (isPaused()) return;
       clearTimeout(state.botTimer);
       if (g.choosingColor) {
         const p = g.players.find((x) => x.id === g.choosingColor);
         if (p && p.bot) state.botTimer = setTimeout(() => hostChooseColor(p.id, botColor(p)), 550);
+        return;
+      }
+      if (g.stackChoice) {
+        const p = g.players.find((x) => x.id === g.stackChoice);
+        if (p && p.bot) state.botTimer = setTimeout(() => botAct(p.id), 700 + Math.random() * 250);
         return;
       }
       const p = g.players[g.turn];
@@ -1602,12 +1849,16 @@
         renderLobby(view);
         showScreen("lobby");
         $("turn-pop").classList.remove("show");
+        $("stack-pick").classList.remove("show");
+        $("away-pick").classList.remove("show");
         return;
       }
       if (view.phase === "end") {
         renderEnd(view);
         showScreen("end");
         $("color-pick").classList.remove("show");
+        $("stack-pick").classList.remove("show");
+        $("away-pick").classList.remove("show");
         $("turn-pop").classList.remove("show");
         return;
       }
@@ -1631,8 +1882,36 @@
         $("btn-uno").classList.toggle("pulse", view.you.hand.length === 2 && !view.you.calledUno);
         $("btn-pass").style.display = view.drawnCardId ? "inline-flex" : "none";
         $("btn-caught").style.display = view.catchable ? "inline-flex" : "none";
-        $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId;
-        $("color-pick").classList.toggle("show", view.choosingColor === view.you.id);
+        $("draw-pile").disabled = !view.you.isTurn || !!view.choosingColor || !!view.drawnCardId || view.stackChoice === view.you.id || !!(view.away && view.away.length);
+        $("color-pick").classList.toggle("show", view.choosingColor === view.you.id && !(view.away && view.away.length));
+        const stackAsk = view.stackChoice === view.you.id && !(view.away && view.away.length);
+        $("stack-pick").classList.toggle("show", stackAsk);
+        if (stackAsk) {
+          const n = view.pendingDraw || 0;
+          $("stack-title").textContent = "Draw " + n + " or use a + card?";
+          $("stack-sub").textContent = view.pendingKind === "wild4"
+            ? "You can play +4 to pass it on. +2 cannot go on +4."
+            : "You can play +2 or +4 to pass it on.";
+          $("btn-stack-take").textContent = "Pick " + n + " from pile";
+        }
+        const awayList = view.away || [];
+        const showAway = awayList.length && !state.reconnecting;
+        $("away-pick").classList.toggle("show", !!showAway);
+        if (showAway) {
+          const names = awayList.map((p) => p.name).join(", ");
+          $("away-title").textContent = names + (awayList.length > 1 ? " lost connection" : " lost connection");
+          $("away-sub").textContent = "They may come back (phone lock / network), or they may have left. Wait for them, or kick them so everyone else can keep playing.";
+          const box = $("away-actions");
+          box.replaceChildren();
+          awayList.forEach((p) => {
+            const btn = document.createElement("button");
+            btn.className = "btn";
+            btn.type = "button";
+            btn.textContent = "Kick " + p.name;
+            btn.onclick = () => sendAction({ type: "kick", playerId: p.id });
+            box.append(btn);
+          });
+        }
         if (view.startedAt && !state.timerId) startTimer(view.startedAt);
         const play = view.lastPlay;
         if (play && play.seq && play.seq !== state.seenPlaySeq) {
@@ -1955,6 +2234,8 @@
         else if (msg.type === "uno") hostUno(state.myId);
         else if (msg.type === "caught") hostCaught(state.myId);
         else if (msg.type === "color") hostChooseColor(state.myId, msg.color);
+        else if (msg.type === "stack") hostStack(state.myId, msg.action);
+        else if (msg.type === "kick") hostKick(msg.playerId);
         return;
       }
       const hostConn = [...state.conns.values()][0];
@@ -2002,59 +2283,200 @@
           catch (e) {}
         }
       }
+      saveSession();
+    }
+
+    function cancelDrop(peerId) {
+      clearTimeout(dropTimers.get(peerId));
+      dropTimers.delete(peerId);
+    }
+
+    function markPlayerAway(playerId) {
+      const g = state.game;
+      if (!g || !g.players) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.bot || p.kicked || p.id === "host") return;
+      p.connected = false;
+      if (g.phase !== "playing") return;
+      if (!g.awayIds) g.awayIds = [];
+      if (!g.awayIds.includes(p.id)) g.awayIds.push(p.id);
+      g.banner = p.name + " lost connection";
+    }
+
+    function clearAway(playerId) {
+      const g = state.game;
+      if (!g) return;
+      g.awayIds = (g.awayIds || []).filter((id) => id !== playerId);
+    }
+
+    function onPeerGone(peerId) {
+      const playerId = playerIdFromPeer(peerId);
+      if (state.conns.get(peerId)) state.conns.delete(peerId);
+      if (state.game && state.game.players) {
+        markPlayerAway(playerId);
+        hostBroadcast();
+        return;
+      }
+      guests.delete(peerId);
+      sendLobby();
+    }
+
+    function handleJoin(conn, msg) {
+      const name = String(msg.name || "Player").slice(0, 16);
+      const token = String(msg.token || "").slice(0, 80) || conn.peer;
+      cancelDrop(conn.peer);
+
+      if (state.game && state.game.players) {
+        const kicked = state.game.players.find((p) => p.token && p.token === token && p.kicked);
+        if (kicked) {
+          try { conn.send({ type: "error", message: "You were kicked from this game" }); } catch (e) {}
+          return;
+        }
+        const seated = state.game.players.find((p) => p.token && p.token === token && !p.kicked);
+        if (seated) {
+          for (const [peer, meta] of [...guests.entries()]) {
+            if (peer !== conn.peer && (meta.token === token || meta.playerId === seated.id)) {
+              cancelDrop(peer);
+              const old = state.conns.get(peer);
+              if (old && old !== conn) {
+                try { old.close(); } catch (e) {}
+              }
+              state.conns.delete(peer);
+              guests.delete(peer);
+            }
+          }
+          guests.set(conn.peer, { name: seated.name, token, playerId: seated.id });
+          seated.connected = true;
+          seated.name = name || seated.name;
+          clearAway(seated.id);
+          state.game.banner = seated.name + " is back";
+          hostBroadcast();
+          return;
+        }
+        if (state.game.phase === "playing" || state.game.phase === "end") {
+          try { conn.send({ type: "error", message: "Game already started" }); } catch (e) {}
+          return;
+        }
+      }
+
+      for (const [peer, meta] of [...guests.entries()]) {
+        if (peer !== conn.peer && meta.token === token) {
+          cancelDrop(peer);
+          const old = state.conns.get(peer);
+          if (old && old !== conn) {
+            try { old.close(); } catch (e) {}
+          }
+          state.conns.delete(peer);
+          guests.delete(peer);
+        }
+      }
+      guests.set(conn.peer, { name, token, playerId: conn.peer });
+      sendLobby();
     }
 
     function attachHostConn(conn) {
       conn.on("data", (msg) => {
         if (!msg || typeof msg !== "object") return;
+        const pid = playerIdFromPeer(conn.peer);
         if (msg.type === "join") {
-          const name = String(msg.name || "Player").slice(0, 16);
-          guests.set(conn.peer, { name });
-          if (state.game && state.game.phase === "playing") {
-            conn.send({ type: "error", message: "Game already started" });
-            return;
-          }
-          sendLobby();
+          handleJoin(conn, msg);
+          return;
         }
-        if (msg.type === "play") hostPlay(conn.peer, msg.cardId);
-        if (msg.type === "draw") hostDraw(conn.peer);
-        if (msg.type === "pass") hostPass(conn.peer);
-        if (msg.type === "uno") hostUno(conn.peer);
-        if (msg.type === "caught") hostCaught(conn.peer);
-        if (msg.type === "color") hostChooseColor(conn.peer, msg.color);
+        if (msg.type === "play") hostPlay(pid, msg.cardId);
+        if (msg.type === "draw") hostDraw(pid);
+        if (msg.type === "pass") hostPass(pid);
+        if (msg.type === "uno") hostUno(pid);
+        if (msg.type === "caught") hostCaught(pid);
+        if (msg.type === "color") hostChooseColor(pid, msg.color);
+        if (msg.type === "stack") hostStack(pid, msg.action);
+        if (msg.type === "kick") hostKick(msg.playerId);
       });
       conn.on("close", () => {
-        state.conns.delete(conn.peer);
-        guests.delete(conn.peer);
-        if (state.game && state.game.players) {
-          const p = state.game.players.find((x) => x.id === conn.peer);
-          if (p) p.connected = false;
-          if (state.game.phase === "playing" && state.game.players[state.game.turn].id === conn.peer) {
-            if (state.game.choosingColor === conn.peer) state.game.currentColor = "red";
-            state.game.turn = nextSeat(state.game, state.game.turn);
-            state.game.choosingColor = null;
-            state.game.drawnCardId = null;
-          }
-          hostBroadcast();
-        } else {
-          sendLobby();
-        }
+        if (state.conns.get(conn.peer) !== conn) return;
+        cancelDrop(conn.peer);
+        dropTimers.set(conn.peer, setTimeout(() => {
+          dropTimers.delete(conn.peer);
+          onPeerGone(conn.peer);
+        }, 2800));
       });
     }
 
-    function destroyPeer() {
-      stopTimer();
+    function destroyNetwork(opts) {
+      dropTimers.forEach((t) => clearTimeout(t));
+      dropTimers.clear();
       clearTimeout(state.botTimer);
       clearJoinWait();
+      state.replacingPeer = true;
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
-      guests.clear();
+      if (!(opts && opts.keepGuests)) guests.clear();
       if (state.peer) {
         try { state.peer.destroy(); } catch (e) {}
         state.peer = null;
       }
+      state.replacingPeer = false;
+    }
+
+    function destroyPeer() {
+      stopTimer();
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(false);
+      destroyNetwork();
       state.game = null;
       state.view = null;
+    }
+
+    function bindHostPeer(peer) {
+      state.peer = peer;
+      peer.on("open", () => {
+        if (state.game) hostBroadcast();
+        else {
+          sendLobby();
+          toast("Room " + state.room + " ready");
+        }
+        saveSession();
+      });
+      peer.on("connection", (conn) => {
+        cancelDrop(conn.peer);
+        state.conns.set(conn.peer, conn);
+        attachHostConn(conn);
+      });
+      peer.on("disconnected", () => {
+        if (state.leaving || state.replacingPeer) return;
+        toast("Network hiccup. Reconnecting…");
+        try { peer.reconnect(); } catch (e) {}
+      });
+      peer.on("close", () => {
+        if (state.leaving || state.replacingPeer) return;
+        if (state.peer !== peer) return;
+        recreateHostPeer();
+      });
+      peer.on("error", (err) => {
+        if (err && err.type === "unavailable-id") {
+          if (state.game) {
+            setTimeout(recreateHostPeer, 1500);
+            return;
+          }
+          state.room = randomCode();
+          destroyPeer();
+          createRoom();
+          return;
+        }
+        if (state.game) {
+          toast("Host connection issue. Retrying…");
+          setTimeout(recreateHostPeer, 1500);
+          return;
+        }
+        showError("home-error", "Could not create room. Try again.");
+        showScreen("home");
+      });
+    }
+
+    function recreateHostPeer() {
+      if (!state.isHost || state.solo || !state.room || state.leaving) return;
+      destroyNetwork({ keepGuests: true });
+      bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
     }
 
     function createRoom() {
@@ -2064,6 +2486,7 @@
         showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
         return;
       }
+      state.leaving = false;
       state.isHost = true;
       state.solo = false;
       state.myId = "host";
@@ -2073,91 +2496,128 @@
       showError("home-error", "");
       setJoinStatus("", "");
       destroyPeer();
-      const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
-      state.peer = peer;
-      peer.on("open", () => {
-        sendLobby();
-        toast("Room " + state.room + " ready");
-      });
-      peer.on("connection", (conn) => {
-        state.conns.set(conn.peer, conn);
-        attachHostConn(conn);
-      });
-      peer.on("error", (err) => {
-        if (err.type === "unavailable-id") {
-          state.room = randomCode();
-          destroyPeer();
-          createRoom();
-          return;
-        }
-        showError("home-error", "Could not create room. Try again.");
-        showScreen("home");
-      });
+      state.isHost = true;
+      state.myId = "host";
+      state.myName = name;
+      state.room = state.room || randomCode();
+      bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
     }
 
-    function joinRoom(code) {
-      const name = requireName();
+    function scheduleGuestReconnect() {
+      if (state.leaving || state.isHost || state.solo || !state.room) return;
+      if (state.reconnectTimer) return;
+      setReconnectUi(true, "Connection dropped. Trying to get you back in…");
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = 0;
+        joinRoom(state.room, true);
+      }, 1400);
+    }
+
+    function joinRoom(code, reconnect) {
+      const name = reconnect ? (state.myName || requireName()) : requireName();
       if (!name) return;
       if (typeof Peer === "undefined") {
         setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
+        if (reconnect) scheduleGuestReconnect();
         return;
       }
-      code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      code = (code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
         setJoinStatus("fail", "Enter a 4-character room code.");
         $("join-code").focus();
         return;
       }
+      state.leaving = false;
       state.isHost = false;
       state.solo = false;
       state.myName = name;
       localStorage.setItem("uno-name", state.myName);
       state.room = code;
       showError("home-error", "");
-      destroyPeer();
-      setJoinStatus("connecting", "Finding room " + code + "…");
+      if (reconnect) destroyNetwork();
+      else destroyPeer();
+      if (reconnect) setReconnectUi(true, "Finding the room again…");
+      else setJoinStatus("connecting", "Finding room " + code + "…");
       clearJoinWait();
       state.joinTimer = setTimeout(() => {
+        if (reconnect) {
+          setReconnectUi(true, "Still trying to rejoin…");
+          scheduleGuestReconnect();
+          return;
+        }
         setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
         $("btn-join").disabled = false;
-        destroyPeer();
-      }, 12000);
+        destroyNetwork();
+      }, reconnect ? 8000 : 12000);
       const peer = new Peer(peerOptions());
       state.peer = peer;
       peer.on("open", () => {
         state.myId = peer.id;
-        setJoinStatus("joining", "Connecting to the host…");
+        if (reconnect) setReconnectUi(true, "Connecting to the host…");
+        else setJoinStatus("joining", "Connecting to the host…");
         const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
         state.conns.set("host", conn);
         conn.on("open", () => {
-          setJoinStatus("joining", "Joining the lobby…");
-          conn.send({ type: "join", name: state.myName });
+          if (reconnect) setReconnectUi(true, "Rejoining your seat…");
+          else setJoinStatus("joining", "Joining the lobby…");
+          conn.send({ type: "join", name: state.myName, token: myToken() });
         });
         conn.on("data", (msg) => {
           if (msg.type === "state") {
             clearJoinWait();
+            setReconnectUi(false);
             setJoinStatus("ok", "You're in!");
+            if (msg.view && msg.view.you) state.myId = msg.view.you.id;
             applyView(msg.view);
+            saveSession();
           }
           if (msg.type === "error") {
             clearJoinWait();
+            setReconnectUi(false);
             setJoinStatus("fail", msg.message || "Could not join this room.");
             toast(msg.message);
+            if (reconnect && /already started|kicked/i.test(String(msg.message || ""))) {
+              clearTimeout(state.reconnectTimer);
+              state.reconnectTimer = 0;
+            }
           }
         });
         conn.on("close", () => {
-          if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
-          else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
+          if (state.leaving) return;
+          if (state.conns.get("host") !== conn) return;
+          if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby" || state.view.phase === "end")) {
+            scheduleGuestReconnect();
+            return;
+          }
+          if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
             clearJoinWait();
-            setJoinStatus("fail", "Connection closed. The host may have left.");
+            if (reconnect) scheduleGuestReconnect();
+            else setJoinStatus("fail", "Connection closed. The host may have left.");
           }
         });
         conn.on("error", () => {
+          if (reconnect) {
+            scheduleGuestReconnect();
+            return;
+          }
           clearJoinWait();
           setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
         });
       });
+      peer.on("disconnected", () => {
+        if (state.leaving || state.replacingPeer) return;
+        try { peer.reconnect(); } catch (e) { scheduleGuestReconnect(); }
+      });
+      peer.on("close", () => {
+        if (state.leaving || state.replacingPeer) return;
+        if (state.peer !== peer) return;
+        scheduleGuestReconnect();
+      });
       peer.on("error", () => {
+        if (reconnect) {
+          scheduleGuestReconnect();
+          return;
+        }
         clearJoinWait();
         setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
         showScreen("home");
@@ -2166,8 +2626,8 @@
 
     function startHostGame() {
       if (!state.isHost) return;
-      const players = [{ id: "host", name: state.myName }];
-      for (const [id, meta] of guests) players.push({ id, name: meta.name });
+      const players = [{ id: "host", name: state.myName, token: myToken() }];
+      for (const [id, meta] of guests) players.push({ id, name: meta.name, token: meta.token || id });
       if (players.length < 2) {
         toast("Need at least 2 players");
         return;
@@ -2205,10 +2665,18 @@
     }
 
     function goHome() {
+      state.leaving = true;
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      setReconnectUi(false);
+      clearSession();
       destroyPeer();
       state.isHost = false;
       state.solo = false;
       $("color-pick").classList.remove("show");
+      $("stack-pick").classList.remove("show");
+      $("away-pick").classList.remove("show");
+      $("reconnect-pick").classList.remove("show");
       $("turn-pop").classList.remove("show");
       setJoinStatus("", "");
       $("btn-join").disabled = false;
@@ -2244,6 +2712,9 @@
     $("btn-caught").onclick = () => sendAction({ type: "caught" });
     $("btn-pass").onclick = () => sendAction({ type: "pass" });
     $("draw-pile").onclick = () => sendAction({ type: "draw" });
+    $("btn-stack-play").onclick = () => sendAction({ type: "stack", action: "play" });
+    $("btn-stack-take").onclick = () => sendAction({ type: "stack", action: "take" });
+    $("btn-away-wait").onclick = () => toast("Waiting for them to rejoin…");
     $("color-pick").addEventListener("click", (e) => {
       const color = e.target.getAttribute("data-color");
       if (color) sendAction({ type: "color", color });
@@ -2319,11 +2790,75 @@
 
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
 
+    function tryResumeConnection() {
+      if (state.leaving || state.solo) return;
+      if (state.isHost) {
+        const peer = state.peer;
+        if (!peer) {
+          recreateHostPeer();
+          return;
+        }
+        if (peer.disconnected) {
+          try { peer.reconnect(); } catch (e) { recreateHostPeer(); }
+        }
+        return;
+      }
+      if (!state.room) return;
+      const hostConn = state.conns.get("host");
+      if (!hostConn || !hostConn.open) scheduleGuestReconnect();
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) tryResumeConnection();
+    });
+    window.addEventListener("online", tryResumeConnection);
+    window.addEventListener("pageshow", tryResumeConnection);
+
     const saved = localStorage.getItem("uno-name");
     if (saved) $("name").value = saved;
     const params = new URLSearchParams(location.search);
     const roomParam = (params.get("room") || "").toUpperCase();
     if (roomParam.length === 4) $("join-code").value = roomParam;
+
+    (function restoreSession() {
+      let snap;
+      try { snap = JSON.parse(sessionStorage.getItem("uno-session") || "null"); } catch (e) { return; }
+      if (!snap || !snap.room || snap.room === "SOLO") return;
+      if (snap.name) {
+        state.myName = snap.name;
+        $("name").value = snap.name;
+      }
+      if (roomParam.length === 4 && snap.room !== roomParam && snap.role !== "host") {
+        return;
+      }
+      if (snap.role === "host" && snap.game) {
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.room = snap.room;
+        state.game = snap.game;
+        guests.clear();
+        if (snap.guests) {
+          for (const [id, meta] of snap.guests) guests.set(id, meta);
+        }
+        if (state.game.players) {
+          state.game.awayIds = [];
+          for (const p of state.game.players) {
+            if (p.id !== "host" && !p.bot && !p.kicked) {
+              p.connected = false;
+              state.game.awayIds.push(p.id);
+            }
+          }
+        }
+        bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+        applyView(playerView(state.game, "host"));
+        return;
+      }
+      if (snap.role === "guest") {
+        $("join-code").value = snap.room;
+        joinRoom(snap.room, true);
+      }
+    })();
   </script>
 </body>
 </html>
