@@ -1,22 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="booting" style="--boot-bg:#9b1228;--boot-accent:#ffd100;--boot-ink:#fff;--boot-title:'Waking up Uno…'">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#c41e3a" />
   <title>Uno</title>
+  <link rel="stylesheet" href="shared/boot.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='46' ry='32' transform='rotate(-22 50 50)' fill='%23111'/><ellipse cx='50' cy='50' rx='38' ry='26' transform='rotate(-22 50 50)' fill='%23c41e3a'/><text y='58' x='50' text-anchor='middle' font-size='22' font-family='Arial Black,Arial' font-weight='700' fill='%23ffd100'>UNO</text></svg>" />
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="shared/shell.css" />
   <style>
     :root {
       --uno-red: #c41e3a;
       --uno-yellow: #ffd100;
       --uno-green: #2e8b3a;
       --uno-blue: #1b5eaa;
+      --red: #c41e3a;
+      --accent: #ffd100;
+      --teal: #2e8b3a;
       --felt: #1f7a38;
       --ink: #1a1a1a;
       --muted: #6b7280;
       --surface: #ffffff;
+      --card: var(--surface);
+      --line: #e5e7eb;
       --surface-soft: #f8fafc;
       --surface-muted: #f1f5f9;
       --bg-home-start: #e03952;
@@ -47,6 +54,7 @@
       --ink: #edf2f7;
       --muted: #94a3b8;
       --surface: #111827;
+      --card: var(--surface);
       --surface-soft: #1f2937;
       --surface-muted: #172033;
       --bg-home-start: #1f2937;
@@ -124,6 +132,12 @@
     }
 
     .brand { text-align: center; margin: 4px 0; width: min(420px, 100%); }
+    .all-games {
+      width: min(420px, 100%);
+      margin: 0 0 6px;
+      text-align: left;
+    }
+    .all-games a { color: #fff; }
     .uno-logo {
       width: clamp(120px, 42vw, 210px);
       height: clamp(74px, 26vw, 128px);
@@ -280,6 +294,38 @@
     .join-status.connecting, .join-status.joining { background: #e8f1ff; }
     .join-status.ok { background: #e8f8ee; }
     .join-status.fail { background: #fde8ea; }
+    .warmup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(20, 8, 10, .72);
+    }
+    .warmup.show { display: flex; }
+    .warmup-card {
+      width: min(360px, 100%);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 20px;
+      padding: 26px 22px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .3);
+    }
+    .warmup-spin {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 14px;
+      border: 4px solid #fde8ea;
+      border-top-color: var(--uno-red);
+      border-radius: 50%;
+      animation: warmup-spin .8s linear infinite;
+    }
+    @keyframes warmup-spin { to { transform: rotate(360deg); } }
+    .warmup-card b { display: block; font-size: 18px; margin-bottom: 8px; }
+    .warmup-card p { color: var(--muted); font-size: 14px; line-height: 1.4; }
     .join-status-row {
       display: flex;
       align-items: center;
@@ -1004,8 +1050,16 @@
   </style>
 </head>
 <body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Waking up…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
   <div class="play-bg" aria-hidden="true"></div>
   <div id="screen-home" class="screen active">
+    <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="brand">
       <div class="uno-logo" aria-label="UNO"><span>UNO</span></div>
       <p>Match color or number. First to empty their hand wins.</p>
@@ -1218,9 +1272,11 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="shared/kit.js"></script>
   <script>
     const COLORS = ["red", "yellow", "green", "blue"];
     const SEAT = ["#c41e3a", "#1b5eaa", "#c9a400", "#2e8b3a", "#7c3aed", "#0f766e"];
+    const MAX_PLAYERS = 10;
     const BOT_NAMES = ["Rita", "Leo", "Maya"];
     const PEER_PREFIX = "unohost-";
     const HOST_GONE_MS = 3 * 60 * 1000;
@@ -1235,7 +1291,7 @@
       wild4: "+4",
     };
 
-    const $ = (id) => document.getElementById(id);
+    const $ = MiniGames.$;
     const screens = {
       home: $("screen-home"),
       lobby: $("screen-lobby"),
@@ -1243,31 +1299,9 @@
       end: $("screen-end"),
     };
 
-    function showScreen(name) {
-      Object.values(screens).forEach((el) => el.classList.remove("active"));
-      screens[name].classList.add("active");
-    }
-
-    function toast(msg) {
-      const el = $("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => el.classList.remove("show"), 1800);
-    }
-
-    function requireName() {
-      const name = $("name").value.trim();
-      if (!name) {
-        showError("home-error", "Enter your name first.");
-        $("name").classList.add("bad");
-        $("name").focus();
-        return "";
-      }
-      $("name").classList.remove("bad");
-      showError("home-error", "");
-      return name.slice(0, 16);
-    }
+    const showScreen = MiniGames.showScreen;
+    const toast = MiniGames.toast;
+    const requireName = MiniGames.requireName;
 
     function setInviteHome(code) {
       const invite = !!(code && String(code).length === 4);
@@ -1282,11 +1316,17 @@
     }
 
     function setJoinStatus(kind, text) {
-      const box = $("join-status");
-      box.className = "join-status" + (kind ? " show " + kind : "");
-      $("join-status-text").textContent = text || "";
-      $("btn-join").disabled = kind === "connecting" || kind === "joining";
+      MiniGames.setJoinStatus(kind, text, state.connecting);
     }
+
+    function showWarmup(title, text) { MiniGames.showWarmup(title, text); }
+
+    function hideWarmup() {
+      state.connecting = false;
+      MiniGames.hideWarmup();
+    }
+
+    function waitForPeer(ok, fail) { MiniGames.waitForPeer(ok, fail); }
 
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
@@ -1294,9 +1334,7 @@
     }
 
     function showError(id, msg) {
-      const el = $(id);
-      el.textContent = msg;
-      el.classList.toggle("show", !!msg);
+      MiniGames.showError(id, msg);
       if (msg) netlog("ui-error", id, msg);
     }
 
@@ -1614,6 +1652,7 @@
       leaving: false,
       replacingPeer: false,
       reconnecting: false,
+      connecting: false,
       hostLostDeadline: 0,
       hostWaitExpired: false,
       hostLeftExplicit: false,
@@ -1944,13 +1983,7 @@
     }
 
     function stripRoomFromUrl() {
-      try {
-        const u = new URL(location.href);
-        if (!u.searchParams.has("room")) return;
-        u.searchParams.delete("room");
-        const q = u.searchParams.toString();
-        history.replaceState({}, "", u.pathname + (q ? "?" + q : "") + u.hash);
-      } catch (e) {}
+      MiniGames.stripRoomFromUrl();
     }
 
     // Session handler: leave, last-player win, host-gone timeout (3 min + optional 2).
@@ -2122,36 +2155,12 @@
     }
 
     function peerOptions() {
-      return {
-        debug: 0,
-        secure: true,
-        config: {
-          iceCandidatePoolSize: 8,
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-            { urls: "stun:stun.cloudflare.com:3478" },
-            { urls: "stun:global.stun.twilio.com:3478" },
-          ].concat(turnIce),
-        },
-      };
+      return MiniGames.peerOptions(turnIce);
     }
 
-    function randomCode() {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      let s = "";
-      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
-      return s;
-    }
+    function randomCode() { return MiniGames.randomCode(); }
 
-    function inviteUrl() {
-      const u = new URL(location.href);
-      u.search = "";
-      u.hash = "";
-      u.searchParams.set("room", state.room);
-      return u.toString();
-    }
+    function inviteUrl() { return MiniGames.inviteUrl(state.room); }
 
     function topCard(g) {
       return g.discard[g.discard.length - 1];
@@ -3149,30 +3158,14 @@
 
     function renderLobby(view) {
       $("lobby-code").textContent = view.room || state.room;
-      const list = $("lobby-players");
-      list.replaceChildren();
-      for (const p of view.players) {
-        const seat = document.createElement("div");
-        seat.className = "seat" + (p.id === state.myId ? " you" : "");
-        const dot = document.createElement("div");
-        dot.className = "dot";
-        dot.style.background = p.color;
-        dot.textContent = p.name.slice(0, 1).toUpperCase();
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const b = document.createElement("b");
-        b.textContent = p.name + (p.id === "host" ? " (host)" : "");
-        const s = document.createElement("span");
-        s.textContent = p.connected ? (p.mic ? "mic on" : "connected") : "offline";
-        meta.append(b, s);
-        seat.append(dot, meta);
-        list.append(seat);
-      }
+      MiniGames.renderPlayerList(view.players, state.myId, (p) =>
+        p.connected ? (p.mic ? "mic on" : "connected") : "offline"
+      );
       $("host-settings").style.display = state.isHost ? "grid" : "none";
       $("lobby-hint").textContent = state.isHost
-        ? "Need at least 2 players. Tap 🎤 to talk."
+        ? "Need 2–" + MAX_PLAYERS + " players. Tap 🎤 to talk."
         : "Waiting for the host to start. Tap 🎤 to talk.";
-      $("qr").src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(inviteUrl());
+      MiniGames.setQr(inviteUrl());
     }
 
     function renderEnd(view) {
@@ -3430,6 +3423,11 @@
           guests.delete(peer);
         }
       }
+      const others = [...guests.keys()].filter((id) => id !== conn.peer).length;
+      if (1 + others >= MAX_PLAYERS && !guests.has(conn.peer)) {
+        try { conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" }); } catch (e) {}
+        return;
+      }
       guests.set(conn.peer, { name, token, playerId: conn.peer });
       noteSeen(conn.peer);
       sendLobby();
@@ -3516,6 +3514,7 @@
       netlog("host peer create", PEER_PREFIX + state.room, netInfo());
       peer.on("open", () => {
         netlog("host peer open", peer.id);
+        hideWarmup();
         if (state.game) hostBroadcast();
         else {
           sendLobby();
@@ -3553,7 +3552,7 @@
           }
           state.room = randomCode();
           destroyPeer();
-          createRoom();
+          createRoom(true);
           return;
         }
         if (state.game) {
@@ -3562,6 +3561,7 @@
           return;
         }
         showError("home-error", "Could not create room. Try again.");
+        hideWarmup();
         showScreen("home");
       });
     }
@@ -3572,29 +3572,36 @@
       bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
     }
 
-    function createRoom() {
+    function createRoom(isRetry) {
+      if (state.connecting && !isRetry) return;
       const name = requireName();
       if (!name) return;
-      if (typeof Peer === "undefined") {
+      state.connecting = true;
+      showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      waitForPeer(function () {
+        state.leaving = false;
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.myName = name;
+        localStorage.setItem("uno-name", state.myName);
+        state.room = isRetry ? (state.room || randomCode()) : randomCode();
+        clearHostGoneClock();
+        showError("home-error", "");
+        setJoinStatus("", "");
+        state.connecting = true;
+        showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+        destroyPeer();
+        state.connecting = true;
+        state.isHost = true;
+        state.myId = "host";
+        state.myName = name;
+        state.room = state.room || randomCode();
+        bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+      }, function () {
+        hideWarmup();
         showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
-        return;
-      }
-      state.leaving = false;
-      state.isHost = true;
-      state.solo = false;
-      state.myId = "host";
-      state.myName = name;
-      localStorage.setItem("uno-name", state.myName);
-      state.room = randomCode();
-      clearHostGoneClock();
-      showError("home-error", "");
-      setJoinStatus("", "");
-      destroyPeer();
-      state.isHost = true;
-      state.myId = "host";
-      state.myName = name;
-      state.room = state.room || randomCode();
-      bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
+      });
     }
 
     function scheduleGuestReconnect() {
@@ -3621,19 +3628,29 @@
     }
 
     function joinRoom(code, reconnect) {
+      if (state.connecting && !reconnect) return;
       const name = reconnect ? (state.myName || requireName()) : requireName();
       if (!name) return;
-      if (typeof Peer === "undefined") {
-        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
-        if (reconnect) scheduleGuestReconnect();
-        return;
-      }
       code = (code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
         setJoinStatus("fail", "Enter a 4-character room code.");
         $("join-code").focus();
         return;
       }
+      state.connecting = true;
+      if (!reconnect) {
+        showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      }
+      waitForPeer(function () {
+        startJoin(code, name, reconnect);
+      }, function () {
+        hideWarmup();
+        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
+        if (reconnect) scheduleGuestReconnect();
+      });
+    }
+
+    function startJoin(code, name, reconnect) {
       state.leaving = false;
       state.isHost = false;
       state.solo = false;
@@ -3672,6 +3689,7 @@
         netlog("guest peer open", peer.id, "→", PEER_PREFIX + code);
         if (reconnect) setReconnectUi(true, "Connecting to the host…");
         else setJoinStatus("joining", "Connecting to the host…");
+        if (!reconnect) showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
         const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
         state.conns.set("host", conn);
         watchRtc("to-host", conn);
@@ -3693,6 +3711,7 @@
             clearHostGoneClock();
             setReconnectUi(false);
             setJoinStatus("ok", "You're in!");
+            hideWarmup();
             netlog("guest in", state.view && state.view.phase);
             ingestState(msg);
             if (state.view && state.view.you && state.view.you.id) state.myId = state.view.you.id;
@@ -3828,6 +3847,7 @@
       $("turn-pop").classList.remove("show");
       setJoinStatus("", "");
       $("btn-join").disabled = false;
+      hideWarmup();
       $("join-code").value = "";
       stripRoomFromUrl();
       setInviteHome("");
@@ -3840,24 +3860,17 @@
     $("btn-debug-copy").onclick = shareDebugLog;
     $("btn-debug-probe").onclick = runIceProbe;
     $("btn-turn-save").onclick = saveTurnFromMetered;
-    $("btn-create").onclick = createRoom;
-    $("btn-join").onclick = () => joinRoom($("join-code").value);
-    $("join-code").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") joinRoom($("join-code").value);
+    MiniGames.init({ nameKey: "uno-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
+    MiniGames.bindHome({
+      onCreate: createRoom,
+      onJoin: (code) => joinRoom(code),
+      onSolo: startSolo,
+      onLeave: leaveRoom,
+      onHome: goHome,
+      onAgain: playAgain,
+      onStart: startHostGame,
+      inviteUrl: inviteUrl,
     });
-    $("btn-solo").onclick = startSolo;
-    $("name").addEventListener("input", () => {
-      if ($("name").value.trim()) $("name").classList.remove("bad");
-    });
-    $("btn-start").onclick = startHostGame;
-    $("btn-copy").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(inviteUrl());
-        toast("Invite link copied");
-      } catch (e) {
-        toast(state.room);
-      }
-    };
     $("btn-mic-lobby").onclick = toggleMic;
     $("btn-mic-game").onclick = toggleMic;
     $("btn-mute").onclick = () => {
@@ -3865,8 +3878,6 @@
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
       if (!muted) ctx().resume();
     };
-    $("btn-again").onclick = playAgain;
-    $("btn-home").onclick = goHome;
     $("btn-uno").onclick = () => sendAction({ type: "uno" });
     $("btn-caught").onclick = () => sendAction({ type: "caught" });
     $("btn-pass").onclick = () => sendAction({ type: "pass" });
@@ -3882,10 +3893,6 @@
         }
       }
     };
-    $("btn-lobby-leave").onclick = leaveRoom;
-    $("btn-game-leave").onclick = leaveRoom;
-    $("btn-reconnect-leave").onclick = leaveRoom;
-    $("btn-invite-leave").onclick = leaveRoom;
     $("btn-reconnect-extend").onclick = () => {
       clearTimeout(state.reconnectTimer);
       state.reconnectTimer = 0;

@@ -1,0 +1,36 @@
+/* First-paint splash while Netlify / PeerJS / a large game file wakes up.
+   Set on <html class="booting">:
+   --boot-bg --boot-accent --boot-ink --boot-title
+*/
+html.booting { background: var(--boot-bg, #141018); }
+html.booting::before {
+  content: var(--boot-title, "Waking up…");
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  background: var(--boot-bg, #141018);
+  color: var(--boot-accent, #ffcc33);
+  font-family: Fredoka, "Trebuchet MS", "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  animation: mg-boot-pulse 1.2s ease-in-out infinite;
+}
+html.booting::after {
+  content: var(--boot-sub, "The site may be asleep. Wait here — don’t tap or refresh.");
+  position: fixed;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, 0);
+  z-index: 100000;
+  width: min(300px, 82vw);
+  text-align: center;
+  color: var(--boot-ink, #fff);
+  font-family: Fredoka, "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: .9;
+}
+@keyframes mg-boot-pulse { 50% { opacity: .6; } }

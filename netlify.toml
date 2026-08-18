@@ -1,0 +1,29 @@
+# Netlify: this folder is the site.
+# /            → index.html (game hub)
+# /Uno.html    → Uno
+# /Dobble.html → Dobble
+# Lowercase aliases work too (/uno, /dobble).
+# Do NOT add a catch-all /* rewrite — that would hide the games.
+
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/uno"
+  to = "/Uno.html"
+  status = 200
+
+[[redirects]]
+  from = "/uno.html"
+  to = "/Uno.html"
+  status = 200
+
+[[redirects]]
+  from = "/dobble"
+  to = "/Dobble.html"
+  status = 200
+
+[[redirects]]
+  from = "/dobble.html"
+  to = "/Dobble.html"
+  status = 200

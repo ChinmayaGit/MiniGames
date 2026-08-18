@@ -1,0 +1,7 @@
+# Pretty / case-insensitive aliases. Exact files still win.
+# Do not add /* /index.html — that would break the games.
+
+/uno       /Uno.html     200
+/uno.html  /Uno.html     200
+/dobble    /Dobble.html  200
+/dobble.html /Dobble.html 200

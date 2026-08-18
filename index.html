@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en" class="booting" style="--boot-bg:#141018;--boot-accent:#ffcc33;--boot-ink:#c9b8a2;--boot-title:'Waking up…'">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#141018" />
+  <meta name="description" content="Minigames — one-file browser games. Open and play. No install, no account." />
+  <title>Minigames</title>
+  <link rel="stylesheet" href="shared/boot.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23141018'/><rect x='12' y='12' width='34' height='34' rx='8' fill='%23ffcc33'/><rect x='54' y='12' width='34' height='34' rx='8' fill='%23c41e3a'/><rect x='12' y='54' width='34' height='34' rx='8' fill='%232e8b3a'/><rect x='54' y='54' width='34' height='34' rx='8' fill='%231b5eaa'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #f6efe4;
+      --muted: #c9b8a2;
+      --felt: #141018;
+      --tile: #1e1814;
+      --line: #3a322c;
+      --gold: #ffcc33;
+      --red: #c41e3a;
+      --green: #2e8b3a;
+      --blue: #1b5eaa;
+      --safe: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      font-family: Fredoka, "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      min-height: 100dvh;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #3a2418 0%, transparent 55%),
+        radial-gradient(circle at 8% 18%, #ffcc3322 0 42px, transparent 43px),
+        radial-gradient(circle at 92% 12%, #c41e3a33 0 56px, transparent 57px),
+        radial-gradient(circle at 88% 88%, #2e8b3a28 0 70px, transparent 71px),
+        radial-gradient(circle at 10% 86%, #1b5eaa33 0 50px, transparent 51px),
+        repeating-linear-gradient(0deg, transparent 0 27px, #ffffff05 27px 28px),
+        repeating-linear-gradient(90deg, transparent 0 27px, #ffffff05 27px 28px),
+        var(--felt);
+    }
+
+    .wrap {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: calc(28px + var(--safe)) 0 calc(40px + var(--safe-b));
+    }
+
+    .preview-warn {
+      background: #ffcc33;
+      color: #111;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px 24px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      padding: 7px;
+      border-radius: 16px;
+      background: #0c0a0c;
+      border: 2px solid #f6efe4;
+      box-shadow: 6px 6px 0 #000;
+      flex-shrink: 0;
+    }
+    .logo i { display: block; border-radius: 5px; }
+    .logo i:nth-child(1) { background: var(--gold); }
+    .logo i:nth-child(2) { background: var(--red); }
+    .logo i:nth-child(3) { background: var(--green); }
+    .logo i:nth-child(4) { background: var(--blue); }
+
+    .brand h1 {
+      font-size: clamp(32px, 7vw, 52px);
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+    }
+    .brand p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .jump a {
+      color: #111;
+      background: var(--gold);
+      font-weight: 700;
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      box-shadow: 0 4px 0 #9a7a12;
+    }
+    .jump a:active { transform: translateY(2px); box-shadow: 0 2px 0 #9a7a12; }
+
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 2px solid var(--line);
+      background: #0c0a0c;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    a.tile,
+    .tile {
+      display: flex;
+      flex-direction: column;
+      color: inherit;
+      text-decoration: none;
+      background: var(--tile);
+      border: 2px solid #f6efe4;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 8px 8px 0 #000;
+    }
+    a.tile { cursor: pointer; }
+    a.tile:hover,
+    a.tile:focus-visible {
+      transform: translateY(-4px);
+      box-shadow: 12px 12px 0 #000;
+      outline: 3px solid var(--gold);
+      outline-offset: 3px;
+    }
+    a.tile:active {
+      transform: translateY(2px);
+      box-shadow: 4px 4px 0 #000;
+    }
+    .tile.soon {
+      border-style: dashed;
+      border-color: var(--line);
+      box-shadow: none;
+      opacity: 0.72;
+    }
+
+    .art {
+      height: 168px;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+    .art.dobble {
+      background:
+        radial-gradient(circle 28px at 12% 22%, #ff2d3a 99%, transparent 100%),
+        radial-gradient(circle 22px at 88% 18%, #00c2ff 99%, transparent 100%),
+        radial-gradient(circle 34px at 82% 78%, #7bff3a 99%, transparent 100%),
+        radial-gradient(circle 18px at 16% 76%, #ff7a00 99%, transparent 100%),
+        #ffcc33;
+    }
+    .art.uno {
+      background: radial-gradient(ellipse at center, #3caf58 0%, #1f7a38 58%, #14602c 100%);
+    }
+    .art.soon {
+      background: repeating-linear-gradient(-32deg, #1a1612 0 12px, #241e18 12px 24px);
+    }
+
+    .disc {
+      width: 108px;
+      height: 108px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #1b1b1b;
+      display: grid;
+      place-items: center;
+      font-size: 46px;
+      box-shadow: 5px 6px 0 rgba(0, 0, 0, .22);
+    }
+
+    .uno-oval {
+      width: 132px;
+      height: 82px;
+      border-radius: 50%;
+      background: #111;
+      transform: rotate(-22deg);
+      display: grid;
+      place-items: center;
+      box-shadow: 6px 8px 0 rgba(0, 0, 0, .28);
+      position: relative;
+    }
+    .uno-oval::after {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      background: var(--red);
+      border-radius: 50%;
+    }
+    .uno-oval span {
+      position: relative;
+      z-index: 1;
+      font-family: Impact, "Arial Black", sans-serif;
+      font-style: italic;
+      font-size: 34px;
+      color: var(--gold);
+      text-shadow: -2px -2px 0 #111, 2px -2px 0 #111, -2px 2px 0 #111, 2px 2px 0 #111;
+    }
+
+    .soon-mark {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 2px dashed var(--line);
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: #0c0a0c;
+    }
+
+    .body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+    .body h2 {
+      font-size: 28px;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .body p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #0c0a0c;
+      color: var(--gold);
+      border: 1px solid #5a4a28;
+    }
+
+    .play {
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #111;
+      background: var(--gold);
+      box-shadow: 0 4px 0 #9a7a12;
+    }
+    .tile.soon .play {
+      background: #2a2420;
+      color: var(--muted);
+      box-shadow: none;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      justify-content: space-between;
+    }
+    footer a {
+      color: var(--gold);
+      font-weight: 600;
+      text-underline-offset: 3px;
+    }
+
+    .warmup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(10, 8, 8, .78);
+    }
+    .warmup.show { display: flex; }
+    .warmup-card {
+      width: min(360px, 100%);
+      background: #1e1814;
+      color: var(--ink);
+      border: 2px solid #f6efe4;
+      border-radius: 20px;
+      padding: 26px 22px;
+      text-align: center;
+      box-shadow: 8px 8px 0 #000;
+    }
+    .warmup-spin {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 14px;
+      border: 4px solid #3a322c;
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: warmup-spin .8s linear infinite;
+    }
+    @keyframes warmup-spin { to { transform: rotate(360deg); } }
+    .warmup-card b { display: block; font-size: 18px; margin-bottom: 8px; }
+    .warmup-card p { color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 24px, 1080px); }
+      .art { height: 148px; }
+      .logo { width: 56px; height: 56px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Opening the game…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div>
+          <h1>Minigames</h1>
+          <p>One-file games. Open a tile and play.</p>
+        </div>
+      </div>
+      <div class="meta">
+        <span class="chip">No install</span>
+        <span class="chip">No account</span>
+        <span class="chip">Friends via room code</span>
+      </div>
+    </header>
+
+    <nav class="jump">
+      <a href="Dobble.html">Dobble</a>
+      <a href="Uno.html">Uno</a>
+    </nav>
+
+    <main class="grid">
+      <a class="tile" href="Dobble.html">
+        <div class="art dobble" aria-hidden="true">
+          <div class="disc">⭐</div>
+        </div>
+        <div class="body">
+          <h2>Dobble</h2>
+          <p>Any two cards share exactly one symbol. Spot it first. Empty your pile to win.</p>
+          <div class="tags">
+            <span class="tag">Multiplayer</span>
+            <span class="tag">Solo</span>
+            <span class="tag">Max 8 players</span>
+          </div>
+          <span class="play">Play Dobble</span>
+        </div>
+      </a>
+
+      <a class="tile" href="Uno.html">
+        <div class="art uno" aria-hidden="true">
+          <div class="uno-oval"><span>UNO</span></div>
+        </div>
+        <div class="body">
+          <h2>Uno</h2>
+          <p>Match color or number. Stack +2 and +4, call UNO, play with voice at the table.</p>
+          <div class="tags">
+            <span class="tag">Multiplayer</span>
+            <span class="tag">Solo vs bots</span>
+            <span class="tag">Voice</span>
+            <span class="tag">Max 10 players</span>
+          </div>
+          <span class="play">Play Uno</span>
+        </div>
+      </a>
+
+      <div class="tile soon">
+        <div class="art soon" aria-hidden="true">
+          <span class="soon-mark">Soon</span>
+        </div>
+        <div class="body">
+          <h2>More games</h2>
+          <p>Party and reaction titles will land here the same way: one HTML file, open and play.</p>
+          <div class="tags">
+            <span class="tag">Coming soon</span>
+          </div>
+          <span class="play">Not playable yet</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <span>Host anywhere static. Rooms stay in the browser.</span>
+      <span>
+        <a href="Dobble.md">Dobble notes</a>
+        ·
+        <a href="Uno.md">Uno notes</a>
+      </span>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      document.documentElement.classList.remove("booting");
+      var proto = location.protocol;
+      if (proto === "blob:" || proto.indexOf("vscode") === 0) {
+        var bar = document.createElement("div");
+        bar.className = "preview-warn";
+        bar.textContent = "This editor preview cannot open the other game files. Open index.html in Safari or Chrome instead.";
+        var wrap = document.querySelector(".wrap");
+        wrap.insertBefore(bar, wrap.firstChild);
+      }
+
+      var opening = false;
+      var warmup = document.getElementById("warmup");
+      var title = document.getElementById("warmup-title");
+      function openGame(href, name) {
+        if (opening) return;
+        opening = true;
+        title.textContent = "Opening " + name + "…";
+        warmup.classList.add("show");
+        window.location.href = href;
+      }
+      document.querySelectorAll("a[href$='.html']").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
+          e.preventDefault();
+          var name = a.href.indexOf("Uno") !== -1 ? "Uno" : "Dobble";
+          openGame(a.getAttribute("href"), name);
+        });
+      });
+      window.addEventListener("pageshow", function () {
+        opening = false;
+        warmup.classList.remove("show");
+      });
+    })();
+  </script>
+</body>
+</html>

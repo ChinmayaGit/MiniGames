@@ -2,15 +2,18 @@
 
 A growing collection of small browser games. Each game is a single HTML file — open it and play. No install, no account.
 
+The hub is [index.html](index.html): a grid of every title. Open that first, or jump straight to a game below.
+
 ## Games
 
 | Game | Status | File |
 | --- | --- | --- |
+| **Hub** | Playable | [index.html](index.html) |
 | **Dobble** | Playable | [Dobble.html](Dobble.html) |
 | **Uno** | Playable | [Uno.html](Uno.html) |
 | More minigames | Coming soon | — |
 
-How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md).
+How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
 
 ---
 
@@ -117,4 +120,17 @@ Watch this README for new titles.
 npx serve .
 ```
 
-Then open `http://localhost:3000/Dobble.html` or `http://localhost:3000/Uno.html`.
+Then open `http://localhost:3000/` for the game grid, or `Dobble.html` / `Uno.html` directly.
+
+## Deploy on Netlify
+
+Upload **this whole folder**, not a single game file. Netlify needs `index.html`, the game HTML files, and the `shared/` folder together.
+
+1. Push this repo and connect it in Netlify, **or** drag the MiniGames folder onto [app.netlify.com/drop](https://app.netlify.com/drop).
+2. Set **publish directory** to the site root (`.` / leave blank). Do not point it at one game file.
+3. After deploy:
+   - `https://your-site.netlify.app/` → game hub (`index.html`)
+   - `/Uno.html` or `/uno` → Uno
+   - `/Dobble.html` or `/dobble` → Dobble
+
+If `/` still opens Uno, the site is serving an old drop of `Uno.html` as the index. Trigger a new deploy of the full folder so `index.html` is the homepage.

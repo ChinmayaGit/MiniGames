@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="booting" style="--boot-bg:#ffcc33;--boot-accent:#ff2d3a;--boot-ink:#5a4308;--boot-title:'Waking up Dobble…'">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ffcc33" />
   <title>Dobble</title>
+  <link rel="stylesheet" href="shared/boot.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23e63946'/><text y='70' x='50' text-anchor='middle' font-size='52'>⭐</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="shared/shell.css" />
   <style>
     :root {
       --bg: #ffcc33;
@@ -20,6 +22,7 @@
       --red: #ff2d3a;
       --gold: #ff2d3a;
       --teal: #00a86b;
+      --accent: #ff2d3a;
       --safe: env(safe-area-inset-top, 0px);
     }
 
@@ -97,6 +100,15 @@
       flex-direction: column;
       align-items: center;
     }
+    #screen-lobby.screen.active,
+    #screen-home.screen.active,
+    #screen-end.screen.active {
+      overflow-x: hidden;
+      overflow-y: auto;
+      max-height: 100dvh;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
 
     .brand {
       text-align: center;
@@ -170,79 +182,7 @@
 
     .row { display: flex; gap: 10px; }
     .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
-    .error {
-      display: none;
-      margin-top: 12px;
-      background: #fde8ea;
-      color: var(--red);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    .error.show { display: block; }
-    .join-status {
-      display: none;
-      margin-top: 12px;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: #f4f4f4;
-    }
-    .join-status.show { display: block; }
-    .join-status.connecting, .join-status.joining { background: #e8f6f1; }
-    .join-status.ok { background: #e8f8ee; }
-    .join-status.fail { background: #fde8ea; }
-    .join-status-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .join-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--teal);
-      flex-shrink: 0;
-    }
-    .join-status.connecting .join-dot,
-    .join-status.joining .join-dot {
-      animation: pulse-dot .8s ease infinite;
-    }
-    .join-status.ok .join-dot { background: var(--teal); }
-    .join-status.fail .join-dot { background: var(--red); }
-    .join-status.ok .join-status-row { color: #0d6b45; }
-    .join-status.fail .join-status-row { color: var(--red); }
-    .join-bar {
-      margin-top: 8px;
-      height: 6px;
-      border-radius: 99px;
-      background: #cfeedf;
-      overflow: hidden;
-    }
-    .join-status.ok .join-bar { background: #bbf7d0; }
-    .join-status.fail .join-bar { display: none; }
-    .join-bar i {
-      display: block;
-      height: 100%;
-      width: 40%;
-      border-radius: 99px;
-      background: var(--teal);
-      animation: join-slide 1s ease infinite;
-    }
-    .join-status.ok .join-bar i {
-      width: 100%;
-      background: var(--teal);
-      animation: none;
-    }
-    @keyframes join-slide {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(320%); }
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .35; }
-    }
+    input.bad { border-color: var(--red); background: #fff5f5; }
 
     .deco {
       display: flex;
@@ -252,22 +192,6 @@
     }
     .deco .card { width: min(28vw, 140px); }
 
-    .topbar {
-      width: min(1100px, 100%);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .code-pill {
-      background: var(--card);
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      padding: 8px 14px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-    }
     .icon-btn {
       width: 42px; height: 42px;
       border: 2px solid var(--line);
@@ -284,25 +208,6 @@
       justify-content: center;
       margin: 4px 0 10px;
     }
-    .seat {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--card);
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      padding: 6px 10px 6px 6px;
-      min-width: 120px;
-    }
-    .seat .dot {
-      width: 28px; height: 28px; border-radius: 50%;
-      display: grid; place-items: center;
-      font-size: 13px; font-weight: 700; color: #fff;
-    }
-    .seat .meta { display: flex; flex-direction: column; line-height: 1.1; }
-    .seat .meta b { font-size: 13px; }
-    .seat .meta span { font-size: 11px; color: var(--muted); }
-    .seat.you { border-color: var(--red); }
     .seat.frozen { opacity: 0.5; }
     .seat.win { border-color: var(--teal); }
 
@@ -372,50 +277,8 @@
       text-align: center;
       margin-top: 10px;
     }
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 24px;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--ink);
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-weight: 700;
-      opacity: 0;
-      pointer-events: none;
-      transition: .25s;
-      z-index: 20;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    .lobby-grid {
-      width: min(720px, 100%);
-      display: grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 16px;
-      margin-top: 12px;
-    }
-    .qr {
-      background: var(--card);
-      border: 2px solid var(--line);
-      border-radius: 16px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: var(--ink);
-      gap: 8px;
-    }
-    .qr img { width: 160px; height: 160px; }
     .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .player-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-    .player-list .seat { min-width: 0; }
-
-    .end-card {
-      text-align: center;
-      width: min(420px, 100%);
-    }
     .end-card h2 { font-size: 42px; color: var(--red); margin: 8px 0; }
     .podium { margin: 16px 0; }
 
@@ -444,10 +307,6 @@
       50% { transform: scale(1.04); }
     }
 
-    @media (max-width: 720px) {
-      .lobby-grid { grid-template-columns: 1fr; }
-      .qr img { width: 140px; height: 140px; }
-    }
     @media (max-width: 640px) and (orientation: portrait) {
       .play-area { flex-direction: column; gap: 10px; }
       .card { width: min(72vw, 36vh, 340px); }
@@ -456,8 +315,16 @@
   </style>
 </head>
 <body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Waking up…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
   <div class="play-bg" aria-hidden="true"></div>
   <div id="screen-home" class="screen active">
+    <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="brand">
       <h1>DOBBLE</h1>
       <p>Any two cards share exactly one symbol. Tap it first.</p>
@@ -490,10 +357,13 @@
   <div id="screen-lobby" class="screen">
     <div class="topbar">
       <div>
-        <div style="color:var(--muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase">Room</div>
+        <div class="room-label">Room</div>
         <div class="code-pill" id="lobby-code">----</div>
       </div>
-      <button class="btn row ghost" id="btn-copy">Copy link</button>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-copy">Copy link</button>
+        <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
+      </div>
     </div>
     <div class="lobby-grid">
       <div class="panel" style="width:auto;margin:0">
@@ -527,7 +397,10 @@
     <div class="topbar">
       <div class="code-pill" id="game-code">----</div>
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700">0:00</div>
-      <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
+        <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
+      </div>
     </div>
     <div class="players" id="scoreboard"></div>
     <div class="play-area">
@@ -558,6 +431,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="shared/kit.js"></script>
   <script>
     const SYMBOLS = [
       "🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐸","🐵","🦄",
@@ -568,57 +442,27 @@
       "🎵","🌵","🌸","🍄","🎄","🎁","🎂"
     ];
     const COLORS = ["#e63946","#1d9a6c","#2563eb","#d97706","#7c3aed","#0f766e","#db2777","#1f2937"];
+    const MAX_PLAYERS = 8;
     const N = 7;
     const PEER_PREFIX = "dobblehost-";
     const FREEZE_MS = 1600;
     const REVEAL_MS = 900;
 
-    const $ = (id) => document.getElementById(id);
-    const screens = {
-      home: $("screen-home"),
-      lobby: $("screen-lobby"),
-      game: $("screen-game"),
-      end: $("screen-end"),
-    };
-
-    function showScreen(name) {
-      Object.values(screens).forEach((el) => el.classList.remove("active"));
-      screens[name].classList.add("active");
-    }
-
-    function toast(msg) {
-      const el = $("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => el.classList.remove("show"), 1800);
-    }
-
-    function showError(id, msg) {
-      const el = $(id);
-      el.textContent = msg;
-      el.classList.toggle("show", !!msg);
-    }
-
-    function requireName() {
-      const name = $("name").value.trim();
-      if (!name) {
-        showError("home-error", "Enter your name first.");
-        $("name").classList.add("bad");
-        $("name").focus();
-        return "";
-      }
-      $("name").classList.remove("bad");
-      showError("home-error", "");
-      return name.slice(0, 16);
-    }
+    const $ = MiniGames.$;
+    const toast = MiniGames.toast;
+    const showScreen = MiniGames.showScreen;
+    const showError = MiniGames.showError;
+    const requireName = MiniGames.requireName;
 
     function setJoinStatus(kind, text) {
-      const box = $("join-status");
-      box.className = "join-status" + (kind ? " show " + kind : "");
-      $("join-status-text").textContent = text || "";
-      $("btn-join").disabled = kind === "connecting" || kind === "joining";
+      MiniGames.setJoinStatus(kind, text, state.connecting);
     }
+    function showWarmup(title, text) { MiniGames.showWarmup(title, text); }
+    function hideWarmup() {
+      state.connecting = false;
+      MiniGames.hideWarmup();
+    }
+    function waitForPeer(ok, fail) { MiniGames.waitForPeer(ok, fail); }
 
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
@@ -766,34 +610,12 @@
       view: null,
       game: null,
       joinTimer: 0,
+      connecting: false,
     };
 
-    function peerOptions() {
-      return {
-        debug: 0,
-        config: {
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-          ],
-        },
-      };
-    }
-
-    function randomCode() {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      let s = "";
-      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
-      return s;
-    }
-
-    function inviteUrl() {
-      const u = new URL(location.href);
-      u.search = "";
-      u.hash = "";
-      u.searchParams.set("room", state.room);
-      return u.toString();
-    }
+    function peerOptions() { return MiniGames.peerOptions(); }
+    function randomCode() { return MiniGames.randomCode(); }
+    function inviteUrl() { return MiniGames.inviteUrl(state.room); }
 
     function playerView(game, id) {
       const p = game.players.find((x) => x.id === id);
@@ -989,31 +811,12 @@
 
     function renderLobby(view) {
       $("lobby-code").textContent = view.room || state.room;
-      const list = $("lobby-players");
-      list.replaceChildren();
-      for (const p of view.players) {
-        const seat = document.createElement("div");
-        seat.className = "seat" + (p.id === state.myId ? " you" : "");
-        const dot = document.createElement("div");
-        dot.className = "dot";
-        dot.style.background = p.color;
-        dot.textContent = p.name.slice(0, 1).toUpperCase();
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const b = document.createElement("b");
-        b.textContent = p.name + (p.id === "host" ? " (host)" : "");
-        const s = document.createElement("span");
-        s.textContent = p.connected ? "connected" : "offline";
-        meta.append(b, s);
-        seat.append(dot, meta);
-        list.append(seat);
-      }
-      const hostUI = $("host-settings");
-      hostUI.style.display = state.isHost ? "grid" : "none";
+      MiniGames.renderPlayerList(view.players, state.myId);
+      $("host-settings").style.display = state.isHost ? "grid" : "none";
       $("lobby-hint").textContent = state.isHost
-        ? "Start when everyone is in. Same Wi‑Fi is most reliable."
+        ? "Up to " + MAX_PLAYERS + " players. Start when everyone is in."
         : "Waiting for the host to start…";
-      $("qr").src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(inviteUrl());
+      MiniGames.setQr(inviteUrl());
     }
 
     function renderEnd(view) {
@@ -1112,15 +915,31 @@
         if (!msg || typeof msg !== "object") return;
         if (msg.type === "join") {
           const name = String(msg.name || "Player").slice(0, 16);
-          guests.set(conn.peer, { name });
           if (state.game && state.game.phase === "playing") {
             conn.send({ type: "error", message: "Game already started" });
             return;
           }
+          if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
+            conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" });
+            return;
+          }
+          guests.set(conn.peer, { name });
           sendLobby();
         }
         if (msg.type === "click") {
           hostHandleClick(conn.peer, msg.symbol, msg.round);
+        }
+        if (msg.type === "leave") {
+          state.conns.delete(conn.peer);
+          guests.delete(conn.peer);
+          try { conn.close(); } catch (e) {}
+          if (state.game && state.game.players) {
+            const p = state.game.players.find((x) => x.id === conn.peer);
+            if (p) p.connected = false;
+            hostBroadcast();
+          } else {
+            sendLobby();
+          }
         }
       });
       conn.on("close", () => {
@@ -1136,110 +955,127 @@
       });
     }
 
-    function createRoom() {
+    function createRoom(isRetry) {
+      if (state.connecting && !isRetry) return;
       const name = requireName();
       if (!name) return;
-      if (typeof Peer === "undefined") {
+      state.connecting = true;
+      showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      waitForPeer(function () {
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.myName = name;
+        localStorage.setItem("dobble-name", state.myName);
+        state.room = isRetry ? (state.room || randomCode()) : randomCode();
+        showError("home-error", "");
+        setJoinStatus("", "");
+        state.connecting = true;
+        showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+        destroyPeer();
+        state.connecting = true;
+        const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          hideWarmup();
+          sendLobby();
+          toast("Room " + state.room + " ready");
+        });
+        peer.on("connection", (conn) => {
+          state.conns.set(conn.peer, conn);
+          attachHostConn(conn);
+        });
+        peer.on("error", (err) => {
+          if (err.type === "unavailable-id") {
+            state.room = randomCode();
+            destroyPeer();
+            createRoom(true);
+            return;
+          }
+          hideWarmup();
+          showError("home-error", "Could not create room. Try again.");
+          showScreen("home");
+        });
+      }, function () {
+        hideWarmup();
         showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
-        return;
-      }
-      state.isHost = true;
-      state.solo = false;
-      state.myId = "host";
-      state.myName = name;
-      localStorage.setItem("dobble-name", state.myName);
-      state.room = randomCode();
-      showError("home-error", "");
-      setJoinStatus("", "");
-      destroyPeer();
-      const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
-      state.peer = peer;
-      peer.on("open", () => {
-        sendLobby();
-        toast("Room " + state.room + " ready");
-      });
-      peer.on("connection", (conn) => {
-        state.conns.set(conn.peer, conn);
-        attachHostConn(conn);
-      });
-      peer.on("error", (err) => {
-        if (err.type === "unavailable-id") {
-          state.room = randomCode();
-          destroyPeer();
-          createRoom();
-          return;
-        }
-        showError("home-error", "Could not create room. Try again.");
-        showScreen("home");
       });
     }
 
     function joinRoom(code) {
+      if (state.connecting) return;
       const name = requireName();
       if (!name) return;
-      if (typeof Peer === "undefined") {
-        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
-        return;
-      }
       code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
         setJoinStatus("fail", "Enter a 4-character room code.");
         $("join-code").focus();
         return;
       }
-      state.isHost = false;
-      state.solo = false;
-      state.myName = name;
-      localStorage.setItem("dobble-name", state.myName);
-      state.room = code;
-      showError("home-error", "");
-      destroyPeer();
-      setJoinStatus("connecting", "Finding room " + code + "…");
-      clearJoinWait();
-      state.joinTimer = setTimeout(() => {
-        setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
-        $("btn-join").disabled = false;
+      state.connecting = true;
+      showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      waitForPeer(function () {
+        state.isHost = false;
+        state.solo = false;
+        state.myName = name;
+        localStorage.setItem("dobble-name", state.myName);
+        state.room = code;
+        showError("home-error", "");
         destroyPeer();
-      }, 12000);
-      const peer = new Peer(peerOptions());
-      state.peer = peer;
-      peer.on("open", () => {
-        state.myId = peer.id;
-        setJoinStatus("joining", "Connecting to the host…");
-        const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
-        state.conns.set("host", conn);
-        conn.on("open", () => {
-          setJoinStatus("joining", "Joining the lobby…");
-          conn.send({ type: "join", name: state.myName });
-        });
-        conn.on("data", (msg) => {
-          if (msg.type === "state") {
-            clearJoinWait();
-            setJoinStatus("ok", "You're in!");
-            applyView(msg.view);
-          }
-          if (msg.type === "error") {
-            clearJoinWait();
-            setJoinStatus("fail", msg.message || "Could not join this room.");
-            toast(msg.message);
-          }
-        });
-        conn.on("close", () => {
-          if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
-          else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
-            clearJoinWait();
-            setJoinStatus("fail", "Connection closed. The host may have left.");
-          }
-        });
-        conn.on("error", () => {
-          clearJoinWait();
-          setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
-        });
-      });
-      peer.on("error", () => {
+        state.connecting = true;
+        setJoinStatus("connecting", "Finding room " + code + "…");
+        showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
         clearJoinWait();
-        setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
-        showScreen("home");
+        state.joinTimer = setTimeout(() => {
+          setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+          $("btn-join").disabled = false;
+          destroyPeer();
+        }, 12000);
+        const peer = new Peer(peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          state.myId = peer.id;
+          setJoinStatus("joining", "Connecting to the host…");
+          showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+          state.conns.set("host", conn);
+          conn.on("open", () => {
+            setJoinStatus("joining", "Joining the lobby…");
+            conn.send({ type: "join", name: state.myName });
+          });
+          conn.on("data", (msg) => {
+            if (msg.type === "state") {
+              clearJoinWait();
+              setJoinStatus("ok", "You're in!");
+              hideWarmup();
+              applyView(msg.view);
+            }
+            if (msg.type === "error") {
+              clearJoinWait();
+              setJoinStatus("fail", msg.message || "Could not join this room.");
+              toast(msg.message);
+            }
+          });
+          conn.on("close", () => {
+            if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
+            else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
+              clearJoinWait();
+              setJoinStatus("fail", "Connection closed. The host may have left.");
+            }
+          });
+          conn.on("error", () => {
+            clearJoinWait();
+            setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
+          });
+        });
+        peer.on("error", () => {
+          clearJoinWait();
+          setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
+          showScreen("home");
+        });
+      }, function () {
+        hideWarmup();
+        setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
       });
     }
 
@@ -1295,36 +1131,39 @@
       destroyPeer();
       state.isHost = false;
       state.solo = false;
+      MiniGames.stripRoomFromUrl();
       setJoinStatus("", "");
       $("btn-join").disabled = false;
+      hideWarmup();
       showScreen("home");
     }
 
-    $("btn-create").onclick = createRoom;
-    $("btn-join").onclick = () => joinRoom($("join-code").value);
-    $("join-code").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") joinRoom($("join-code").value);
-    });
-    $("btn-solo").onclick = startSolo;
-    $("name").addEventListener("input", () => {
-      if ($("name").value.trim()) $("name").classList.remove("bad");
-    });
-    $("btn-start").onclick = startHostGame;
-    $("btn-copy").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(inviteUrl());
-        toast("Invite link copied");
-      } catch (e) {
-        toast(state.room);
+    function leaveRoom() {
+      if (!state.solo && !state.isHost) {
+        const hostConn = state.conns.get("host");
+        if (hostConn && hostConn.open) {
+          try { hostConn.send({ type: "leave" }); } catch (e) {}
+        }
       }
-    };
+      goHome();
+    }
+
+    MiniGames.init({ nameKey: "dobble-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
+    MiniGames.bindHome({
+      onCreate: createRoom,
+      onJoin: joinRoom,
+      onSolo: startSolo,
+      onLeave: leaveRoom,
+      onHome: goHome,
+      onAgain: playAgain,
+      onStart: startHostGame,
+      inviteUrl: inviteUrl,
+    });
     $("btn-mute").onclick = () => {
       muted = !muted;
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
       if (!muted) ctx().resume();
     };
-    $("btn-again").onclick = playAgain;
-    $("btn-home").onclick = goHome;
 
     (function homeDecor() {
       const wrap = $("home-deco");
@@ -1336,12 +1175,6 @@
       renderCard(a, DECK[0], null, false);
       renderCard(b, DECK[3], intersection(DECK[0], DECK[3])[0], false);
     })();
-
-    const saved = localStorage.getItem("dobble-name");
-    if (saved) $("name").value = saved;
-    const params = new URLSearchParams(location.search);
-    const roomParam = (params.get("room") || "").toUpperCase();
-    if (roomParam.length === 4) $("join-code").value = roomParam;
   </script>
 </body>
 </html>
