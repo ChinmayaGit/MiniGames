@@ -27,6 +27,19 @@
       --bg-game-end: #14602c;
       --toast-bg: #111111;
       --toast-fg: #ffffff;
+      --paper: #ffffff;
+      --paper-ink: #111111;
+      --pad-x: clamp(8px, 2.4vw, 16px);
+      --pad-y: clamp(8px, 1.6vh, 16px);
+      --card-w: clamp(48px, min(12vw, 9.5vh), 78px);
+      --card-h: calc(var(--card-w) * 1.51);
+      --card-lg-w: clamp(62px, min(16vw, 13vh), 100px);
+      --card-lg-h: calc(var(--card-lg-w) * 1.52);
+      --card-sm-w: clamp(36px, min(8vw, 7vh), 54px);
+      --card-sm-h: calc(var(--card-sm-w) * 1.52);
+      --card-tiny-w: clamp(26px, min(6vw, 5.5vh), 36px);
+      --card-tiny-h: calc(var(--card-tiny-w) * 1.5);
+      --side-col: clamp(52px, 15vw, 130px);
       --safe: env(safe-area-inset-top, 0px);
       --safe-b: env(safe-area-inset-bottom, 0px);
     }
@@ -44,16 +57,21 @@
       --bg-game-end: #09150f;
       --toast-bg: #f8fafc;
       --toast-fg: #111827;
+      --paper: #0b1220;
+      --paper-ink: #f8fafc;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+    }
     body {
       font-family: "Trebuchet MS", "Segoe UI", sans-serif;
       background: var(--bg-home-mid);
       color: var(--ink);
-      min-height: 100dvh;
-      overflow: hidden;
     }
 
     .play-bg {
@@ -72,13 +90,29 @@
       display: none;
       position: relative;
       z-index: 1;
-      min-height: 100dvh;
-      padding: calc(16px + var(--safe)) 16px calc(20px + var(--safe-b));
+      width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding: calc(var(--pad-y) + var(--safe)) var(--pad-x) calc(var(--pad-y) + var(--safe-b));
     }
     .screen.active {
       display: flex;
       flex-direction: column;
       align-items: center;
+    }
+    #screen-home.active,
+    #screen-lobby.active,
+    #screen-end.active {
+      overflow-x: hidden;
+      overflow-y: auto;
+      max-height: 100dvh;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    #screen-home.active > *,
+    #screen-lobby.active > *,
+    #screen-end.active > * {
+      flex-shrink: 0;
     }
     #screen-game {
       background:
@@ -89,12 +123,12 @@
       max-height: 100dvh;
     }
 
-    .brand { text-align: center; margin: 8px 0 4px; }
+    .brand { text-align: center; margin: 4px 0; width: min(420px, 100%); }
     .uno-logo {
-      width: 210px;
-      height: 128px;
+      width: clamp(120px, 42vw, 210px);
+      height: clamp(74px, 26vw, 128px);
       margin: 0 auto 8px;
-      background: #111;
+      background: var(--paper-ink);
       border-radius: 50%;
       transform: rotate(-22deg);
       display: grid;
@@ -113,23 +147,23 @@
       position: relative;
       z-index: 1;
       font-family: Impact, "Arial Black", sans-serif;
-      font-size: 58px;
+      font-size: clamp(32px, 12vw, 58px);
       font-style: italic;
       letter-spacing: 0.02em;
       color: var(--uno-yellow);
       text-shadow:
-        -2px -2px 0 #111, 2px -2px 0 #111,
-        -2px 2px 0 #111, 2px 2px 0 #111,
+        -2px -2px 0 var(--paper-ink), 2px -2px 0 var(--paper-ink),
+        -2px 2px 0 var(--paper-ink), 2px 2px 0 var(--paper-ink),
         0 3px 0 #7a0e1c;
     }
-    .brand p { color: #fff; margin-top: 18px; font-size: 15px; opacity: .92; }
+    .brand p { color: #fff; margin-top: 10px; font-size: clamp(13px, 3.4vw, 15px); opacity: .92; }
 
     .panel {
       width: min(420px, 100%);
       background: var(--surface);
       border-radius: 20px;
-      padding: 22px;
-      margin-top: 14px;
+      padding: clamp(14px, 3vh, 22px);
+      margin-top: clamp(8px, 2vh, 14px);
       box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
     }
 
@@ -190,7 +224,7 @@
       box-shadow: 0 4px 0 #b01024;
     }
     .btn.row { width: auto; padding-inline: 16px; margin-top: 0; }
-    .btn.pulse { box-shadow: 0 0 0 4px #fff, 0 4px 0 #c9a400; }
+    .btn.pulse { box-shadow: 0 0 0 4px var(--paper), 0 4px 0 #c9a400; }
 
     #btn-uno {
       width: 76px;
@@ -202,9 +236,9 @@
       letter-spacing: .04em;
       background: var(--uno-yellow);
       color: #111;
-      box-shadow: 0 0 0 3px #111, 0 5px 0 #c9a400;
+      box-shadow: 0 0 0 3px var(--paper-ink), 0 5px 0 #c9a400;
     }
-    #btn-uno.pulse { box-shadow: 0 0 0 3px #111, 0 0 0 7px #fff, 0 5px 0 #c9a400; }
+    #btn-uno.pulse { box-shadow: 0 0 0 3px var(--paper-ink), 0 0 0 7px var(--paper), 0 5px 0 #c9a400; }
     #btn-uno:active:not(:disabled) { transform: rotate(-18deg) translateY(2px); }
 
     .row { display: flex; gap: 10px; align-items: end; }
@@ -286,7 +320,7 @@
     .deco {
       display: flex;
       gap: 10px;
-      margin: 18px 0 6px;
+      margin: clamp(8px, 2vh, 18px) 0 6px;
       pointer-events: none;
       filter: drop-shadow(0 8px 10px rgba(0,0,0,.28));
     }
@@ -368,14 +402,14 @@
       min-height: 0;
       width: min(1100px, 100%);
       display: grid;
-      grid-template-columns: minmax(72px, 130px) 1fr minmax(72px, 130px);
-      grid-template-rows: auto 1fr;
+      grid-template-columns: var(--side-col) minmax(0, 1fr) var(--side-col);
+      grid-template-rows: auto minmax(0, 1fr);
       grid-template-areas:
         "tl top tr"
         "left center right";
       align-items: center;
       justify-items: center;
-      gap: 4px 8px;
+      gap: clamp(2px, 0.8vh, 4px) clamp(4px, 1.2vw, 8px);
     }
     .seat-slot { min-width: 0; min-height: 0; }
     .seat-slot.top { grid-area: top; }
@@ -385,12 +419,27 @@
     .seat-slot.right { grid-area: right; }
     .table {
       grid-area: center;
-      width: auto;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      min-height: 0;
+    }
+    .table-center {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 18px;
-      min-height: 0;
+      gap: clamp(10px, 2vw, 16px);
+      pointer-events: none;
+    }
+    .table-center .pile { pointer-events: auto; }
+    .draw-pile-slot {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      z-index: 3;
     }
 
     .opp {
@@ -421,13 +470,14 @@
       display: flex;
       align-items: baseline;
       gap: 6px;
-      background: rgba(255,255,255,.94);
+      background: var(--surface);
       border-radius: 999px;
       padding: 4px 10px;
       box-shadow: 0 3px 0 rgba(0,0,0,.16);
+      color: var(--ink);
       max-width: 120px;
     }
-    .opp-meta b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .opp-meta b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
     .opp-meta span { font-size: 11px; font-weight: 800; color: var(--muted); }
     .opp.turn .opp-meta { background: var(--uno-yellow); }
     .opp.uno .opp-meta b::after { content: " UNO"; color: var(--uno-red); }
@@ -457,8 +507,8 @@
     .seat-slot.right .opp-meta b { writing-mode: vertical-lr; }
     .seat-slot.left .opp-fan-wrap,
     .seat-slot.right .opp-fan-wrap {
-      width: 78px;
-      height: 150px;
+      width: calc(var(--card-tiny-w) * 2.1);
+      height: calc(var(--card-tiny-h) * 2.6);
     }
     .seat-slot.left .opp-fan { transform: rotate(90deg); }
     .seat-slot.right .opp-fan { transform: rotate(-90deg); }
@@ -466,8 +516,8 @@
     .seat-slot.topLeft .opp-fan { transform: rotate(135deg); }
     .seat-slot.topRight .opp-fan { transform: rotate(-135deg); }
 
-    .ucard.tiny { width: 36px; height: 54px; padding: 3px; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,.28); }
-    .ucard.tiny .back-oval { width: 22px; height: 34px; font-size: 8px; box-shadow: 0 0 0 2px #111; }
+    .ucard.tiny { width: var(--card-tiny-w); height: var(--card-tiny-h); padding: 3px; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,.28); }
+    .ucard.tiny .back-oval { width: 62%; height: 64%; font-size: 8px; box-shadow: 0 0 0 2px var(--paper-ink); }
     .flying {
       pointer-events: none;
       z-index: 200;
@@ -488,7 +538,7 @@
     }
     .color-chip {
       width: 36px; height: 36px;
-      border: 3px solid #fff;
+      border: 3px solid var(--paper);
       border-radius: 50%;
       box-shadow: 0 3px 0 rgba(0,0,0,.25);
     }
@@ -500,10 +550,10 @@
 
     .ucard {
       --c: #c41e3a;
-      width: 78px;
-      height: 118px;
+      width: var(--card-w);
+      height: var(--card-h);
       border-radius: 10px;
-      background: var(--surface);
+      background: var(--paper);
       padding: 5px;
       position: relative;
       color: #fff;
@@ -524,13 +574,14 @@
     .ucard.red { --c: #c41e3a; }
     .ucard.yellow { --c: #ffd100; color: #111; }
     .ucard.yellow .face { color: #7a5b00; }
+    body.dark .ucard.yellow .face { color: #ffd100; }
     .ucard.green { --c: #2e8b3a; }
     .ucard.blue { --c: #1b5eaa; }
-    .ucard.wild { --c: #1a1a1a; color: #fff; }
+    .ucard.wild { --c: var(--paper-ink); color: var(--paper); }
     .oval {
-      width: 50px;
-      height: 82px;
-      background: #fff;
+      width: 64%;
+      height: 69%;
+      background: var(--paper);
       border-radius: 50%;
       transform: rotate(-22deg);
       display: grid;
@@ -539,7 +590,7 @@
     .ucard .face {
       font-family: Impact, "Arial Black", sans-serif;
       font-weight: 700;
-      font-size: 30px;
+      font-size: calc(var(--card-w) * 0.38);
       line-height: 1;
       color: var(--c);
       font-style: italic;
@@ -558,10 +609,10 @@
     }
     .ucard .corner.tl { top: 5px; left: 6px; }
     .ucard .corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); }
-    .ucard.back .back-face { background: #1a1a1a; }
+    .ucard.back .back-face { background: var(--paper-ink); }
     .back-oval {
-      width: 54px;
-      height: 82px;
+      width: 69%;
+      height: 70%;
       background: var(--uno-red);
       border-radius: 50%;
       transform: rotate(-22deg);
@@ -569,31 +620,29 @@
       place-items: center;
       font-family: Impact, "Arial Black", sans-serif;
       font-style: italic;
-      font-size: 16px;
+      font-size: calc(var(--card-w) * 0.22);
       color: var(--uno-yellow);
       letter-spacing: .02em;
-      box-shadow: 0 0 0 3px #111;
-      text-shadow: -1px -1px 0 #111, 1px -1px 0 #111, -1px 1px 0 #111, 1px 1px 0 #111;
+      box-shadow: 0 0 0 3px var(--paper-ink);
+      text-shadow: -1px -1px 0 var(--paper-ink), 1px -1px 0 var(--paper-ink), -1px 1px 0 var(--paper-ink), 1px 1px 0 var(--paper-ink);
     }
-    .ucard.sm { width: 54px; height: 82px; padding: 4px; border-radius: 8px; }
-    .ucard.sm .oval { width: 32px; height: 54px; }
-    .ucard.sm .face { font-size: 18px; }
+    .ucard.sm { width: var(--card-sm-w); height: var(--card-sm-h); padding: 4px; border-radius: 8px; }
+    .ucard.sm .face { font-size: calc(var(--card-sm-w) * 0.34); }
     .ucard.sm .corner { font-size: 10px; }
-    .ucard.sm .back-oval { width: 34px; height: 54px; font-size: 11px; }
-    .ucard.lg { width: 100px; height: 152px; padding: 6px; }
-    .ucard.lg .oval { width: 64px; height: 106px; }
-    .ucard.lg .face { font-size: 40px; }
-    .ucard.lg .back-oval { width: 68px; height: 108px; font-size: 22px; }
+    .ucard.sm .back-oval { font-size: calc(var(--card-sm-w) * 0.2); }
+    .ucard.lg { width: var(--card-lg-w); height: var(--card-lg-h); padding: 6px; }
+    .ucard.lg .face { font-size: calc(var(--card-lg-w) * 0.4); }
+    .ucard.lg .back-oval { font-size: calc(var(--card-lg-w) * 0.22); }
     .ucard.playable { box-shadow: 0 0 0 3px var(--uno-yellow), 0 10px 18px rgba(0,0,0,.35); }
     .ucard.dead { opacity: 0.4; }
     .hand .ucard.dead { opacity: 1; }
-    .ucard.drawn { box-shadow: 0 0 0 4px #fff, 0 8px 16px rgba(0,0,0,.35); }
+    .ucard.drawn { box-shadow: 0 0 0 4px var(--paper), 0 8px 16px rgba(0,0,0,.35); }
     button.ucard { padding: 5px; touch-action: manipulation; border: 0; }
     button.ucard.lg { padding: 6px; }
     button.ucard:disabled { opacity: 1; cursor: default; }
 
     .pie {
-      width: 40px; height: 64px;
+      width: 51%; height: 54%;
       border-radius: 50%;
       overflow: hidden;
       display: grid;
@@ -603,8 +652,6 @@
     .pie i:nth-child(2) { background: #ffd100; }
     .pie i:nth-child(3) { background: #2e8b3a; }
     .pie i:nth-child(4) { background: #1b5eaa; }
-    .ucard.sm .pie { width: 24px; height: 40px; }
-    .ucard.lg .pie { width: 52px; height: 84px; }
 
     .hand-dock {
       width: min(1100px, 100%);
@@ -642,7 +689,7 @@
       overflow-x: auto;
       overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
-      padding: 56px 12px 18px;
+      padding: clamp(36px, 7vh, 56px) 12px 12px;
       scrollbar-width: thin;
       position: relative;
     }
@@ -650,7 +697,7 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      height: 132px;
+      height: calc(var(--card-h) + 14px);
       position: relative;
       width: max-content;
       min-width: 100%;
@@ -733,12 +780,12 @@
     .lobby-grid {
       width: min(720px, 100%);
       display: grid;
-      grid-template-columns: 1.2fr .8fr;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
       gap: 16px;
       margin-top: 12px;
     }
     .qr {
-      background: #fff;
+      background: var(--surface);
       border-radius: 20px;
       padding: 16px;
       display: flex;
@@ -748,7 +795,7 @@
       gap: 8px;
       box-shadow: 0 16px 40px rgba(0,0,0,.28);
     }
-    .qr img { width: 160px; height: 160px; }
+    .qr img { width: min(160px, 42vw); height: auto; aspect-ratio: 1; }
     .settings { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .player-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     .player-list .seat { min-width: 0; background: var(--surface-soft); box-shadow: none; }
@@ -833,27 +880,23 @@
 
     @media (max-width: 720px) {
       .lobby-grid { grid-template-columns: 1fr; }
-      .qr img { width: 140px; height: 140px; }
-      .uno-logo { width: 168px; height: 102px; }
-      .uno-logo span { font-size: 46px; }
-      .ucard:not(.sm):not(.lg):not(.tiny) { width: 64px; height: 98px; }
-      .ucard:not(.sm):not(.lg):not(.tiny) .oval { width: 40px; height: 66px; }
-      .ucard:not(.sm):not(.lg):not(.tiny) .face { font-size: 24px; }
-      .ucard.lg { width: 82px; height: 124px; }
-      .ucard.lg .oval { width: 50px; height: 82px; }
-      .ucard.lg .face { font-size: 30px; }
-      .ucard.lg .back-oval { width: 54px; height: 86px; font-size: 16px; }
-      .arena {
-        grid-template-columns: 64px 1fr 64px;
-        gap: 2px 4px;
-      }
-      .opp-meta { padding: 3px 7px; max-width: 72px; }
-      .opp-meta b { font-size: 10px; }
+      .arena { --side-col: clamp(44px, 18vw, 72px); }
     }
-    @media (max-height: 720px) {
-      .table { gap: 10px; }
-      .hand { height: 118px; }
-      .hand-wrap { padding: 44px 10px 12px; }
+    @media (max-height: 740px) {
+      .deco { margin: 6px 0; transform: scale(0.86); transform-origin: center top; }
+      .brand p { margin-top: 6px; }
+    }
+    @media (max-height: 620px) {
+      .deco { display: none; }
+      .uno-logo { width: clamp(96px, 28vw, 140px); height: clamp(58px, 17vw, 86px); }
+      .panel { padding: 12px; margin-top: 6px; }
+      label { margin: 8px 0 4px; }
+      .btn { padding: 11px 16px; margin-top: 8px; }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      .deco { display: none; }
+      .lobby-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+      .hand-hint { display: none; }
     }
   </style>
 </head>
@@ -883,7 +926,7 @@
         </div>
         <div class="join-bar"><i></i></div>
       </div>
-      <div class="row">
+      <div class="row" id="solo-home-row">
         <div style="flex:1">
           <label for="bot-count">Practice vs bots</label>
           <select id="bot-count">
@@ -895,7 +938,7 @@
       </div>
       <button class="btn yellow" id="btn-solo">Practice solo</button>
       <div class="error" id="home-error"></div>
-      <p class="hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
+      <p class="hint" id="home-hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
     </div>
   </div>
 
@@ -941,22 +984,24 @@
       <div class="seat-slot topRight" id="slot-topRight"></div>
       <div class="seat-slot left" id="slot-left"></div>
       <div class="table">
-      <div class="pile">
-        <div class="tag">Draw</div>
-        <button class="ucard back lg" id="draw-pile" type="button" title="Draw a card">
-          <div class="back-face"><div class="back-oval">UNO</div></div>
-        </button>
-        <div class="tag" id="draw-count">0</div>
-      </div>
-      <div class="pile">
-        <div class="tag">Discard</div>
-        <div id="discard"></div>
-      </div>
-      <div class="pile">
-        <div class="tag">Color</div>
-        <div class="color-chip" id="color-chip"></div>
-        <div class="dir" id="dir">↻</div>
-      </div>
+        <div class="table-center">
+          <div class="pile">
+            <div class="tag">Discard</div>
+            <div id="discard"></div>
+          </div>
+          <div class="pile">
+            <div class="tag">Color</div>
+            <div class="color-chip" id="color-chip"></div>
+            <div class="dir" id="dir">↻</div>
+          </div>
+        </div>
+        <div class="pile draw-pile-slot">
+          <div class="tag">Draw</div>
+          <button class="ucard back lg" id="draw-pile" type="button" title="Draw a card">
+            <div class="back-face"><div class="back-oval">UNO</div></div>
+          </button>
+          <div class="tag" id="draw-count">0</div>
+        </div>
       </div>
       <div class="seat-slot right" id="slot-right"></div>
     </div>
@@ -1077,6 +1122,17 @@
       $("name").classList.remove("bad");
       showError("home-error", "");
       return name.slice(0, 16);
+    }
+
+    function setInviteHome(code) {
+      const invite = !!(code && String(code).length === 4);
+      $("btn-create").style.display = invite ? "none" : "";
+      $("solo-home-row").style.display = invite ? "none" : "";
+      $("btn-solo").style.display = invite ? "none" : "";
+      $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join friends";
+      $("home-hint").textContent = invite
+        ? "You're joining a friend's room. Enter your name, then tap Join."
+        : "Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.";
     }
 
     function setJoinStatus(kind, text) {
@@ -2818,7 +2874,11 @@
     if (saved) $("name").value = saved;
     const params = new URLSearchParams(location.search);
     const roomParam = (params.get("room") || "").toUpperCase();
-    if (roomParam.length === 4) $("join-code").value = roomParam;
+    if (roomParam.length === 4) {
+      $("join-code").value = roomParam;
+      setInviteHome(roomParam);
+      $("name").focus();
+    }
 
     (function restoreSession() {
       let snap;
