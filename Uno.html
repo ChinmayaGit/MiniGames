@@ -1307,6 +1307,7 @@
     };
     const guests = new Map();
     const dropTimers = new Map();
+    const lastSeen = new Map();
 
     function myToken() {
       let t = localStorage.getItem("uno-token");
@@ -1319,21 +1320,32 @@
 
     function saveSession() {
       if (state.solo || !state.room) return;
+      const payload = JSON.stringify({
+        role: state.isHost ? "host" : "guest",
+        room: state.room,
+        name: state.myName,
+        token: myToken(),
+        myId: state.myId,
+        game: state.isHost ? state.game : null,
+        guests: state.isHost ? [...guests.entries()] : null,
+        savedAt: Date.now(),
+      });
+      try { sessionStorage.setItem("uno-session", payload); } catch (e) {}
+      try { localStorage.setItem("uno-session", payload); } catch (e) {}
+    }
+
+    function loadSession() {
       try {
-        sessionStorage.setItem("uno-session", JSON.stringify({
-          role: state.isHost ? "host" : "guest",
-          room: state.room,
-          name: state.myName,
-          token: myToken(),
-          myId: state.myId,
-          game: state.isHost ? state.game : null,
-          guests: state.isHost ? [...guests.entries()] : null,
-        }));
-      } catch (e) {}
+        return JSON.parse(sessionStorage.getItem("uno-session") || "null")
+          || JSON.parse(localStorage.getItem("uno-session") || "null");
+      } catch (e) {
+        return null;
+      }
     }
 
     function clearSession() {
       try { sessionStorage.removeItem("uno-session"); } catch (e) {}
+      try { localStorage.removeItem("uno-session"); } catch (e) {}
     }
 
     function playerIdFromPeer(peerId) {
@@ -2374,6 +2386,10 @@
       dropTimers.delete(peerId);
     }
 
+    function noteSeen(playerId) {
+      if (playerId) lastSeen.set(playerId, Date.now());
+    }
+
     function markPlayerAway(playerId) {
       const g = state.game;
       if (!g || !g.players) return;
@@ -2432,6 +2448,7 @@
           seated.connected = true;
           seated.name = name || seated.name;
           clearAway(seated.id);
+          noteSeen(seated.id);
           state.game.banner = seated.name + " is back";
           hostBroadcast();
           return;
@@ -2454,6 +2471,7 @@
         }
       }
       guests.set(conn.peer, { name, token, playerId: conn.peer });
+      noteSeen(conn.peer);
       sendLobby();
     }
 
@@ -2465,6 +2483,8 @@
           handleJoin(conn, msg);
           return;
         }
+        noteSeen(pid);
+        if (msg.type === "ping") return;
         if (msg.type === "play") hostPlay(pid, msg.cardId);
         if (msg.type === "draw") hostDraw(pid);
         if (msg.type === "pass") hostPass(pid);
@@ -2480,7 +2500,7 @@
         dropTimers.set(conn.peer, setTimeout(() => {
           dropTimers.delete(conn.peer);
           onPeerGone(conn.peer);
-        }, 2800));
+        }, 6000));
       });
     }
 
@@ -2697,7 +2717,7 @@
         scheduleGuestReconnect();
       });
       peer.on("error", () => {
-        if (reconnect) {
+        if (reconnect || (state.view && state.view.phase && state.view.phase !== "home")) {
           scheduleGuestReconnect();
           return;
         }
@@ -2888,7 +2908,11 @@
       }
       if (!state.room) return;
       const hostConn = state.conns.get("host");
-      if (!hostConn || !hostConn.open) scheduleGuestReconnect();
+      if (hostConn && hostConn.open) {
+        try { hostConn.send({ type: "ping" }); } catch (e) {}
+        return;
+      }
+      scheduleGuestReconnect();
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -2896,6 +2920,32 @@
     });
     window.addEventListener("online", tryResumeConnection);
     window.addEventListener("pageshow", tryResumeConnection);
+    document.addEventListener("resume", tryResumeConnection);
+    setInterval(() => {
+      if (state.leaving || state.solo) return;
+      if (state.isHost && state.game && state.game.phase === "playing") {
+        const now = Date.now();
+        let changed = false;
+        for (const p of state.game.players) {
+          if (p.bot || p.id === "host" || p.kicked || p.connected === false) continue;
+          const seen = lastSeen.get(p.id) || 0;
+          if (seen && now - seen > 9000) {
+            markPlayerAway(p.id);
+            changed = true;
+          }
+        }
+        if (changed) hostBroadcast();
+        return;
+      }
+      if (!state.isHost && state.room) {
+        const hostConn = state.conns.get("host");
+        if (hostConn && hostConn.open) {
+          try { hostConn.send({ type: "ping" }); } catch (e) {}
+        } else if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby")) {
+          scheduleGuestReconnect();
+        }
+      }
+    }, 3000);
 
     const saved = localStorage.getItem("uno-name");
     if (saved) $("name").value = saved;
@@ -2908,9 +2958,12 @@
     }
 
     (function restoreSession() {
-      let snap;
-      try { snap = JSON.parse(sessionStorage.getItem("uno-session") || "null"); } catch (e) { return; }
+      const snap = loadSession();
       if (!snap || !snap.room || snap.room === "SOLO") return;
+      if (snap.savedAt && Date.now() - snap.savedAt > 4 * 60 * 60 * 1000) {
+        clearSession();
+        return;
+      }
       if (snap.name) {
         state.myName = snap.name;
         $("name").value = snap.name;
