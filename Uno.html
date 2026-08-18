@@ -257,127 +257,8 @@
 
     .row { display: flex; gap: 10px; align-items: end; }
     .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
-    .error {
-      display: none;
-      margin-top: 12px;
-      background: #fde8ea;
-      color: var(--uno-red);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    .error.show { display: block; }
-    .net-warn {
-      margin-top: 14px;
-      background: #fff8e1;
-      color: #7c4a03;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 13px;
-      line-height: 1.45;
-      text-align: left;
-    }
-    body.dark .net-warn {
-      background: #3d3419;
-      color: #fde68a;
-    }
-    .net-warn b { display: block; margin-bottom: 4px; }
-    input.bad { border-color: var(--uno-red); background: #fff5f5; }
-    .join-status {
-      display: none;
-      margin-top: 12px;
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: var(--surface-muted);
-    }
-    .join-status.show { display: block; }
-    .join-status.connecting, .join-status.joining { background: #e8f1ff; }
-    .join-status.ok { background: #e8f8ee; }
-    .join-status.fail { background: #fde8ea; }
-    .warmup {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 5000;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: rgba(20, 8, 10, .72);
-    }
-    .warmup.show { display: flex; }
-    .warmup-card {
-      width: min(360px, 100%);
-      background: var(--surface);
-      color: var(--ink);
-      border-radius: 20px;
-      padding: 26px 22px;
-      text-align: center;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, .3);
-    }
-    .warmup-spin {
-      width: 42px;
-      height: 42px;
-      margin: 0 auto 14px;
-      border: 4px solid #fde8ea;
-      border-top-color: var(--uno-red);
-      border-radius: 50%;
-      animation: warmup-spin .8s linear infinite;
-    }
-    @keyframes warmup-spin { to { transform: rotate(360deg); } }
-    .warmup-card b { display: block; font-size: 18px; margin-bottom: 8px; }
-    .warmup-card p { color: var(--muted); font-size: 14px; line-height: 1.4; }
-    .join-status-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .join-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--uno-blue);
-      flex-shrink: 0;
-    }
-    .join-status.connecting .join-dot,
-    .join-status.joining .join-dot {
-      animation: pulse-dot .8s ease infinite;
-    }
-    .join-status.ok .join-dot { background: var(--uno-green); }
-    .join-status.fail .join-dot { background: var(--uno-red); }
-    .join-status.ok .join-status-row { color: #166534; }
-    .join-status.fail .join-status-row { color: var(--uno-red); }
-    .join-bar {
-      margin-top: 8px;
-      height: 6px;
-      border-radius: 99px;
-      background: #dbeafe;
-      overflow: hidden;
-    }
-    .join-status.ok .join-bar { background: #bbf7d0; }
-    .join-status.fail .join-bar { display: none; }
-    .join-bar i {
-      display: block;
-      height: 100%;
-      width: 40%;
-      border-radius: 99px;
-      background: var(--uno-blue);
-      animation: join-slide 1s ease infinite;
-    }
-    .join-status.ok .join-bar i {
-      width: 100%;
-      background: var(--uno-green);
-      animation: none;
-    }
-    @keyframes join-slide {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(320%); }
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .35; }
-    }
+    .join-dot { background: var(--uno-blue); }
+    .join-bar i { background: var(--uno-blue); }
 
     .deco {
       display: flex;
@@ -878,45 +759,14 @@
       line-height: 1;
     }
 
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: calc(24px + var(--safe-b));
-      transform: translateX(-50%) translateY(20px);
-      background: var(--toast-bg);
-      color: var(--toast-fg);
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-weight: 700;
-      opacity: 0;
-      pointer-events: none;
-      transition: .25s;
-      z-index: 20;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    .lobby-grid {
-      width: min(720px, 100%);
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
-      gap: 16px;
-      margin-top: 12px;
-    }
     .qr {
       background: var(--surface);
+      border: 0;
       border-radius: 20px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: var(--ink);
-      gap: 8px;
-      box-shadow: 0 16px 40px rgba(0,0,0,.28);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
     }
-    .qr img { width: min(160px, 42vw); height: auto; aspect-ratio: 1; }
     .settings { display: grid; grid-template-columns: 1fr; gap: 10px; }
-    .player-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-    .player-list .seat { min-width: 0; background: var(--surface-soft); box-shadow: none; }
+    .player-list .seat { background: var(--surface-soft); box-shadow: none; }
 
     .end-card { text-align: center; width: min(420px, 100%); }
     .end-card h2 { font-size: 36px; color: #fff; margin: 8px 0; }
@@ -1302,6 +1152,15 @@
     const showScreen = MiniGames.showScreen;
     const toast = MiniGames.toast;
     const requireName = MiniGames.requireName;
+    const rememberName = MiniGames.rememberName;
+    const showWarmup = MiniGames.showWarmup;
+    const hideWarmup = MiniGames.hideWarmup;
+    const waitForPeer = MiniGames.waitForPeer;
+    const randomCode = MiniGames.randomCode;
+    const setJoinStatus = MiniGames.setJoinStatus;
+    const stripRoomFromUrl = MiniGames.stripRoomFromUrl;
+    const inviteUrl = () => MiniGames.inviteUrl(state.room);
+    function peerOptions() { return MiniGames.peerOptions(turnIce); }
 
     function setInviteHome(code) {
       const invite = !!(code && String(code).length === 4);
@@ -1314,19 +1173,6 @@
         ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
         : "Share a 4-letter room code. Friends open this same page and join.";
     }
-
-    function setJoinStatus(kind, text) {
-      MiniGames.setJoinStatus(kind, text, state.connecting);
-    }
-
-    function showWarmup(title, text) { MiniGames.showWarmup(title, text); }
-
-    function hideWarmup() {
-      state.connecting = false;
-      MiniGames.hideWarmup();
-    }
-
-    function waitForPeer(ok, fail) { MiniGames.waitForPeer(ok, fail); }
 
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
@@ -1982,10 +1828,6 @@
       $("btn-reconnect-extend").style.display = lost && !state.hostLeftExplicit ? "" : "none";
     }
 
-    function stripRoomFromUrl() {
-      MiniGames.stripRoomFromUrl();
-    }
-
     // Session handler: leave, last-player win, host-gone timeout (3 min + optional 2).
     // Guests never retry forever. Invite links can be abandoned so Create room returns.
     function remainingPlayers(g) {
@@ -2153,14 +1995,6 @@
       toast(message || "You can't join this table");
       goHome();
     }
-
-    function peerOptions() {
-      return MiniGames.peerOptions(turnIce);
-    }
-
-    function randomCode() { return MiniGames.randomCode(); }
-
-    function inviteUrl() { return MiniGames.inviteUrl(state.room); }
 
     function topCard(g) {
       return g.discard[g.discard.length - 1];
@@ -3584,19 +3418,12 @@
         state.solo = false;
         state.myId = "host";
         state.myName = name;
-        localStorage.setItem("uno-name", state.myName);
+        rememberName(state.myName);
         state.room = isRetry ? (state.room || randomCode()) : randomCode();
         clearHostGoneClock();
         showError("home-error", "");
         setJoinStatus("", "");
-        state.connecting = true;
-        showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
         destroyPeer();
-        state.connecting = true;
-        state.isHost = true;
-        state.myId = "host";
-        state.myName = name;
-        state.room = state.room || randomCode();
         bindHostPeer(new Peer(PEER_PREFIX + state.room, peerOptions()));
       }, function () {
         hideWarmup();
@@ -3655,7 +3482,7 @@
       state.isHost = false;
       state.solo = false;
       state.myName = name;
-      localStorage.setItem("uno-name", state.myName);
+      rememberName(state.myName);
       state.room = code;
       beginHostGoneClock();
       showError("home-error", "");
@@ -3818,7 +3645,7 @@
       state.isHost = true;
       state.myId = "host";
       state.myName = name;
-      localStorage.setItem("uno-name", state.myName);
+      rememberName(state.myName);
       state.room = "SOLO";
       setJoinStatus("", "");
       const n = Math.max(1, Math.min(3, Number($("bot-count").value) || 2));
@@ -3860,7 +3687,13 @@
     $("btn-debug-copy").onclick = shareDebugLog;
     $("btn-debug-probe").onclick = runIceProbe;
     $("btn-turn-save").onclick = saveTurnFromMetered;
-    MiniGames.init({ nameKey: "uno-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
+    MiniGames.init({
+      nameKey: "uno-name",
+      hubHref: "index.html",
+      maxPlayers: MAX_PLAYERS,
+      setBusy(v) { state.connecting = v; },
+      isBusy() { return state.connecting; },
+    });
     MiniGames.bindHome({
       onCreate: createRoom,
       onJoin: (code) => joinRoom(code),

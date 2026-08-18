@@ -36,6 +36,14 @@
   text-align: left;
 }
 .net-warn b { display: block; margin-bottom: 4px; }
+body.dark .net-warn {
+  background: #3d3419;
+  color: #fde68a;
+}
+input.bad {
+  border-color: var(--red, #c41e3a);
+  background: #fff5f5;
+}
 
 .join-status {
   display: none;
@@ -135,12 +143,12 @@
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%) translateY(20px);
   background: var(--toast-bg, var(--ink, #111));
   color: var(--toast-fg, #fff);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 999px;
   font-weight: 700;
   opacity: 0;
   pointer-events: none;
@@ -209,7 +217,7 @@
   gap: 8px;
   height: fit-content;
 }
-.qr img { width: 160px; height: 160px; }
+.qr img { width: min(160px, 42vw); height: auto; aspect-ratio: 1; }
 .player-list {
   display: flex;
   flex-direction: column;

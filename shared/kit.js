@@ -93,14 +93,24 @@
     if (name) localStorage.setItem(cfg.nameKey, name);
   }
 
+  function setBusy(on) {
+    if (typeof cfg.setBusy === "function") cfg.setBusy(!!on);
+  }
+
+  function isBusy() {
+    return typeof cfg.isBusy === "function" ? !!cfg.isBusy() : false;
+  }
+
   function showWarmup(title, text) {
     ensureChrome();
+    setBusy(true);
     if ($("warmup-title") && title) $("warmup-title").textContent = title;
     if ($("warmup-text") && text) $("warmup-text").textContent = text;
     $("warmup").classList.add("show");
   }
 
   function hideWarmup() {
+    setBusy(false);
     const box = $("warmup");
     if (box) box.classList.remove("show");
     ["btn-create", "btn-join", "btn-solo"].forEach((id) => {
@@ -114,6 +124,7 @@
     box.className = "join-status" + (kind ? " show " + kind : "");
     if ($("join-status-text")) $("join-status-text").textContent = text || "";
     const pending = kind === "connecting" || kind === "joining";
+    if (busy == null) busy = isBusy();
     ["btn-join", "btn-create", "btn-solo"].forEach((id) => {
       if ($(id)) $(id).disabled = pending || !!busy;
     });
@@ -335,9 +346,7 @@
     wifiHint,
     stripRoomFromUrl,
     renderPlayerList,
-    ensureChrome,
     bindHome,
     setZoom,
-    CODE_CHARS,
   };
 })(window);

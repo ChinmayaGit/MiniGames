@@ -148,7 +148,6 @@
       outline: none;
     }
     input:focus, select:focus { border-color: var(--ink); }
-    input.bad { border-color: var(--red); background: #fff5f5; }
     input.room {
       text-transform: uppercase;
       letter-spacing: 0.28em;
@@ -182,7 +181,6 @@
 
     .row { display: flex; gap: 10px; }
     .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
-    input.bad { border-color: var(--red); background: #fff5f5; }
 
     .deco {
       display: flex;
@@ -453,16 +451,14 @@
     const showScreen = MiniGames.showScreen;
     const showError = MiniGames.showError;
     const requireName = MiniGames.requireName;
-
-    function setJoinStatus(kind, text) {
-      MiniGames.setJoinStatus(kind, text, state.connecting);
-    }
-    function showWarmup(title, text) { MiniGames.showWarmup(title, text); }
-    function hideWarmup() {
-      state.connecting = false;
-      MiniGames.hideWarmup();
-    }
-    function waitForPeer(ok, fail) { MiniGames.waitForPeer(ok, fail); }
+    const rememberName = MiniGames.rememberName;
+    const showWarmup = MiniGames.showWarmup;
+    const hideWarmup = MiniGames.hideWarmup;
+    const waitForPeer = MiniGames.waitForPeer;
+    const randomCode = MiniGames.randomCode;
+    const peerOptions = MiniGames.peerOptions;
+    const setJoinStatus = MiniGames.setJoinStatus;
+    const inviteUrl = () => MiniGames.inviteUrl(state.room);
 
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
@@ -612,10 +608,6 @@
       joinTimer: 0,
       connecting: false,
     };
-
-    function peerOptions() { return MiniGames.peerOptions(); }
-    function randomCode() { return MiniGames.randomCode(); }
-    function inviteUrl() { return MiniGames.inviteUrl(state.room); }
 
     function playerView(game, id) {
       const p = game.players.find((x) => x.id === id);
@@ -890,14 +882,13 @@
     function lobbySnapshot() {
       const players = [{ id: "host", name: state.myName, color: COLORS[0], connected: true }];
       let i = 1;
-      for (const [id, meta] of guestMeta()) {
+      for (const [id, meta] of guests) {
         players.push({ id, name: meta.name, color: COLORS[i++ % COLORS.length], connected: true });
       }
       return { phase: "lobby", room: state.room, players, you: { id: "host" } };
     }
 
     const guests = new Map();
-    function guestMeta() { return guests; }
 
     function sendLobby() {
       const snap = lobbySnapshot();
@@ -966,14 +957,11 @@
         state.solo = false;
         state.myId = "host";
         state.myName = name;
-        localStorage.setItem("dobble-name", state.myName);
+        rememberName(state.myName);
         state.room = isRetry ? (state.room || randomCode()) : randomCode();
         showError("home-error", "");
         setJoinStatus("", "");
-        state.connecting = true;
-        showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
         destroyPeer();
-        state.connecting = true;
         const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
         state.peer = peer;
         peer.on("open", () => {
@@ -1018,13 +1006,11 @@
         state.isHost = false;
         state.solo = false;
         state.myName = name;
-        localStorage.setItem("dobble-name", state.myName);
+        rememberName(state.myName);
         state.room = code;
         showError("home-error", "");
         destroyPeer();
-        state.connecting = true;
         setJoinStatus("connecting", "Finding room " + code + "…");
-        showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
         clearJoinWait();
         state.joinTimer = setTimeout(() => {
           setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
@@ -1106,7 +1092,7 @@
       state.isHost = true;
       state.myId = "host";
       state.myName = name;
-      localStorage.setItem("dobble-name", state.myName);
+      rememberName(state.myName);
       state.room = "SOLO";
       setJoinStatus("", "");
       state.game = createGame([{ id: "host", name: state.myName }], 8);
@@ -1148,7 +1134,13 @@
       goHome();
     }
 
-    MiniGames.init({ nameKey: "dobble-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
+    MiniGames.init({
+      nameKey: "dobble-name",
+      hubHref: "index.html",
+      maxPlayers: MAX_PLAYERS,
+      setBusy(v) { state.connecting = v; },
+      isBusy() { return state.connecting; },
+    });
     MiniGames.bindHome({
       onCreate: createRoom,
       onJoin: joinRoom,
