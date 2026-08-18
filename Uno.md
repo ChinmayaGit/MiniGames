@@ -99,7 +99,11 @@ If someone has internet but it is very slow (VSAT, Starlink at sea, high delay),
 - Reconnects with backoff instead of retrying every second (which would flood a tiny pipe)
 - Gives join/rejoin more time to finish
 
-They still need a working data connection. If the link drops for minutes, use Leave / Wait as usual. A ship with only a few kb/s will feel sluggish between turns, but a play is one small message.
+They still need a working data connection. If the link drops for minutes, use Leave / Wait as usual. A ship with a few kb/s will feel sluggish between turns, but a play is one small message.
+
+### Voice (microphone)
+
+Tap **🎤** in the lobby or during a game. That asks for microphone permission and sends your voice over WebRTC to the other people at the table (same mesh as the cards). Tap again to mute. The 🔊 button is still only for game sound effects. Solo vs bots has no mic. HTTPS is required (GitHub Pages / Netlify).
 
 What *can* fail is NAT, not distance: some mobile carriers and office networks block direct P2P. The game now tries several global STUN servers and a public TURN fallback so those joins still work more often. Both players still need HTTPS (GitHub Pages / Netlify) and the host tab must stay open.
 
@@ -255,6 +259,7 @@ Tiny JSON over the PeerJS data channel:
 | Guest → host | `kick` | Remove an away player |
 | Guest → host | `leave` | Vacate seat / drop from lobby |
 | Guest → host | `ping` | Keepalive + measured RTT |
+| Guest → host | `voice` | Mic on/off for the roster |
 | Host → guest | `pong` | Echo of ping timestamp |
 | Host → guest | `state` | Compact lobby or in-game view (`v`) |
 | Host → guest | `error` | e.g. game already started, kicked |

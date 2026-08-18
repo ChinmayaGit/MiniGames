@@ -353,7 +353,23 @@
     .icon-btn {
       width: 42px; height: 42px;
       color: var(--ink); font-size: 18px;
+      position: relative;
     }
+    .icon-btn.live {
+      background: #166534;
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.35);
+    }
+    .icon-btn.mic-off::after {
+      content: "";
+      position: absolute;
+      left: 8px; right: 8px; top: 50%;
+      height: 2px;
+      background: var(--uno-red);
+      transform: rotate(-28deg);
+      pointer-events: none;
+    }
+    body.dark .icon-btn.mic-off::after { background: #fca5a5; }
     .theme-toggle { flex-shrink: 0; }
     .room-label {
       color: #fff;
@@ -480,7 +496,7 @@
     .opp-meta b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
     .opp-meta span { font-size: 11px; font-weight: 800; color: var(--muted); }
     .opp.turn .opp-meta { background: var(--uno-yellow); }
-    .opp.uno .opp-meta b::after { content: " UNO"; color: var(--uno-red); }
+    .opp.mic .opp-meta b::before { content: "🎙 "; }
     .seat-slot.left .opp { flex-direction: row-reverse; }
     .seat-slot.right .opp { flex-direction: row; }
     .seat-slot.left .opp-meta,
@@ -976,6 +992,7 @@
         <div class="code-pill" id="lobby-code">----</div>
       </div>
       <button class="btn row ghost" id="btn-copy">Copy link</button>
+      <button class="icon-btn" id="btn-mic-lobby" type="button" title="Turn on microphone" aria-pressed="false">🎤</button>
       <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
     </div>
     <div class="lobby-grid">
@@ -1003,6 +1020,7 @@
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:#fff">0:00</div>
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
+        <button class="icon-btn" id="btn-mic-game" type="button" title="Turn on microphone" aria-pressed="false">🎤</button>
         <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
@@ -1106,6 +1124,8 @@
   <div class="turn-pop" id="turn-pop">
     <b id="turn-pop-name">Wait for your turn</b>
   </div>
+
+  <div id="voice-audio" hidden></div>
 
   <div class="toast" id="toast"></div>
 
@@ -1322,11 +1342,15 @@
       lastRxAt: 0,
       pendingLocalPlay: 0,
       myRtt: 0,
+      micOn: false,
+      micStream: null,
     };
     const guests = new Map();
     const dropTimers = new Map();
     const lastSeen = new Map();
     const rttById = new Map();
+    const voiceCalls = new Map();
+    const voiceAudio = new Map();
 
     function noteRtt(id, ms) {
       const n = Number(ms);
@@ -1368,6 +1392,188 @@
     function joinWaitMs(reconnect) {
       if (linkIsSlow()) return reconnect ? 32000 : 24000;
       return reconnect ? 12000 : 14000;
+    }
+
+    function voiceRoster() {
+      const hostVid = (state.peer && state.peer.id) || (state.room ? PEER_PREFIX + state.room : "");
+      const list = [];
+      if (hostVid) list.push({ vid: hostVid, pid: "host", on: !!(state.isHost && state.micOn) });
+      for (const [peerId, meta] of guests) {
+        list.push({ vid: peerId, pid: meta.playerId || peerId, on: !!meta.voiceOn });
+      }
+      return list;
+    }
+
+    function updateMicUi() {
+      const on = !!state.micOn;
+      const show = !state.solo && !!state.room;
+      ["btn-mic-lobby", "btn-mic-game"].forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.style.display = show ? "" : "none";
+        el.classList.toggle("live", on);
+        el.classList.toggle("mic-off", !on);
+        el.title = on ? "Mute microphone" : "Turn on microphone";
+        el.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+
+    function playRemoteVoice(id, stream) {
+      if (!id || !stream) return;
+      let el = voiceAudio.get(id);
+      if (!el) {
+        el = document.createElement("audio");
+        el.autoplay = true;
+        el.setAttribute("playsinline", "");
+        $("voice-audio").append(el);
+        voiceAudio.set(id, el);
+      }
+      el.srcObject = stream;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+
+    function closeVoiceCall(id) {
+      const call = voiceCalls.get(id);
+      if (call) {
+        try { call.close(); } catch (e) {}
+        voiceCalls.delete(id);
+      }
+      const el = voiceAudio.get(id);
+      if (el) {
+        try { el.srcObject = null; el.remove(); } catch (e) {}
+        voiceAudio.delete(id);
+      }
+    }
+
+    function closeVoiceCalls() {
+      for (const id of [...voiceCalls.keys()]) closeVoiceCall(id);
+    }
+
+    function stopMic() {
+      state.micOn = false;
+      if (state.micStream) {
+        state.micStream.getTracks().forEach((t) => t.stop());
+        state.micStream = null;
+      }
+      closeVoiceCalls();
+      updateMicUi();
+    }
+
+    function attachVoiceCall(call) {
+      if (!call || !call.peer) return;
+      const id = call.peer;
+      const existing = voiceCalls.get(id);
+      if (existing && existing !== call) {
+        const keepIncoming = id < ((state.peer && state.peer.id) || "");
+        if (keepIncoming) {
+          try { existing.close(); } catch (e) {}
+        } else {
+          try { call.close(); } catch (e) {}
+          return;
+        }
+      }
+      voiceCalls.set(id, call);
+      call.on("stream", (stream) => playRemoteVoice(id, stream));
+      call.on("close", () => {
+        if (voiceCalls.get(id) === call) {
+          voiceCalls.delete(id);
+          const el = voiceAudio.get(id);
+          if (el) { try { el.srcObject = null; el.remove(); } catch (e) {} voiceAudio.delete(id); }
+        }
+      });
+      call.on("error", () => closeVoiceCall(id));
+    }
+
+    function bindVoice(peer) {
+      if (!peer || peer._unoVoice) return;
+      peer._unoVoice = true;
+      peer.on("call", (call) => {
+        try { call.answer(state.micStream || undefined); } catch (e) {
+          try { call.answer(); } catch (err) {}
+        }
+        attachVoiceCall(call);
+      });
+    }
+
+    function openVoiceCall(theirId) {
+      if (!state.peer || !state.micStream || !theirId) return;
+      if (theirId === state.peer.id) return;
+      if (voiceCalls.has(theirId)) return;
+      try {
+        const call = state.peer.call(theirId, state.micStream);
+        if (call) attachVoiceCall(call);
+      } catch (e) {}
+    }
+
+    function pushMicIntoCalls() {
+      const track = state.micStream && state.micStream.getAudioTracks()[0];
+      if (!track) return;
+      for (const [, call] of voiceCalls) {
+        try {
+          const pc = call.peerConnection;
+          if (!pc) continue;
+          const senders = pc.getSenders();
+          const audio = senders.find((s) => s.track && s.track.kind === "audio") || senders.find((s) => !s.track);
+          if (audio && audio.replaceTrack) audio.replaceTrack(track);
+        } catch (e) {}
+      }
+    }
+
+    function connectVoiceToAll() {
+      if (!state.micOn || !state.micStream || !state.peer) return;
+      const roster = (state.view && state.view.voice) || voiceRoster();
+      for (const v of roster) {
+        if (v && v.vid) openVoiceCall(v.vid);
+      }
+      if (!state.isHost && state.room) openVoiceCall(PEER_PREFIX + state.room);
+    }
+
+    function publishVoice() {
+      if (state.solo || !state.room) return;
+      if (state.isHost) {
+        if (state.game) hostBroadcast();
+        else sendLobby();
+      } else {
+        sendAction({ type: "voice", on: !!state.micOn });
+      }
+      connectVoiceToAll();
+    }
+
+    async function toggleMic() {
+      if (state.solo || !state.room) {
+        toast("Mic works in a multiplayer room");
+        return;
+      }
+      if (!window.isSecureContext) {
+        toast("Mic needs HTTPS");
+        return;
+      }
+      if (state.micOn) {
+        state.micOn = false;
+        if (state.micStream) state.micStream.getAudioTracks().forEach((t) => { t.enabled = false; });
+        updateMicUi();
+        publishVoice();
+        return;
+      }
+      try {
+        if (!state.micStream) {
+          state.micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            video: false,
+          });
+        } else {
+          state.micStream.getAudioTracks().forEach((t) => { t.enabled = true; });
+        }
+        state.micOn = true;
+        updateMicUi();
+        bindVoice(state.peer);
+        pushMicIntoCalls();
+        publishVoice();
+        toast("Mic on — others can hear you");
+      } catch (e) {
+        toast("Allow microphone access, then try again");
+      }
     }
 
     function myToken() {
@@ -1481,6 +1687,7 @@
           }
           state.conns.delete(peer);
           guests.delete(peer);
+          closeVoiceCall(peer);
         }
       }
       if (!g || g.phase !== "playing") return;
@@ -1509,6 +1716,7 @@
             }
             state.conns.delete(peer);
             guests.delete(peer);
+            closeVoiceCall(peer);
           }
         }
         sendLobby();
@@ -1727,6 +1935,8 @@
       const legal = p && game.players[game.turn].id === id && !game.choosingColor && !game.stackChoice && !paused
         ? hand.filter((c) => canPlayCard(game, hand, c)).map((c) => c.id)
         : [];
+      const voice = state.solo ? [] : voiceRoster();
+      const micOf = (pid) => voice.some((v) => v.pid === pid && v.on);
       return {
         phase: game.phase,
         room: state.room,
@@ -1757,6 +1967,7 @@
           const x = game.players.find((p) => p.id === aid);
           return { id: aid, name: x ? x.name : "Player" };
         }),
+        voice,
         players: game.players.filter((x) => !x.kicked).map((x) => ({
           id: x.id,
           name: x.name,
@@ -1766,6 +1977,7 @@
           calledUno: x.calledUno,
           isTurn: game.players[game.turn].id === x.id,
           bot: !!x.bot,
+          mic: micOf(x.id),
         })),
       };
     }
@@ -1792,7 +2004,8 @@
           p: "l",
           r: view.room,
           y: view.you && view.you.id,
-          pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.connected === false ? 0 : 1]),
+          pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.connected === false ? 0 : 1, x.mic ? 1 : 0]),
+          vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
         };
       }
       return {
@@ -1817,7 +2030,8 @@
         q: view.playSeq || 0,
         h: view.catchable ? 1 : 0,
         aw: (view.away || []).map((x) => [x.id, x.name]),
-        pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0]),
+        pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.count, x.connected === false ? 0 : 1, x.calledUno ? 1 : 0, x.isTurn ? 1 : 0, x.bot ? 1 : 0, x.mic ? 1 : 0]),
+        vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
       };
     }
 
@@ -1829,7 +2043,8 @@
           phase: "lobby",
           room: raw.r,
           you: { id: raw.y },
-          players: (raw.pl || []).map((x) => ({ id: x[0], name: x[1], color: x[2], connected: !!x[3] })),
+          players: (raw.pl || []).map((x) => ({ id: x[0], name: x[1], color: x[2], connected: !!x[3], mic: !!x[4] })),
+          voice: (raw.vc || []).map((v) => ({ vid: v[0], pid: v[1], on: !!v[2] })),
         };
       }
       const you = raw.y || [];
@@ -1869,7 +2084,9 @@
           calledUno: !!x[5],
           isTurn: !!x[6],
           bot: !!x[7],
+          mic: !!x[8],
         })),
+        voice: (raw.vc || []).map((v) => ({ vid: v[0], pid: v[1], on: !!v[2] })),
       };
     }
 
@@ -1885,6 +2102,11 @@
       state.reconnectAttempt = 0;
       applyView(view);
       saveSession();
+      if (state.micOn && !state.isHost) {
+        const meVid = state.peer && state.peer.id;
+        const listed = (view.voice || []).some((v) => v.vid === meVid && v.on);
+        if (!listed) sendAction({ type: "voice", on: true });
+      }
     }
 
     function createGame(people) {
@@ -2310,6 +2532,8 @@
         $("turn-pop").classList.remove("show");
         $("stack-pick").classList.remove("show");
         $("away-pick").classList.remove("show");
+        updateMicUi();
+        connectVoiceToAll();
         return;
       }
       if (view.phase === "end") {
@@ -2319,6 +2543,8 @@
         $("stack-pick").classList.remove("show");
         $("away-pick").classList.remove("show");
         $("turn-pop").classList.remove("show");
+        updateMicUi();
+        connectVoiceToAll();
         return;
       }
       if (view.phase === "playing") {
@@ -2389,6 +2615,8 @@
         } else {
           renderDiscard(view.top);
         }
+        connectVoiceToAll();
+        updateMicUi();
       }
     }
 
@@ -2470,7 +2698,7 @@
 
     function makeOppEl(p) {
       const wrap = document.createElement("div");
-      wrap.className = "opp" + (p.isTurn ? " turn" : "") + (p.calledUno && p.count === 1 ? " uno" : "");
+      wrap.className = "opp" + (p.isTurn ? " turn" : "") + (p.calledUno && p.count === 1 ? " uno" : "") + (p.mic ? " mic" : "");
       wrap.dataset.pid = p.id;
       const hold = document.createElement("div");
       hold.className = "opp-fan-wrap";
@@ -2636,15 +2864,15 @@
         const b = document.createElement("b");
         b.textContent = p.name + (p.id === "host" ? " (host)" : "");
         const s = document.createElement("span");
-        s.textContent = p.connected ? "connected" : "offline";
+        s.textContent = p.connected ? (p.mic ? "mic on" : "connected") : "offline";
         meta.append(b, s);
         seat.append(dot, meta);
         list.append(seat);
       }
       $("host-settings").style.display = state.isHost ? "grid" : "none";
       $("lobby-hint").textContent = state.isHost
-        ? "Need at least 2 players. Same Wi‑Fi is most reliable."
-        : "Waiting for the host to start…";
+        ? "Need at least 2 players. Tap 🎤 to talk."
+        : "Waiting for the host to start. Tap 🎤 to talk.";
       $("qr").src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(inviteUrl());
     }
 
@@ -2705,6 +2933,10 @@
         else if (msg.type === "stack") hostStack(state.myId, msg.action);
         else if (msg.type === "kick") hostKick(msg.playerId);
         else if (msg.type === "leave") hostPlayerLeave(state.myId);
+        else if (msg.type === "voice") {
+          state.micOn = !!msg.on;
+          publishVoice();
+        }
         return;
       }
       const hostConn = state.conns.get("host") || [...state.conns.values()][0];
@@ -2742,12 +2974,14 @@
     }
 
     function lobbySnapshot() {
-      const players = [{ id: "host", name: state.myName, color: SEAT[0], connected: true }];
+      const voice = voiceRoster();
+      const micOf = (pid) => voice.some((v) => v.pid === pid && v.on);
+      const players = [{ id: "host", name: state.myName, color: SEAT[0], connected: true, mic: micOf("host") }];
       let i = 1;
       for (const [id, meta] of guests) {
-        players.push({ id, name: meta.name, color: SEAT[i++ % SEAT.length], connected: true });
+        players.push({ id, name: meta.name, color: SEAT[i++ % SEAT.length], connected: true, mic: micOf(meta.playerId || id) });
       }
-      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+      return { phase: "lobby", room: state.room, players, you: { id: "host" }, voice };
     }
 
     function sendLobby() {
@@ -2879,6 +3113,12 @@
         if (msg.type === "stack") hostStack(pid, msg.action);
         if (msg.type === "kick") hostKick(msg.playerId);
         if (msg.type === "leave") hostPlayerLeave(pid);
+        if (msg.type === "voice") {
+          const meta = guests.get(conn.peer);
+          if (meta) meta.voiceOn = !!msg.on;
+          if (state.game) hostBroadcast();
+          else sendLobby();
+        }
       });
       conn.on("close", () => {
         if (state.conns.get(conn.peer) !== conn) return;
@@ -2895,6 +3135,15 @@
       dropTimers.clear();
       clearTimeout(state.botTimer);
       clearJoinWait();
+      closeVoiceCalls();
+      if (!(opts && opts.keepGuests)) {
+        if (state.micStream) {
+          state.micStream.getTracks().forEach((t) => t.stop());
+          state.micStream = null;
+        }
+        state.micOn = false;
+        updateMicUi();
+      }
       state.replacingPeer = true;
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
@@ -2918,6 +3167,7 @@
 
     function bindHostPeer(peer) {
       state.peer = peer;
+      bindVoice(peer);
       peer.on("open", () => {
         if (state.game) hostBroadcast();
         else {
@@ -2925,6 +3175,8 @@
           toast("Room " + state.room + " ready");
         }
         saveSession();
+        if (state.micOn) connectVoiceToAll();
+        updateMicUi();
       });
       peer.on("connection", (conn) => {
         cancelDrop(conn.peer);
@@ -3060,6 +3312,7 @@
       }, joinWaitMs(reconnect));
       const peer = new Peer(peerOptions());
       state.peer = peer;
+      bindVoice(peer);
       peer.on("open", () => {
         state.myId = peer.id;
         if (reconnect) setReconnectUi(true, "Connecting to the host…");
@@ -3190,6 +3443,7 @@
       for (let i = 0; i < n; i++) players.push({ id: "bot-" + i, name: BOT_NAMES[i], bot: true });
       state.game = createGame(players);
       hostBroadcast();
+      updateMicUi();
     }
 
     function goHome() {
@@ -3213,6 +3467,7 @@
       $("join-code").value = "";
       stripRoomFromUrl();
       setInviteHome("");
+      updateMicUi();
       showScreen("home");
     }
 
@@ -3234,6 +3489,8 @@
         toast(state.room);
       }
     };
+    $("btn-mic-lobby").onclick = toggleMic;
+    $("btn-mic-game").onclick = toggleMic;
     $("btn-mute").onclick = () => {
       muted = !muted;
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
