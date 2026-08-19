@@ -318,6 +318,64 @@ button.icon-btn:active:not(:disabled) {
 
 .end-card { text-align: center; width: min(420px, 100%); }
 
+.settings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-top: 10px;
+}
+.level-block { min-width: 0; }
+.level-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.info-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: 800 12px/1 inherit;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.level-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.level-chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--surface-muted, #eef2f7);
+  color: var(--ink, #111);
+  cursor: pointer;
+}
+.level-chip.on {
+  background: var(--accent, var(--red, #c41e3a));
+  color: #fff;
+}
+.level-chip:disabled { cursor: default; opacity: 0.9; }
+.level-help {
+  display: none;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted, #6b7280);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.level-help.show { display: block; }
+
 #btn-debug {
   position: fixed;
   left: max(8px, env(safe-area-inset-left, 0px));

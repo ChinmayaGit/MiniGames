@@ -1027,6 +1027,15 @@
           </select>
         </div>
       </div>
+      <div class="level-block">
+        <label class="level-label">Level <button type="button" class="info-btn" data-level-info aria-label="What does level do?">i</button></label>
+        <div class="level-chips">
+          <button type="button" class="level-chip" data-level="easy">Easy</button>
+          <button type="button" class="level-chip on" data-level="medium">Medium</button>
+          <button type="button" class="level-chip" data-level="hard">Hard</button>
+        </div>
+        <p class="level-help" data-level-help>Harder levels deal more action cards (Skip, Reverse, Flip, +1 / +5, Wild). Easy favors number cards. Medium is a normal mix.</p>
+      </div>
       <button class="btn yellow" id="btn-solo">Practice solo</button>
       <div class="error" id="home-error"></div>
       <div class="net-warn" id="net-warn">
@@ -1054,8 +1063,16 @@
         <b>Players</b>
         <div class="player-list" id="lobby-players"></div>
         <div class="settings" id="host-settings">
-          <div>
-            <label>&nbsp;</label>
+          <div class="level-block">
+            <label class="level-label">Level <button type="button" class="info-btn" data-level-info aria-label="What does level do?">i</button></label>
+            <div class="level-chips">
+              <button type="button" class="level-chip" data-level="easy">Easy</button>
+              <button type="button" class="level-chip on" data-level="medium">Medium</button>
+              <button type="button" class="level-chip" data-level="hard">Hard</button>
+            </div>
+            <p class="level-help" data-level-help>Harder levels deal more action cards (Skip, Reverse, Flip, +1 / +5, Wild). Easy favors number cards. Medium is a normal mix.</p>
+          </div>
+          <div id="host-start-wrap">
             <button class="btn teal" id="btn-start">Start game</button>
           </div>
         </div>
@@ -1498,6 +1515,46 @@
       return a;
     }
 
+    const DEAL_LEVEL_KEY = "unoflip-deal-level";
+    const POWER_CHANCE = { easy: 0.16, medium: 0.34, hard: 0.62 };
+    const LEVEL_PACK = { easy: "e", medium: "m", hard: "h" };
+    const LEVEL_UNPACK = { e: "easy", m: "medium", h: "hard" };
+
+    function normalizeLevel(v) {
+      return POWER_CHANCE[v] != null ? v : "medium";
+    }
+    function loadDealLevel() {
+      try { return normalizeLevel(localStorage.getItem(DEAL_LEVEL_KEY)); } catch (e) { return "medium"; }
+    }
+    function saveDealLevel(level) {
+      state.dealLevel = normalizeLevel(level);
+      try { localStorage.setItem(DEAL_LEVEL_KEY, state.dealLevel); } catch (e) {}
+      paintDealLevel();
+    }
+    function paintDealLevel(opts) {
+      const level = normalizeLevel((opts && opts.level) || state.dealLevel);
+      const locked = !!(opts && opts.locked);
+      document.querySelectorAll("[data-level]").forEach((btn) => {
+        btn.classList.toggle("on", btn.getAttribute("data-level") === level);
+        btn.disabled = locked;
+      });
+    }
+    function isFlipPower(card) {
+      return !card.light || card.light.type !== "number";
+    }
+    function pullDealCard(deck, wantPower, isPower) {
+      for (let i = deck.length - 1; i >= 0; i--) {
+        if (wantPower ? isPower(deck[i]) : !isPower(deck[i])) return deck.splice(i, 1)[0];
+      }
+      return deck.pop();
+    }
+    function dealOpeningHands(deck, players, isPower) {
+      const chance = POWER_CHANCE[normalizeLevel(state.dealLevel)];
+      for (let round = 0; round < 7; round++) {
+        for (const p of players) p.hand.push(pullDealCard(deck, Math.random() < chance, isPower));
+      }
+    }
+
     const VALUE_FROM_TYPE = {
       drawOne: "draw1",
       wildDrawTwo: "wildDraw2",
@@ -1797,6 +1854,7 @@
       myRtt: 0,
       micOn: false,
       micStream: null,
+      dealLevel: "medium",
     };
     const guests = new Map();
     const dropTimers = new Map();
@@ -2454,6 +2512,7 @@
           y: view.you && view.you.id,
           pl: (view.players || []).map((x) => [x.id, x.name, x.color, x.connected === false ? 0 : 1, x.mic ? 1 : 0]),
           vc: (view.voice || []).map((v) => [v.vid, v.pid, v.on ? 1 : 0]),
+          lv: LEVEL_PACK[view.difficulty] || "m",
         };
       }
       return {
@@ -2496,6 +2555,7 @@
           you: { id: raw.y },
           players: (raw.pl || []).map((x) => ({ id: x[0], name: x[1], color: x[2], connected: !!x[3], mic: !!x[4] })),
           voice: (raw.vc || []).map((v) => ({ vid: v[0], pid: v[1], on: !!v[2] })),
+          difficulty: LEVEL_UNPACK[raw.lv] || "medium",
         };
       }
       const you = raw.y || [];
@@ -2576,9 +2636,7 @@
         kicked: false,
         bot: !!p.bot,
       }));
-      for (let i = 0; i < 7; i++) {
-        for (const p of players) p.hand.push(deck.pop());
-      }
+      dealOpeningHands(deck, players, isFlipPower);
       let top = deck.pop();
       const parked = [];
       const light = { side: "light" };
@@ -3464,7 +3522,9 @@
       MiniGames.renderPlayerList(view.players, state.myId, (p) =>
         p.connected ? (p.mic ? "mic on" : "connected") : "offline"
       );
-      $("host-settings").style.display = state.isHost ? "grid" : "none";
+      $("host-settings").style.display = "grid";
+      $("host-start-wrap").style.display = state.isHost ? "" : "none";
+      paintDealLevel({ level: view.difficulty || state.dealLevel, locked: !state.isHost });
       $("lobby-hint").textContent = state.isHost
         ? "Need 2–" + MAX_PLAYERS + " players. Tap 🎤 to talk."
         : "Waiting for the host to start. Tap 🎤 to talk.";
@@ -3576,7 +3636,7 @@
       for (const [id, meta] of guests) {
         players.push({ id, name: meta.name, color: SEAT[i++ % SEAT.length], connected: true, mic: micOf(meta.playerId || id) });
       }
-      return { phase: "lobby", room: state.room, players, you: { id: "host" }, voice };
+      return { phase: "lobby", room: state.room, players, you: { id: "host" }, voice, difficulty: state.dealLevel };
     }
 
     function sendLobby() {
@@ -4151,8 +4211,25 @@
       stripRoomFromUrl();
       setInviteHome("");
       updateMicUi();
+      paintDealLevel();
       showScreen("home");
     }
+
+    document.querySelectorAll("[data-level]").forEach((btn) => {
+      btn.onclick = () => {
+        if (btn.disabled) return;
+        saveDealLevel(btn.getAttribute("data-level"));
+        if (state.isHost && state.view && state.view.phase === "lobby") sendLobby();
+      };
+    });
+    document.querySelectorAll("[data-level-info]").forEach((btn) => {
+      btn.onclick = () => {
+        const help = btn.closest(".level-block") && btn.closest(".level-block").querySelector("[data-level-help]");
+        if (help) help.classList.toggle("show");
+      };
+    });
+    state.dealLevel = loadDealLevel();
+    paintDealLevel();
 
     $("btn-debug").onclick = openDebug;
     $("btn-debug-close").onclick = () => $("debug-pick").classList.remove("show");
