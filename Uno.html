@@ -233,7 +233,7 @@
       box-shadow: 0 4px 0 #c9a400;
     }
     .btn.ghost {
-      background: var(--surface);
+      background: #fff;
       color: var(--uno-red);
       box-shadow: 0 4px 0 #b01024;
     }
@@ -297,7 +297,7 @@
       box-shadow: 0 4px 0 #0f3d1f;
     }
     .code-pill, .icon-btn {
-      background: var(--surface);
+      background: #fff;
       border: 0;
       border-radius: 999px;
       box-shadow: 0 3px 0 rgba(0,0,0,.18);
@@ -795,37 +795,6 @@
     #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
     #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
     #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-    #btn-debug {
-      position: fixed;
-      left: max(10px, env(safe-area-inset-left));
-      bottom: max(10px, env(safe-area-inset-bottom));
-      z-index: 22;
-      width: auto;
-      height: 36px;
-      padding: 0 12px;
-      font-size: 12px;
-      font-weight: 800;
-    }
-    #debug-pick { z-index: 24; }
-    #debug-pick .panel {
-      width: min(420px, 100%);
-      text-align: left;
-    }
-    #debug-log {
-      margin-top: 10px;
-      max-height: min(42vh, 280px);
-      overflow: auto;
-      background: #0b1220;
-      color: #d1fae5;
-      border-radius: 10px;
-      padding: 10px;
-      font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    #debug-pick .hint { margin-top: 8px; }
-    #debug-pick label { margin-top: 10px; }
-    #debug-pick input { width: 100%; }
     .swatches {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -955,6 +924,7 @@
   </div>
 
   <div id="screen-lobby" class="screen">
+    <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="topbar">
       <div>
         <div class="room-label">Room</div>
@@ -1111,6 +1081,7 @@
       <button class="btn teal" id="btn-turn-save" type="button">Save TURN</button>
       <pre id="debug-log"></pre>
       <div class="row">
+        <button class="btn row yellow" id="btn-debug-cards" type="button" title="Show all cards" aria-label="Show all cards">🃏</button>
         <button class="btn row teal" id="btn-debug-copy" type="button">Copy log</button>
         <button class="btn row blue" id="btn-debug-probe" type="button">Test ICE</button>
         <button class="btn row ghost" id="btn-debug-close" type="button">Close</button>
@@ -1118,7 +1089,16 @@
     </div>
   </div>
 
-  <button class="icon-btn" id="btn-debug" type="button" title="Connection debug log">Debug</button>
+  <div class="overlay" id="card-atlas">
+    <div class="panel">
+      <b>Uno set list</b>
+      <p class="hint atlas-note">One of each unique card. Duplicates in the real deck are hidden.</p>
+      <div id="card-atlas-grid" class="atlas-grid"></div>
+      <button class="btn ghost" id="btn-atlas-close" type="button">Close</button>
+    </div>
+  </div>
+
+  <button id="btn-debug" type="button" title="Debug" aria-label="Debug">🐞</button>
 
   <div class="toast" id="toast"></div>
 
@@ -1451,6 +1431,26 @@
       faceBox.append(tl, oval, br);
       el.append(faceBox);
       return el;
+    }
+
+    function atlasCards() {
+      const cards = [];
+      let id = 1;
+      for (const color of COLORS) {
+        cards.push({ id: id++, color, value: 0 });
+        for (let n = 1; n <= 9; n++) cards.push({ id: id++, color, value: n });
+        for (const v of ["skip", "reverse", "draw2"]) cards.push({ id: id++, color, value: v });
+      }
+      cards.push({ id: id++, color: "wild", value: "wild" });
+      cards.push({ id: id++, color: "wild", value: "wild4" });
+      return cards;
+    }
+
+    function openCardAtlas() {
+      const grid = $("card-atlas-grid");
+      grid.replaceChildren();
+      atlasCards().forEach((card) => grid.append(makeCardEl(card, "sm")));
+      $("card-atlas").classList.add("show");
     }
 
     let audioCtx = null;
@@ -3782,6 +3782,11 @@
     $("btn-debug-close").onclick = () => $("debug-pick").classList.remove("show");
     $("btn-debug-copy").onclick = shareDebugLog;
     $("btn-debug-probe").onclick = runIceProbe;
+    $("btn-debug-cards").onclick = () => {
+      $("debug-pick").classList.remove("show");
+      openCardAtlas();
+    };
+    $("btn-atlas-close").onclick = () => $("card-atlas").classList.remove("show");
     $("btn-turn-save").onclick = saveTurnFromMetered;
     MiniGames.init({
       nameKey: "uno-name",

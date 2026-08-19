@@ -35,6 +35,14 @@
       min-height: 100dvh;
       overflow: hidden;
     }
+    body.dark {
+      --bg: #141018;
+      --card: #1e1814;
+      --ink: #f6efe4;
+      --muted: #c9b8a2;
+      --line: #3a322c;
+    }
+    body.dark .play-bg { filter: brightness(0.45) saturate(0.8); }
 
     .play-bg {
       position: fixed;
@@ -173,11 +181,12 @@
     .btn:active:not(:disabled) { opacity: 0.85; }
     .btn.teal { background: var(--teal); color: #fff; }
     .btn.ghost {
-      background: transparent;
-      color: var(--ink);
-      border: 2px solid var(--line);
+      background: #fff;
+      color: var(--red);
+      border: 0;
+      box-shadow: 0 4px 0 #b01024;
     }
-    .btn.row { width: auto; padding-inline: 14px; margin-top: 0; }
+    .btn.row { width: auto; padding-inline: 16px; margin-top: 0; }
 
     .row { display: flex; gap: 10px; }
     .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
@@ -191,11 +200,14 @@
     .deco .card { width: min(28vw, 140px); }
 
     .icon-btn {
-      width: 42px; height: 42px;
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      background: var(--card);
-      color: var(--ink); font-size: 18px;
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 999px;
+      background: #fff;
+      color: #111;
+      font-size: 18px;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, .18);
     }
 
     .players {
@@ -440,6 +452,7 @@
   </div>
 
   <div id="screen-lobby" class="screen">
+    <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="topbar">
       <div>
         <div class="room-label">Room</div>
@@ -488,7 +501,8 @@
       <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700">0:00</div>
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
-        <button class="icon-btn" id="btn-mute" title="Mute">🔊</button>
+        <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
+        <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
     </div>
     <div class="players" id="scoreboard"></div>
@@ -517,6 +531,36 @@
       <button class="btn ghost" id="btn-home">Home</button>
     </div>
   </div>
+
+  <div class="debug-sheet" id="debug-pick">
+    <div class="panel">
+      <b>Connection debug</b>
+      <p class="hint" id="debug-hint" style="text-align:left">Two home Wi‑Fi networks often need a TURN relay. Paste a free Metered TURN key below, tap Save, then Test ICE — you should see <code>relay</code> candidates.</p>
+      <label for="turn-app">Metered app name</label>
+      <input id="turn-app" placeholder="your-app" autocomplete="off" />
+      <label for="turn-key">Metered TURN API key</label>
+      <input id="turn-key" placeholder="from metered.ca dashboard" autocomplete="off" />
+      <button class="btn teal" id="btn-turn-save" type="button">Save TURN</button>
+      <pre id="debug-log"></pre>
+      <div class="row">
+        <button class="btn row teal" id="btn-debug-cards" type="button" title="Show all cards" aria-label="Show all cards">🃏</button>
+        <button class="btn row teal" id="btn-debug-copy" type="button">Copy log</button>
+        <button class="btn row teal" id="btn-debug-probe" type="button">Test ICE</button>
+        <button class="btn row ghost" id="btn-debug-close" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="debug-sheet" id="card-atlas">
+    <div class="panel">
+      <b id="card-atlas-title">Dobble set list</b>
+      <p class="hint atlas-note">All 57 cards in this edition. Each pair of cards shares exactly one symbol.</p>
+      <div id="card-atlas-grid" class="atlas-grid"></div>
+      <button class="btn ghost" id="btn-atlas-close" type="button">Close</button>
+    </div>
+  </div>
+
+  <button id="btn-debug" type="button" title="Debug" aria-label="Debug">🐞</button>
 
   <div class="toast" id="toast"></div>
 
@@ -578,6 +622,7 @@
     const PEER_PREFIX = "dobblehost-";
     const FREEZE_MS = 1600;
     const REVEAL_MS = 900;
+    const NETLOG_KEY = "dobble-netlog";
 
     const $ = MiniGames.$;
     const toast = MiniGames.toast;
@@ -589,9 +634,10 @@
     const hideWarmup = MiniGames.hideWarmup;
     const waitForPeer = MiniGames.waitForPeer;
     const randomCode = MiniGames.randomCode;
-    const peerOptions = MiniGames.peerOptions;
     const setJoinStatus = MiniGames.setJoinStatus;
     const inviteUrl = () => MiniGames.inviteUrl(state.room);
+
+    function peerOptions() { return MiniGames.peerOptions(turnIce); }
 
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
@@ -688,6 +734,20 @@
       }
     }
 
+    function openCardAtlas() {
+      const ed = editionById(state.edition);
+      $("card-atlas-title").textContent = "Dobble · " + ed.name;
+      const grid = $("card-atlas-grid");
+      grid.replaceChildren();
+      DECK.forEach((ids) => {
+        const card = document.createElement("div");
+        card.className = "card atlas-mini";
+        renderCard(card, ids, null, false);
+        grid.append(card);
+      });
+      $("card-atlas").classList.add("show");
+    }
+
     let audioCtx = null;
     let muted = false;
     function ctx() {
@@ -740,6 +800,184 @@
       connecting: false,
       edition: "classic",
     };
+
+    const netLogs = [];
+    let turnIce = [];
+    try {
+      const raw = localStorage.getItem("uno-turn-ice");
+      if (raw) turnIce = JSON.parse(raw) || [];
+    } catch (e) { turnIce = []; }
+    (function loadNetLogs() {
+      try {
+        const saved = sessionStorage.getItem(NETLOG_KEY);
+        if (saved) saved.split("\n").forEach((line) => { if (line) netLogs.push(line); });
+      } catch (e) {}
+    })();
+
+    function netInfo() {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      return [
+        "online=" + navigator.onLine,
+        "https=" + !!window.isSecureContext,
+        c ? ("net=" + (c.type || c.effectiveType || "?") + (c.downlink != null ? " " + c.downlink + "Mb" : "")) : "net=?",
+        "role=" + (state.solo ? "solo" : state.isHost ? "host" : "guest"),
+        "room=" + (state.room || "-"),
+        "turn=" + (turnIce.length ? turnIce.length + " extra" : "none"),
+      ].join(" ");
+    }
+
+    function summarizeCandidate(cand) {
+      if (!cand) return "end";
+      const addr = String(cand.address || cand.ip || "");
+      return (cand.type || "?") + " " + (cand.protocol || cand.transport || "") + " " + (addr.indexOf(":") >= 0 ? "v6" : "v4");
+    }
+
+    function iceSummary() {
+      try {
+        return peerOptions().config.iceServers.map((s) => {
+          const u = [].concat(s.urls || s.url || []);
+          return u.map((x) => String(x).split("?")[0].replace(/:\/\/.*@/, "://")).join(",");
+        }).join(" | ");
+      } catch (e) {
+        return "?";
+      }
+    }
+
+    function debugDump() {
+      return [
+        "Dobble debug " + new Date().toISOString(),
+        netInfo(),
+        "ice=" + iceSummary(),
+        "ua=" + String(navigator.userAgent || "").slice(0, 140),
+        "url=" + location.origin + location.pathname,
+        "---",
+        netLogs.slice(-220).join("\n"),
+      ].join("\n");
+    }
+
+    async function saveTurnFromMetered() {
+      const app = ($("turn-app").value || "").trim()
+        .replace(/^https?:\/\//, "")
+        .replace(/\.metered\.live.*$/i, "");
+      const key = ($("turn-key").value || "").trim();
+      if (!app || !key) {
+        toast("Enter Metered app name and API key");
+        return;
+      }
+      try { localStorage.setItem("uno-turn-app", app); } catch (e) {}
+      try { localStorage.setItem("uno-turn-key", key); } catch (e) {}
+      netlog("turn fetch", app);
+      try {
+        const url = "https://" + app + ".metered.live/api/v1/turn/credentials?apiKey=" + encodeURIComponent(key);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const ice = await res.json();
+        if (!Array.isArray(ice) || !ice.length) throw new Error("empty iceServers");
+        turnIce = ice;
+        try { localStorage.setItem("uno-turn-ice", JSON.stringify(ice)); } catch (e) {}
+        netlog("turn saved", iceSummary());
+        toast("TURN saved. Tap Test ICE — look for relay. Then join again.");
+        renderDebugLog();
+      } catch (e) {
+        netlog("turn fetch fail", e && e.message);
+        toast("Could not fetch TURN. Check app name and API key.");
+      }
+    }
+
+    function renderDebugLog() {
+      const pre = $("debug-log");
+      if (!pre) return;
+      pre.textContent = debugDump();
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    function netlog() {
+      const msg = Array.prototype.slice.call(arguments).join(" ");
+      const line = new Date().toISOString().slice(11, 23) + " " + msg;
+      netLogs.push(line);
+      if (netLogs.length > 250) netLogs.shift();
+      try { sessionStorage.setItem(NETLOG_KEY, netLogs.join("\n")); } catch (e) {}
+      const panel = $("debug-pick");
+      if (panel && panel.classList.contains("show")) renderDebugLog();
+    }
+
+    function watchRtc(label, conn) {
+      if (!conn || conn._mgWatch) return;
+      conn._mgWatch = true;
+      conn.on("iceStateChanged", (s) => netlog(label, "iceState", s));
+      const hook = () => {
+        const pc = conn.peerConnection;
+        if (!pc || pc._mgWatched) return;
+        pc._mgWatched = true;
+        const dump = (why) => netlog(label, why, "ice=" + pc.iceConnectionState, "pc=" + (pc.connectionState || ""), "g=" + pc.iceGatheringState);
+        pc.addEventListener("iceconnectionstatechange", () => dump("ice"));
+        pc.addEventListener("connectionstatechange", () => dump("pc"));
+        pc.addEventListener("icegatheringstatechange", () => dump("gather"));
+        pc.addEventListener("icecandidateerror", (e) => netlog(label, "ice-error", e.errorCode, e.errorText || "", e.url || ""));
+        pc.addEventListener("icecandidate", (e) => {
+          if (e.candidate) netlog(label, "cand", summarizeCandidate(e.candidate));
+          else netlog(label, "cand-done");
+        });
+        dump("watch");
+      };
+      hook();
+      setTimeout(hook, 300);
+      setTimeout(hook, 1200);
+    }
+
+    async function runIceProbe() {
+      netlog("probe start", netInfo());
+      toast("Testing ICE…");
+      let pc;
+      try {
+        pc = new RTCPeerConnection(peerOptions().config);
+        pc.createDataChannel("probe");
+        const seen = { host: 0, srflx: 0, relay: 0, prflx: 0 };
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) {
+            netlog("probe done", JSON.stringify(seen));
+            if (!seen.relay) netlog("probe WARN no TURN relay — two home Wi‑Fi networks may fail. Try mobile data on one phone.");
+            try { pc.close(); } catch (err) {}
+            renderDebugLog();
+            return;
+          }
+          const t = e.candidate.type || "host";
+          if (seen[t] != null) seen[t]++;
+          netlog("probe cand", summarizeCandidate(e.candidate));
+        };
+        pc.onicecandidateerror = (e) => netlog("probe ice-error", e.errorCode, e.url || "");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        setTimeout(() => { try { if (pc.signalingState !== "closed") pc.close(); } catch (e) {} }, 7000);
+      } catch (e) {
+        netlog("probe fail", e && e.message);
+        toast("ICE test failed");
+      }
+    }
+
+    async function shareDebugLog() {
+      const text = debugDump();
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Dobble connection log", text });
+          return;
+        } catch (e) {}
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Debug log copied");
+      } catch (e) {
+        toast("Could not copy — select the log text");
+      }
+    }
+
+    function openDebug() {
+      netlog("debug open", netInfo(), iceSummary());
+      try { $("turn-app").value = localStorage.getItem("uno-turn-app") || ""; } catch (e) {}
+      try { $("turn-key").value = localStorage.getItem("uno-turn-key") || ""; } catch (e) {}
+      $("debug-pick").classList.add("show");
+      renderDebugLog();
+    }
 
     function editionById(id) {
       return EDITIONS.find((e) => e.id === id) || EDITIONS[0];
@@ -1085,6 +1323,7 @@
     }
 
     function attachHostConn(conn) {
+      watchRtc("host-in", conn);
       conn.on("data", (msg) => {
         if (!msg || typeof msg !== "object") return;
         if (msg.type === "join") {
@@ -1196,7 +1435,9 @@
         setJoinStatus("connecting", "Finding room " + code + "…");
         clearJoinWait();
         state.joinTimer = setTimeout(() => {
-          setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+          setJoinStatus("fail", turnIce.length
+            ? "Timed out. TURN is saved but ICE did not connect. Tap Debug, Test ICE, and share the log."
+            : "Timed out. Check the code and that the host is still in the lobby. Two home Wi‑Fi networks often fail — try mobile data, or tap Debug.");
           $("btn-join").disabled = false;
           destroyPeer();
         }, 12000);
@@ -1208,6 +1449,7 @@
           showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
           const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
           state.conns.set("host", conn);
+          watchRtc("guest", conn);
           conn.on("open", () => {
             setJoinStatus("joining", "Joining the lobby…");
             conn.send({ type: "join", name: state.myName });
@@ -1328,6 +1570,16 @@
       setBusy(v) { state.connecting = v; },
       isBusy() { return state.connecting; },
     });
+    $("btn-debug").onclick = openDebug;
+    $("btn-debug-close").onclick = () => $("debug-pick").classList.remove("show");
+    $("btn-debug-copy").onclick = shareDebugLog;
+    $("btn-debug-probe").onclick = runIceProbe;
+    $("btn-debug-cards").onclick = () => {
+      $("debug-pick").classList.remove("show");
+      openCardAtlas();
+    };
+    $("btn-atlas-close").onclick = () => $("card-atlas").classList.remove("show");
+    $("btn-turn-save").onclick = saveTurnFromMetered;
     MiniGames.bindHome({
       onCreate: createRoom,
       onJoin: joinRoom,
@@ -1343,6 +1595,21 @@
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
       if (!muted) ctx().resume();
     };
+
+    const THEME_KEY = "dobble-theme";
+    function applyTheme(theme) {
+      const dark = theme === "dark";
+      document.body.classList.toggle("dark", dark);
+      $("btn-theme").textContent = dark ? "☀️" : "🌙";
+      $("btn-theme").title = dark ? "Switch to light mode" : "Switch to dark mode";
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute("content", dark ? "#141018" : "#ffcc33");
+      try { localStorage.setItem(THEME_KEY, dark ? "dark" : "light"); } catch (e) {}
+    }
+    $("btn-theme").onclick = () => {
+      applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
+    };
+    applyTheme(localStorage.getItem(THEME_KEY) || "light");
 
     (function homeDecor() {
       const wrap = $("home-deco");

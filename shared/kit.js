@@ -243,12 +243,16 @@
       document.body.appendChild(t);
     }
     const home = $("screen-home");
-    if (home && !home.querySelector(".all-games")) {
+    const hub = cfg.hubHref || "index.html";
+    function addAllGamesLink(parent) {
+      if (!parent || parent.querySelector(".all-games")) return;
       const p = document.createElement("p");
       p.className = "all-games";
-      p.innerHTML = '<a href="' + (cfg.hubHref || "index.html") + '">← All games</a>';
-      home.insertBefore(p, home.firstChild);
+      p.innerHTML = '<a href="' + hub + '">← All games</a>';
+      parent.insertBefore(p, parent.firstChild);
     }
+    addAllGamesLink(home);
+    addAllGamesLink($("screen-lobby"));
     const panel = home && home.querySelector(".panel");
     if (panel && !$("net-warn")) {
       const warn = document.createElement("div");
@@ -262,9 +266,9 @@
       bar.className = "zoom-bar";
       bar.id = "zoom-bar";
       bar.innerHTML =
-        '<button type="button" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>' +
+        '<button type="button" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>' +
         '<span id="zoom-label">100%</span>' +
-        '<button type="button" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>';
+        '<button type="button" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>';
       document.body.appendChild(bar);
     }
     bindZoom();
