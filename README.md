@@ -1,5 +1,7 @@
 # Minigames
 
+**Play online:** [https://myminigames.netlify.app/](https://myminigames.netlify.app/)
+
 A growing collection of small browser games. Each game is a single HTML file — open it and play. No install, no account.
 
 The hub is [index.html](index.html): a grid of every title. Open that first, or jump straight to a game below.
