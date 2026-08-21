@@ -251,8 +251,69 @@
       outline-offset: 3px;
       border-radius: 14px;
       transform: translateY(-6px);
+      cursor: grab;
+      touch-action: none;
     }
+    .hcard.legal:active { cursor: grabbing; }
     .hcard:disabled { opacity: .42; cursor: default; transform: none; outline: none; }
+    .hcard.drag-source { opacity: .28; }
+    .drag-ghost {
+      position: fixed;
+      z-index: 10000;
+      pointer-events: none;
+      width: var(--w, 72px);
+      height: var(--h, 84px);
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      transform: translate(-50%, -55%) scale(1.08);
+      filter: drop-shadow(0 10px 18px #0009);
+      opacity: 0.95;
+    }
+    .drag-ghost svg { width: 100%; height: 100%; display: block; }
+    .hex.glow-top .top-fill {
+      stroke: #5eead4 !important;
+      stroke-width: 3.5 !important;
+      fill: #b8fff0 !important;
+    }
+    .hex.glow-side .side-fill {
+      stroke: #5eead4 !important;
+      stroke-width: 3.5 !important;
+      fill: #b8fff0 !important;
+    }
+    .hex.glow-face .face-fill {
+      stroke: #5eead4 !important;
+      stroke-width: 3.5 !important;
+      fill: #b8fff0 !important;
+    }
+    .hex.glow-wild .top-fill,
+    .hex.glow-wild .side-fill,
+    .hex.glow-wild .face-fill {
+      stroke: #5eead4 !important;
+      stroke-width: 3 !important;
+    }
+    .hex.drop-active-top .top-fill,
+    .hex.drop-active-side .side-fill,
+    .hex.drop-active-face .face-fill,
+    .hex.drop-active-wild .rim {
+      stroke: #fbbf24 !important;
+      stroke-width: 4.5 !important;
+    }
+    .hex.drop-active-top .top-fill,
+    .hex.drop-active-side .side-fill,
+    .hex.drop-active-face .face-fill {
+      fill: #fde68a !important;
+    }
+    .hex.drop-preview {
+      opacity: 0.85;
+      pointer-events: none;
+      animation: ghost-pulse 0.7s ease-in-out infinite alternate;
+      z-index: 6000 !important;
+    }
+    body.dragging-cube { cursor: grabbing !important; user-select: none; }
+    body.dragging-cube .board-wrap { touch-action: none; }
+    body.dragging-cube .hand-scroller { touch-action: none; overflow: hidden; }
     body[data-phase="game"] .zoom-bar { display: none !important; }
 
     /* ════════ DESKTOP UI (≥768px) ════════ */
@@ -602,6 +663,20 @@
     let pendingCardId = null;
     let botTimer = 0;
     let tipSelect = null;
+    const drag = {
+      tracking: false,
+      active: false,
+      cardId: null,
+      sourceEl: null,
+      ghost: null,
+      preview: null,
+      startX: 0,
+      startY: 0,
+      pointerId: null,
+      hover: null,
+      suppressClick: false,
+      options: [],
+    };
 
     const STACK_OFF_RATIO = {
       top:  { x: 0, y: -0.55 },
@@ -1244,8 +1319,15 @@
         // Later plays always above earlier — never boost tips above newer cards
         el.style.zIndex = String(100 + i);
         el.dataset.placed = String(i);
+        if (tip) el.dataset.tipId = tip.id;
         root.append(el);
       });
+
+      // Keep layout offsets for drag targeting
+      root.dataset.ox = String(ox);
+      root.dataset.oy = String(oy);
+      root.dataset.hexW = String(metrics.w);
+      root.dataset.hexH = String(metrics.h);
 
       if (pendingCardId && pendingOptions) {
         const me = g.players.find((p) => p.id === state.myId);
@@ -1301,6 +1383,222 @@
       });
     }
 
+    function clearDragHighlights() {
+      document.querySelectorAll(".hex.glow-top, .hex.glow-side, .hex.glow-face, .hex.glow-wild, .hex.drop-active-top, .hex.drop-active-side, .hex.drop-active-face, .hex.drop-active-wild").forEach((el) => {
+        el.classList.remove(
+          "glow-top", "glow-side", "glow-face", "glow-wild",
+          "drop-active-top", "drop-active-side", "drop-active-face", "drop-active-wild"
+        );
+      });
+      if (drag.preview && drag.preview.parentNode) drag.preview.remove();
+      drag.preview = null;
+      drag.hover = null;
+    }
+
+    function endCardDrag(commit) {
+      const hover = drag.hover;
+      const didDrag = drag.active;
+      const suppress = drag.suppressClick;
+      if (drag.ghost && drag.ghost.parentNode) drag.ghost.remove();
+      if (drag.sourceEl) drag.sourceEl.classList.remove("drag-source");
+      clearDragHighlights();
+      document.body.classList.remove("dragging-cube");
+      try {
+        if (drag.pointerId != null) {
+          const cap = drag.sourceEl || document.body;
+          if (cap.releasePointerCapture) cap.releasePointerCapture(drag.pointerId);
+        }
+      } catch (err) {}
+      drag.tracking = false;
+      drag.active = false;
+      drag.cardId = null;
+      drag.sourceEl = null;
+      drag.ghost = null;
+      drag.pointerId = null;
+      drag.options = [];
+      if (commit && hover) {
+        drag.suppressClick = true;
+        commitPlay(hover);
+        setTimeout(() => { drag.suppressClick = false; }, 80);
+        return;
+      }
+      if (didDrag && state.game) $("banner").textContent = state.game.banner;
+      drag.suppressClick = suppress || didDrag;
+      if (didDrag) setTimeout(() => { drag.suppressClick = false; }, 80);
+    }
+
+    function slotClientPoint(tipId, mode) {
+      const tipEl = document.querySelector('.hex[data-tip-id="' + tipId + '"]');
+      if (!tipEl) return null;
+      const metrics = hexMetrics();
+      const off = stackOff(mode === "wild" ? "top" : mode, metrics);
+      const r = tipEl.getBoundingClientRect();
+      const scaleX = r.width / metrics.w;
+      const scaleY = r.height / metrics.h;
+      return {
+        x: r.left + r.width / 2 + off.x * scaleX,
+        y: r.top + r.height / 2 + off.y * scaleY,
+        left: r.left + off.x * scaleX,
+        top: r.top + off.y * scaleY,
+      };
+    }
+
+    function updateDragTarget(clientX, clientY) {
+      const g = state.game;
+      if (!g || !drag.cardId) return;
+      clearDragHighlights();
+
+      const byTip = new Map();
+      drag.options.forEach((opt) => {
+        if (!byTip.has(opt.tipId)) byTip.set(opt.tipId, []);
+        byTip.get(opt.tipId).push(opt);
+      });
+
+      byTip.forEach((opts, tipId) => {
+        const tipEl = document.querySelector('.hex[data-tip-id="' + tipId + '"]');
+        if (!tipEl) return;
+        opts.forEach((opt) => {
+          if (opt.mode === "wild") tipEl.classList.add("glow-wild");
+          else tipEl.classList.add("glow-" + opt.mode);
+        });
+      });
+
+      const snap = Math.max(isMobileUi() ? 72 : 56, hexMetrics().w * 1.05);
+      let best = null;
+      drag.options.forEach((opt) => {
+        const pt = slotClientPoint(opt.tipId, opt.mode);
+        if (!pt) return;
+        const dx = clientX - pt.x;
+        const dy = clientY - pt.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > snap) return;
+        // Slightly prefer the side matching approach direction
+        const tipEl = document.querySelector('.hex[data-tip-id="' + opt.tipId + '"]');
+        let bias = 0;
+        if (tipEl) {
+          const tr = tipEl.getBoundingClientRect();
+          const tdx = clientX - (tr.left + tr.width / 2);
+          const tdy = clientY - (tr.top + tr.height / 2);
+          if (opt.mode === "top" && tdy < 0) bias = -12;
+          if (opt.mode === "side" && tdx > 0) bias = -12;
+          if (opt.mode === "face" && tdx < 0) bias = -12;
+          if (opt.mode === "wild") bias = -8;
+        }
+        const score = dist + bias;
+        if (!best || score < best.score) best = { opt, dist, score, pt };
+      });
+
+      if (!best) return;
+      drag.hover = best.opt;
+      const tipEl = document.querySelector('.hex[data-tip-id="' + best.opt.tipId + '"]');
+      if (tipEl) tipEl.classList.add("drop-active-" + best.opt.mode);
+
+      const me = g.players.find((p) => p.id === state.myId);
+      const card = me && me.hand.find((c) => c.id === drag.cardId);
+      const root = $("stacc");
+      if (!card || !root) return;
+      const tip = g.tips.find((t) => t.id === best.opt.tipId);
+      if (!tip) return;
+      const metrics = hexMetrics();
+      const ox = Number(root.dataset.ox) || 0;
+      const oy = Number(root.dataset.oy) || 0;
+      const off = stackOff(best.opt.mode === "wild" ? "top" : best.opt.mode, metrics);
+      const preview = makeHexEl("div", card, null, "hex drop-preview");
+      preview.style.left = (tip.px + off.x + ox) + "px";
+      preview.style.top = (tip.py + off.y + oy) + "px";
+      preview.style.zIndex = "6000";
+      root.append(preview);
+      drag.preview = preview;
+
+      const labels = { top: "↑ TOP suit", side: "→ SIDE rank", face: "← FACE", wild: "★ WILD" };
+      $("banner").textContent = "Drop · " + (labels[best.opt.mode] || best.opt.mode);
+    }
+
+    function onDragPointerMove(e) {
+      if (!drag.tracking || (drag.pointerId != null && e.pointerId !== drag.pointerId)) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      if (!drag.active && Math.hypot(dx, dy) < 10) return;
+      if (e.cancelable) e.preventDefault();
+
+      if (!drag.active) {
+        drag.active = true;
+        drag.suppressClick = true;
+        document.body.classList.add("dragging-cube");
+        if (drag.sourceEl) drag.sourceEl.classList.add("drag-source");
+        const g = state.game;
+        const me = g.players.find((p) => p.id === state.myId);
+        const card = me.hand.find((c) => c.id === drag.cardId);
+        const ghost = makeHexEl("div", card, null, "drag-ghost hcard" + (card.wild ? "" : ""));
+        const red = !card.wild && isRed(card.suit);
+        ghost.className = "drag-ghost hcard" + (card.wild ? " wild" : "") + (red ? " red" : "");
+        const src = drag.sourceEl;
+        if (src) {
+          ghost.style.setProperty("--w", src.offsetWidth + "px");
+          ghost.style.setProperty("--h", src.offsetHeight + "px");
+        }
+        document.body.appendChild(ghost);
+        drag.ghost = ghost;
+        $("banner").textContent = "Drag to a glowing side · ↑ suit · → rank · ← face";
+        try { (drag.sourceEl || document.body).setPointerCapture(e.pointerId); } catch (err) {}
+      }
+
+      if (drag.ghost) {
+        drag.ghost.style.left = e.clientX + "px";
+        drag.ghost.style.top = e.clientY + "px";
+      }
+      updateDragTarget(e.clientX, e.clientY);
+    }
+
+    function onDragPointerUp(e) {
+      if (!drag.tracking || (drag.pointerId != null && e.pointerId !== drag.pointerId)) return;
+      const canCommit = drag.active && !!drag.hover;
+      endCardDrag(canCommit);
+    }
+
+    function beginCardDrag(e, card, btn) {
+      if (e.button != null && e.button !== 0) return;
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const me = g.players.find((p) => p.id === state.myId);
+      if (!me || currentPlayer(g).id !== state.myId) return;
+      const options = legalPlays(g, me).filter((p) => p.cardId === card.id);
+      if (!options.length) return;
+
+      drag.tracking = true;
+      drag.active = false;
+      drag.cardId = card.id;
+      drag.sourceEl = btn;
+      drag.startX = e.clientX;
+      drag.startY = e.clientY;
+      drag.pointerId = e.pointerId;
+      drag.hover = null;
+      drag.suppressClick = false;
+      drag.options = options;
+      clearPendingPlay();
+      $("dir-pick").classList.remove("show");
+
+      // Soft glow all legal sides as soon as the drag starts tracking
+      byTipGlow(options);
+    }
+
+    function byTipGlow(options) {
+      clearDragHighlights();
+      const byTip = new Map();
+      options.forEach((opt) => {
+        if (!byTip.has(opt.tipId)) byTip.set(opt.tipId, []);
+        byTip.get(opt.tipId).push(opt);
+      });
+      byTip.forEach((opts, tipId) => {
+        const tipEl = document.querySelector('.hex[data-tip-id="' + tipId + '"]');
+        if (!tipEl) return;
+        opts.forEach((opt) => {
+          if (opt.mode === "wild") tipEl.classList.add("glow-wild");
+          else tipEl.classList.add("glow-" + opt.mode);
+        });
+      });
+    }
+
     function renderHand(g) {
       const me = g.players.find((p) => p.id === state.myId);
       const hand = $("hand");
@@ -1314,10 +1612,25 @@
       $("btn-end-chain").style.display = state.chainRank != null && myTurn ? "inline-flex" : "none";
 
       for (const card of me.hand) {
-        const btn = makeHexEl("button", card, null, "hcard" + (legalIds.has(card.id) ? " legal" : ""));
+        const canPlay = myTurn && legalIds.has(card.id);
+        const btn = makeHexEl("button", card, null, "hcard" + (canPlay ? " legal" : ""));
         btn.type = "button";
-        btn.disabled = !myTurn || !legalIds.has(card.id);
-        btn.onclick = () => onPlayCard(card.id);
+        btn.disabled = !canPlay;
+        btn.title = canPlay ? "Drag onto a tip side, or tap" : "";
+        if (canPlay) {
+          btn.addEventListener("pointerdown", (e) => {
+            e.stopPropagation();
+            beginCardDrag(e, card, btn);
+          });
+        }
+        btn.onclick = (e) => {
+          if (drag.suppressClick || drag.active || drag.tracking) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          onPlayCard(card.id);
+        };
         hand.append(btn);
       }
     }
@@ -1621,6 +1934,11 @@
     });
     $("players-menu").onclick = (e) => e.stopPropagation();
 
+    // Hand card drag → tip side glow / drop
+    document.addEventListener("pointermove", onDragPointerMove, { passive: false });
+    document.addEventListener("pointerup", onDragPointerUp);
+    document.addEventListener("pointercancel", onDragPointerUp);
+
     // Re-layout board when the frame finally gets real size (mobile chrome / flex)
     (function bindBoardResize() {
       const wrap = $("board-wrap");
@@ -1656,8 +1974,9 @@
       if (!wrap) return;
       const pan = { on: false, moved: false, x: 0, y: 0, sl: 0, st: 0, id: 0 };
       wrap.addEventListener("pointerdown", (e) => {
+        if (document.body.classList.contains("dragging-cube") || drag.tracking) return;
         if (e.button != null && e.button !== 0) return;
-        if (e.target.closest(".hex.tip-hot, .hex.ghost, .hcard, button.hex")) return;
+        if (e.target.closest(".hex.tip-hot, .hex.ghost, .hcard, button.hex, .drag-ghost")) return;
         pan.on = true;
         pan.moved = false;
         pan.x = e.clientX;
