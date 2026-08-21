@@ -4,7 +4,7 @@ Fan recreation inspired by the commercial card game [STACCS](https://sticcy.cc/)
 
 **Play:** [Cubestacc.html](Cubestacc.html) · **Status:** Online rooms (PeerJS) + solo vs bots
 
-In-game: tap **?** (bottom-right of the board) for a short how-to.
+In-game: tap **?** for how-to. Tap **◇** for UI chrome colors. **Deck theme** (Classic / Space / Halloween / Nature / Animals) is chosen when you create a room or start solo — it swaps the suit icons on every cube and syncs to the lobby.
 
 ---
 
@@ -28,12 +28,15 @@ Same pattern as Uno / Dobble: **no server**. The host browser is the room (`cube
 | Play | Drag a **legal** (glowing) hand cube onto a tip face, or tap the card then pick a side |
 | Attach sides | **↑ TOP** same suit · **→ SIDE** same rank · **← FACE** same face (J/J, Q/Q…) |
 | Pan board | Drag empty wood |
+| Rotate view | **↺ ↻** — local camera only (does not change rules) |
 | Same-rank dump | After a play, if you still have that **same rank** legal, keep playing; tap **Done** to end your turn |
 | No match | **Draw** — take **1**, turn ends (drawn card not playable same turn) |
-| King penalty | After **K** (stackable +2 each), **Draw** takes the **whole stack** (2, 4, 6…). Button shows **Draw N** |
+| King penalty | After **K** (stackable +2 each), **Draw** takes the **whole stack** (2, 4, 6…). Button shows **Draw N** + explain popup |
 | Jack | Next player auto-draws **1**, then still takes their turn |
 | UH OH! | At **2** cards left, tap before going to 1 |
-| Caught | If someone reaches 1 without UH OH!, tap **Caught** → they draw **3** |
+| Caught | If someone reaches 1 without UH OH!, tap **Caught** → they draw **3** (+ explain popup) |
+| Look | **◇** UI chrome (Sky / Ocean / Wood / Neon / Midnight) + cube paint |
+| Deck theme | On home / lobby: **Classic · Space · Halloween · Nature · Animals** — changes suit icons for the whole table |
 
 ---
 
@@ -77,20 +80,20 @@ First player to play every card in their hand wins.
 | Situation | Cards you get |
 | --- | --- |
 | No legal match | **1**, then turn ends |
-| Pending **K** stack | The **full penalty** — each K adds **+2** → 2, 4, 6, 8… (button label **Draw N**) |
+| Pending **K** stack | The **full penalty** — each K adds **+2** → 2, 4, 6, 8… (button label **Draw N** + popup) |
 | Play a **K** yourself while a stack is pending | Stack more (+2); don’t take the draws yet |
 | **J** on you | Auto **+1**, then you still play (not via Draw) |
-| **Caught** | **+3** (Caught button, not Draw) |
+| **Caught** | **+3** (Caught button, not Draw) + popup |
 
 ## Matching (3D)
 
 Treat each card as a cube with **TOP**, **FACE**, **SIDE**:
 
-| Match | Attach on | Rule |
+| Match | Attach on | Screen direction (default view) |
 | --- | --- | --- |
-| Same **suit** | **TOP** (↑) | Official (PDF) |
-| Same **rank** | **SIDE** (→ / down-right on screen) | Public rules |
-| Same **face** (both J, or both Q, …) | **FACE** (←) | Public rules |
+| Same **suit** | **TOP** (↑) | Straight up |
+| Same **rank** | **SIDE** (→) | Down-right |
+| Same **face** (both J, or both Q, …) | **FACE** (←) | Down-left |
 
 Stacking **↑ TOP** only closes that tip’s top. Its **SIDE / FACE** stay open until used (so after **0♦** on **3♦**, you can still play another **3** → SIDE).
 
@@ -132,8 +135,9 @@ When you drop to **one** card, call **UH OH!** (button). If you play to one with
 
 ## Modes in this build
 
-- **Online rooms** — PeerJS host-authoritative, up to 5 players  
-- **Solo vs bots** — local practice, no lobby
+- **Online rooms** — PeerJS host-authoritative, up to 5 players. Guests can **rejoin** mid-game with the same seat token / name (10s drop grace). Host must keep their tab open.  
+- **Solo vs bots** — local practice, no lobby  
+- **Themes / editions** — local look prefs (`localStorage`)
 
 ---
 
@@ -146,6 +150,73 @@ Board and hand use **hexagonal isometric tiles** (SVG), matching the physical ST
 - **SIDE** (right) — rank  
 - **Wilds** — blue cube with pixel face  
 
-Active tips stay bright; buried cubes dim. Suit-tinted faces help scan a busy stack.
+Active tips stay bright; buried cubes dim. Suit-tinted faces help scan a busy stack (edition can change the palette).
 
 Reference: `assets/cubestacc-deck-ref.png`
+
+---
+
+## How the 3D stack is made “visually possible” (math & algorithms)
+
+Physical STACCS is a real 3D pile. The browser is a **2D plane**, so Cubestacc fakes depth with layout offsets, discrete cells, and a painter’s algorithm.
+
+### 1. Cube faces → screen directions
+
+Each attach mode is a fixed offset as a **fraction of cube width/height** (`STACK_OFF_RATIO`), then scaled by measured hex size:
+
+| Mode | Ratio `(x, y)` | Meaning |
+| --- | --- | --- |
+| `top` / `wild` | `(0, -0.6)` | Up the column |
+| `side` | `(+0.6, +0.32)` | Rank branch (down-right) |
+| `face` | `(-0.6, +0.32)` | Face branch (down-left) |
+
+```
+px_child = px_parent + round(ratio.x * hexW)
+py_child = py_parent + round(ratio.y * hexH)
+```
+
+**View rotate (↺ ↻)** cycles side/face vectors in 90° steps while keeping `top` pointing up — a local camera yaw, not a rule change. Positions are **reflowed** from the parent chain after rotate.
+
+### 2. Discrete 3D cell address (legality / occupancy)
+
+Screen overlap is *not* the same as “same seat.” Each placed cube gets an integer cell from walking its parent chain:
+
+| Mode | Cell delta |
+| --- | --- |
+| `top` / `wild` | `(0, +1, 0)` height |
+| `side` | `(+1, 0, 0)` |
+| `face` | `(0, 0, +1)` |
+| `start` | `(0, 0, 0)` |
+
+A proposed play is **illegal** only if another cube already occupies that exact `(x,y,z)` key (`slotOccupied`). Neighbor cubes that only *look* overlapping on the isometric drawing stay legal.
+
+Tips: any cube with an open TOP/SIDE/FACE stays a tip (`ensureOpenTips`). Playing ↑ only sets `blockTop`; SIDE/FACE remain until filled.
+
+### 3. Paint order (z-index) — who draws on top
+
+Isometric contradiction is fixed with a scored sort, not play order alone:
+
+```
+score =
+  height * 100000          // higher in the STACC wins
+  + ancestryDepth * 1000   // child (face/side/top) over its parent
+  + px * 8 + py * 10       // lower-right reads closer to camera
+  + tipBoost - coverPenalties
+  + tiny playIndex tiebreak
+```
+
+Then DOM `z-index = 100 + paintOrderIndex`.
+
+So: **4♥** up on the left column stays *behind* **8♦** on a right branch at the same height; a **J♦** attached ← FACE still paints in front of its parent **J♥**.
+
+### 4. Reflow vs stored pixels
+
+Online guests may receive host `px/py`, but the source of truth for layout is **`parentId` + `mode`**. `reflowBoard` rebuilds coordinates for the current `viewRot` and metrics so everyone stays consistent.
+
+### 5. Interaction helpers
+
+- **Legal glow** — `modesFor` ∩ free cell.  
+- **Drag targeting** — nearest glowing tip face under the pointer.  
+- **Penalty popup** — only when Draw takes a **K** stack (or Caught +3), listing why the count is > 1.
+
+This is how a tabletop cube pile becomes a readable, playable 2D STACC without a WebGL scene.

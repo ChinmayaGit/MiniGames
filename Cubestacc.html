@@ -210,7 +210,7 @@
     .board-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
     .board-wrap::-webkit-scrollbar-thumb { background: #5a4030; border-radius: 8px; }
     .board-legend {
-      position: sticky; top: 0; z-index: 9000;
+      position: sticky; top: 0; z-index: 20;
       display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
       padding: 6px; font-size: 10px; font-weight: 700; color: #f5e6d3;
       background: #120c08cc; backdrop-filter: blur(4px);
@@ -566,12 +566,56 @@
 
     .modal {
       position: fixed; inset: 0; background: #041525cc; display: none;
-      align-items: center; justify-content: center; z-index: 40; padding: 16px;
+      align-items: center; justify-content: center; z-index: 12000; padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
     }
     .modal.show { display: flex; }
     .modal .sheet {
-      width: min(360px, 100%); background: var(--surface); border-radius: 18px;
+      width: min(400px, 100%); max-height: min(85dvh, 640px); overflow: auto;
+      background: var(--surface); border-radius: 18px;
       padding: 18px; border: 2px solid var(--line); text-align: center;
+      color: var(--ink); box-shadow: 0 20px 50px #0008;
+    }
+    .modal .sheet.sheet-left { text-align: left; }
+    .modal .sheet h3 { margin: 0 0 8px; font-size: 18px; color: var(--ink); }
+    .modal .sheet .hint { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .modal .sheet ul { margin: 10px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; color: var(--ink); }
+    .modal .sheet li { margin: 5px 0; }
+    .theme-grid, .edition-grid, .pack-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+    }
+    .theme-grid button, .edition-grid button, .pack-grid button {
+      border: 2px solid var(--line); border-radius: 12px; padding: 10px 8px;
+      background: var(--surface-soft); color: var(--ink); cursor: pointer;
+      font: inherit; font-weight: 700; font-size: 12px;
+    }
+    .theme-grid button.on, .edition-grid button.on, .pack-grid button.on {
+      border-color: var(--accent); outline: 2px solid var(--accent);
+    }
+    .pack-grid {
+      grid-template-columns: 1fr 1fr;
+      margin-top: 6px;
+    }
+    .pack-grid button {
+      text-align: left;
+      line-height: 1.25;
+    }
+    .pack-grid .pack-ico {
+      display: block; font-size: 18px; letter-spacing: 2px; margin-bottom: 4px;
+    }
+    .pack-grid .pack-sub {
+      display: block; font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 2px;
+    }
+    .home-pack, .lobby-pack {
+      margin-top: 10px; text-align: left;
+    }
+    .home-pack > label, .lobby-pack > label {
+      display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px;
+    }
+    .theme-swatch {
+      display: block; height: 18px; border-radius: 6px; margin-bottom: 6px;
+      border: 1px solid #0003;
     }
     .suit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .suit-grid button { font-size: 28px; padding: 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface-soft); cursor: pointer; color: inherit; }
@@ -595,21 +639,21 @@
       max-height: 140px; overflow: auto; line-height: 1.4;
       background: var(--surface-muted); border-radius: 12px; padding: 10px;
     }
-    #btn-theme {
-      width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
-      background: var(--card); color: var(--ink); cursor: pointer; font-size: 16px;
-      flex-shrink: 0;
-      box-shadow: 0 6px 16px #0005;
-    }
     .chrome-tools {
       position: fixed;
-      z-index: 32;
+      z-index: 11000;
       right: max(10px, env(safe-area-inset-right));
       top: max(10px, env(safe-area-inset-top));
       display: flex;
       flex-direction: row-reverse;
       align-items: flex-start;
       gap: 8px;
+    }
+    #btn-theme, #btn-help, #btn-look {
+      width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
+      background: var(--card); color: var(--ink); cursor: pointer; font-size: 15px;
+      flex-shrink: 0; font-weight: 800;
+      box-shadow: 0 6px 16px #0005;
     }
     .zoom-bar {
       background: var(--card) !important;
@@ -621,53 +665,6 @@
       color: var(--card) !important;
     }
     .zoom-bar span { color: var(--ink) !important; }
-    .help-fab {
-      position: relative;
-      max-width: min(220px, 70vw);
-    }
-    .help-fab summary {
-      list-style: none;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 2px solid var(--line);
-      background: var(--card);
-      color: var(--ink);
-      font: inherit;
-      font-weight: 800;
-      font-size: 16px;
-      box-shadow: 0 6px 16px #0005;
-      user-select: none;
-    }
-    .help-fab summary::-webkit-details-marker { display: none; }
-    .help-fab[open] summary {
-      border-radius: 12px 12px 4px 12px;
-      width: auto;
-      padding: 6px 12px;
-      height: auto;
-    }
-    .help-fab[open] summary::after { content: " How to play"; font-size: 12px; font-weight: 700; }
-    .help-panel {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 6px);
-      width: min(220px, 70vw);
-      background: var(--card);
-      color: var(--ink);
-      border: 2px solid var(--line);
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 11px;
-      line-height: 1.45;
-      box-shadow: 0 10px 24px #0006;
-    }
-    .help-panel b { display: block; margin-bottom: 4px; font-size: 12px; }
-    .help-panel ul { margin: 0; padding-left: 1.1em; }
-    .help-panel li { margin: 3px 0; }
     /* Keep theme + quick help visible on mobile in every phase */
     @media (max-width: 767px) {
       .chrome-tools {
@@ -678,8 +675,51 @@
         top: auto;
         bottom: max(118px, calc(108px + env(safe-area-inset-bottom, 0px)));
       }
-      .help-panel { font-size: 10px; padding: 8px 10px; width: min(200px, 72vw); }
-      .help-fab[open] summary::after { content: " Quick"; }
+      .modal {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal .sheet {
+        width: 100%;
+        max-width: none;
+        max-height: min(88dvh, 720px);
+        border-radius: 18px 18px 0 0;
+        padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+
+    /* —— Extra themes (UI chrome) —— */
+    body.theme-wood {
+      --ink: #3b2414; --muted: #7a5235; --surface: #f3e6d4; --surface-soft: #efe0ca;
+      --surface-muted: #e6d3b8; --line: #c4a574; --accent: #b45309; --teal: #0f766e;
+      --felt: #5c3d2e; --card: #fff8f0; --toast-bg: #3b2414; --toast-fg: #f3e6d4;
+    }
+    body.theme-neon {
+      --ink: #e0f2fe; --muted: #67e8f9; --surface: #1e1b4b; --surface-soft: #312e81;
+      --surface-muted: #0f172a; --line: #a78bfa; --accent: #22d3ee; --teal: #34d399;
+      --felt: #020617; --card: #0f172a; --toast-bg: #020617; --toast-fg: #e0f2fe;
+    }
+    body.theme-midnight {
+      --ink: #e2e8f0; --muted: #94a3b8; --surface: #1e293b; --surface-soft: #334155;
+      --surface-muted: #0f172a; --line: #475569; --accent: #38bdf8; --teal: #2dd4bf;
+      --felt: #020617; --card: #0f172a; --toast-bg: #020617; --toast-fg: #e2e8f0;
+    }
+    body.theme-wood {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, #8b5a2b55 0%, transparent 55%),
+        repeating-linear-gradient(90deg, #4a2f1e 0 3px, #3a2418 3px 28px),
+        #2a1810;
+    }
+    body.theme-neon {
+      background:
+        radial-gradient(ellipse 70% 40% at 20% 0%, #22d3ee33 0%, transparent 50%),
+        radial-gradient(ellipse 70% 40% at 80% 100%, #a78bfa33 0%, transparent 50%),
+        #020617;
+    }
+    body.theme-midnight {
+      background:
+        radial-gradient(ellipse 90% 50% at 50% -10%, #1e3a5f 0%, transparent 50%),
+        #020617;
     }
   </style>
 </head>
@@ -713,6 +753,10 @@
         </div>
       </div>
       <button class="btn yellow" id="btn-solo" type="button">Practice solo</button>
+      <div class="home-pack" id="home-pack">
+        <label>Deck theme (icons on the cubes)</label>
+        <div class="pack-grid" id="home-pack-grid"></div>
+      </div>
       <button class="btn ghost" id="btn-create" type="button">Create room</button>
       <div class="row" id="join-home-row">
         <div>
@@ -759,8 +803,13 @@
         <b>Players</b>
         <div class="player-list" id="lobby-players"></div>
         <div class="settings" id="host-settings" style="margin-top:12px">
-          <button class="btn teal" id="btn-start" type="button">Start game</button>
+          <div class="lobby-pack" id="lobby-pack">
+            <label>Deck theme</label>
+            <div class="pack-grid" id="lobby-pack-grid"></div>
+          </div>
+          <button class="btn teal" id="btn-start" type="button" style="margin-top:12px">Start game</button>
         </div>
+        <p class="hint" id="lobby-pack-label" style="margin-top:8px"></p>
         <p class="hint" id="lobby-hint">Waiting for the host to start…</p>
       </div>
       <div class="qr">
@@ -790,7 +839,7 @@
       <div class="board-frame">
         <div class="board-wrap" id="board-wrap">
           <div class="board-legend">
-            <span>↑ suit</span>
+            <span>↑ match</span>
             <span>→ rank</span>
             <span>← face</span>
             <span class="hide-sm">Drag to pan</span>
@@ -828,9 +877,21 @@
     </div>
   </div>
 
+  <div class="modal" id="reconnect-pick" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <b id="reconnect-title">Rejoining…</b>
+      <p class="hint" id="reconnect-sub" style="margin:8px 0 0">Connection dropped. Trying to get you back in.</p>
+      <div class="join-status" id="reconnect-status" style="display:block;margin-top:12px">
+        <span id="reconnect-status-text">Reconnecting…</span>
+        <div class="join-bar"><i></i></div>
+      </div>
+      <button class="btn ghost" id="btn-reconnect-leave" type="button" style="margin-top:12px">Leave table</button>
+    </div>
+  </div>
+
   <div class="modal" id="suit-pick" role="dialog" aria-modal="true">
     <div class="sheet">
-      <b>Wild — pick a suit</b>
+      <b id="suit-pick-title">Wild — pick a match</b>
       <div class="suit-grid">
         <button type="button" data-suit="spades">♠</button>
         <button type="button" data-suit="hearts">♥</button>
@@ -851,24 +912,48 @@
 
   <div id="toast" class="toast" role="status"></div>
   <div class="chrome-tools" id="chrome-tools">
-    <button type="button" id="btn-theme" title="Theme" aria-label="Toggle theme">☾</button>
-    <details class="help-fab" id="help-fab">
-      <summary aria-label="How to play">?</summary>
-      <div class="help-panel">
-        <b>Quick guide</b>
-        <ul>
-          <li><b>↑</b> same suit · <b>→</b> same rank (down-right) · <b>←</b> same face</li>
-          <li>Topping a cube still leaves its side/face open for matches</li>
-          <li>Drag a glowing hand cube onto a tip, or tap</li>
-          <li>Use <b>↺ ↻</b> to rotate the view if a cube is hidden</li>
-          <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
-          <li><b>Draw</b> = 1 if no match; after <b>K</b>s take the full stack (2/4/6…) — button shows the number</li>
-          <li>Blocked only if that exact cell is already filled</li>
-          <li><b>J</b> → next draws 1 then plays · <b>Caught</b> → +3</li>
-          <li>At 2 cards → <b>UH OH!</b> before going to 1</li>
-        </ul>
-      </div>
-    </details>
+    <button type="button" id="btn-look" title="Themes &amp; editions" aria-label="Themes and editions">◇</button>
+    <button type="button" id="btn-theme" title="Theme" aria-label="Toggle light/dark">☾</button>
+    <button type="button" id="btn-help" title="How to play" aria-label="How to play">?</button>
+  </div>
+
+  <div class="modal" id="help-pick" role="dialog" aria-modal="true">
+    <div class="sheet sheet-left">
+      <h3>How to play</h3>
+      <p class="hint">Match a tip on the STACC. First empty hand wins.</p>
+      <ul>
+        <li><b>↑ TOP</b> — same suit · <b>→ SIDE</b> — same rank · <b>← FACE</b> — same face (J/J…)</li>
+        <li>Drag a glowing hand cube onto a tip, or tap then pick a side</li>
+        <li>Topping a cube still leaves its side/face open</li>
+        <li><b>↺ ↻</b> rotates the view if a cube is hidden</li>
+        <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
+        <li><b>Draw</b> = 1 if no match; after <b>K</b>s take the full stack (button shows Draw N)</li>
+        <li><b>J</b> → next draws 1 then plays · <b>Caught</b> → +3</li>
+        <li>At 2 cards → tap <b>UH OH!</b> before going to 1</li>
+      </ul>
+      <button class="btn teal" id="btn-help-close" type="button" style="margin-top:14px">Got it</button>
+    </div>
+  </div>
+
+  <div class="modal" id="draw-explain" role="dialog" aria-modal="true">
+    <div class="sheet sheet-left">
+      <h3 id="draw-explain-title">Penalty draw</h3>
+      <p class="hint" id="draw-explain-sub">You took extra cards.</p>
+      <ul id="draw-explain-list"></ul>
+      <button class="btn teal" id="btn-draw-explain-close" type="button" style="margin-top:14px">OK</button>
+    </div>
+  </div>
+
+  <div class="modal" id="look-pick" role="dialog" aria-modal="true">
+    <div class="sheet sheet-left">
+      <h3>Look</h3>
+      <p class="hint">App chrome colors only. Card icons are chosen with <b>Deck theme</b> when you create a room or start solo.</p>
+      <b style="display:block;margin-top:12px;font-size:12px;color:var(--muted)">UI theme</b>
+      <div class="theme-grid" id="theme-grid"></div>
+      <b style="display:block;margin-top:14px;font-size:12px;color:var(--muted)">Cube paint</b>
+      <div class="edition-grid" id="edition-grid"></div>
+      <button class="btn ghost" id="btn-look-close" type="button" style="margin-top:14px">Close</button>
+    </div>
   </div>
 
   <script src="shared/kit.js"></script>
@@ -876,7 +961,50 @@
     const MG = MiniGames;
     const $ = (id) => document.getElementById(id);
     const SUITS = ["spades", "hearts", "clubs", "diamonds"];
-    const SUIT_MARK = { spades: "♠", hearts: "♥", clubs: "♣", diamonds: "♦" };
+    const SUIT_MARK_CLASSIC = { spades: "♠", hearts: "♥", clubs: "♣", diamonds: "♦" };
+    const PACK_KEY = "cubestacc-deck-pack";
+    const DECK_PACKS = [
+      {
+        id: "classic",
+        label: "Classic",
+        preview: "♠♥♣♦",
+        blurb: "Playing-card suits",
+        marks: { spades: "♠", hearts: "♥", clubs: "♣", diamonds: "♦" },
+        names: { spades: "Spades", hearts: "Hearts", clubs: "Clubs", diamonds: "Diamonds" },
+      },
+      {
+        id: "space",
+        label: "Space",
+        preview: "🚀🪐⭐🌙",
+        blurb: "Rocket · Planet · Star · Moon",
+        marks: { spades: "🚀", hearts: "🪐", clubs: "⭐", diamonds: "🌙" },
+        names: { spades: "Rocket", hearts: "Planet", clubs: "Star", diamonds: "Moon" },
+      },
+      {
+        id: "halloween",
+        label: "Halloween",
+        preview: "🎃👻🦇🍬",
+        blurb: "Pumpkin · Ghost · Bat · Candy",
+        marks: { spades: "🎃", hearts: "👻", clubs: "🦇", diamonds: "🍬" },
+        names: { spades: "Pumpkin", hearts: "Ghost", clubs: "Bat", diamonds: "Candy" },
+      },
+      {
+        id: "nature",
+        label: "Nature",
+        preview: "🍃🌸🌲☀️",
+        blurb: "Leaf · Flower · Tree · Sun",
+        marks: { spades: "🍃", hearts: "🌸", clubs: "🌲", diamonds: "☀️" },
+        names: { spades: "Leaf", hearts: "Flower", clubs: "Tree", diamonds: "Sun" },
+      },
+      {
+        id: "animals",
+        label: "Animals",
+        preview: "🐱🐶🐦🐟",
+        blurb: "Cat · Dog · Bird · Fish",
+        marks: { spades: "🐱", hearts: "🐶", clubs: "🐦", diamonds: "🐟" },
+        names: { spades: "Cat", hearts: "Dog", clubs: "Bird", diamonds: "Fish" },
+      },
+    ];
     const RANKS = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"];
     const FACES = new Set(["J", "Q", "K", "A"]);
     const BOT_NAMES = ["Brick", "Voxel", "Pixel", "Cubey"];
@@ -884,6 +1012,8 @@
     const PEER_PREFIX = "cubestacchost-";
     const MAX_PLAYERS = 5;
     const THEME_KEY = "cubestacc-theme";
+    const EDITION_KEY = "cubestacc-edition";
+    let drawNotice = null;
     let muted = false;
     let audioCtx = null;
     let pendingWild = null;
@@ -892,6 +1022,9 @@
     let botTimer = 0;
     let tipSelect = null;
     const guests = new Map();
+    const dropTimers = new Map();
+    let reconnectTimer = 0;
+    let reconnectAttempt = 0;
     const drag = {
       tracking: false,
       active: false,
@@ -1020,12 +1153,74 @@
       game: null,
       view: null,
       chainRank: null,
+      deckPack: "classic",
       peer: null,
       conns: new Map(),
       connecting: false,
       joinTimer: 0,
       leaving: false,
     };
+
+    function packMeta(id) {
+      return DECK_PACKS.find((p) => p.id === id) || DECK_PACKS[0];
+    }
+    function suitMark(suit) {
+      return packMeta(state.deckPack).marks[suit] || SUIT_MARK_CLASSIC[suit] || "?";
+    }
+    function suitName(suit) {
+      return packMeta(state.deckPack).names[suit] || suit;
+    }
+    function setDeckPack(id, opts) {
+      const pack = packMeta(id);
+      state.deckPack = pack.id;
+      document.body.setAttribute("data-deck-pack", pack.id);
+      try { localStorage.setItem(PACK_KEY, pack.id); } catch (e) {}
+      syncSuitPickButtons();
+      syncPackPickers();
+      if (opts && opts.broadcast && state.isHost && !state.solo && !state.game) sendLobby();
+      if (state.game) {
+        state.game.deckPack = pack.id;
+        if (!(opts && opts.skipRender)) renderAll();
+      }
+    }
+    function syncSuitPickButtons() {
+      const title = $("suit-pick-title");
+      if (title) {
+        const p = packMeta(state.deckPack);
+        title.textContent = "Wild — pick a " + (p.id === "classic" ? "suit" : "symbol");
+      }
+      document.querySelectorAll("#suit-pick [data-suit]").forEach((btn) => {
+        const s = btn.getAttribute("data-suit");
+        btn.textContent = suitMark(s);
+        btn.title = suitName(s);
+      });
+    }
+    function fillPackGrid(el, selected, onPick, locked) {
+      if (!el) return;
+      el.replaceChildren();
+      DECK_PACKS.forEach((p) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = selected === p.id ? "on" : "";
+        b.disabled = !!locked;
+        b.innerHTML = "<span class='pack-ico'>" + p.preview + "</span><b>" + p.label + "</b>"
+          + "<span class='pack-sub'>" + p.blurb + "</span>";
+        b.onclick = () => onPick(p.id);
+        el.append(b);
+      });
+    }
+    function syncPackPickers() {
+      const id = state.deckPack || "classic";
+      fillPackGrid($("home-pack-grid"), id, (pid) => setDeckPack(pid), false);
+      fillPackGrid($("lobby-pack-grid"), id, (pid) => setDeckPack(pid, { broadcast: true }), !state.isHost);
+      const lab = $("lobby-pack-label");
+      if (lab) {
+        const p = packMeta(id);
+        lab.textContent = state.isHost
+          ? "Guests see this deck theme when you start."
+          : ("Deck theme: " + p.label + " — " + p.blurb);
+      }
+    }
 
     function isAuthority() {
       return state.solo || state.isHost;
@@ -1086,8 +1281,9 @@
     }
 
     function makeTip(card, opts = {}) {
+      const placedId = opts.placedId || null;
       return {
-        id: "t" + card.id + "-" + Math.random().toString(36).slice(2, 6),
+        id: placedId ? ("t-" + placedId) : ("t-c" + card.id),
         card,
         chosenSuit: opts.chosenSuit || null,
         blockTop: !!opts.blockTop || card.rank === 0,
@@ -1096,17 +1292,18 @@
         active: true,
         px: opts.px != null ? opts.px : origin.x,
         py: opts.py != null ? opts.py : origin.y,
-        placedId: opts.placedId || null,
+        placedId,
       };
     }
 
     function createGame(people) {
       let deck = shuffle(buildDeck());
       const handSize = people.length >= 5 ? 5 : 7;
-      const players = people.map((p, i) => ({
+      const players = people.map((p) => ({
         id: p.id,
         name: p.name,
         bot: !!p.bot,
+        token: p.token || p.id,
         hand: [],
         calledUhOh: false,
         connected: true,
@@ -1143,18 +1340,82 @@
         turn: 0,
         pendingDraw: 0,
         pendingKind: null,
-        banner: "Match suit ↑ · rank → · face ←",
+        banner: "Match " + packMeta(state.deckPack).label + " · suit ↑ · rank → · face ←",
         winnerId: null,
         startedAt: Date.now(),
         catchTarget: null,
+        deckPack: state.deckPack || "classic",
       };
     }
 
     function currentPlayer(g) { return g.players[g.turn]; }
 
+    function playerConnected(p) {
+      return !!(p && (p.bot || p.connected !== false));
+    }
+
+    function mySeatToken() {
+      try {
+        let t = localStorage.getItem("cubestacc-seat-token");
+        if (!t) {
+          t = "s" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+          localStorage.setItem("cubestacc-seat-token", t);
+        }
+        return t;
+      } catch (e) {
+        return "s" + Math.random().toString(36).slice(2, 12);
+      }
+    }
+
+    function playerIdFromPeer(peerId) {
+      const meta = guests.get(peerId);
+      if (meta && meta.playerId) return meta.playerId;
+      return peerId;
+    }
+
+    function cancelDrop(peerId) {
+      const t = dropTimers.get(peerId);
+      if (t) clearTimeout(t);
+      dropTimers.delete(peerId);
+    }
+
     function advanceTurn(g, steps = 1) {
       const n = g.players.length;
-      g.turn = (g.turn + ((g.direction * steps) % n) + n) % n;
+      if (!n) return;
+      const count = Math.max(1, steps | 0);
+      for (let i = 0; i < count; i++) {
+        let guard = 0;
+        do {
+          g.turn = (g.turn + g.direction + n) % n;
+          guard += 1;
+        } while (guard < n && !playerConnected(g.players[g.turn]));
+      }
+    }
+
+    /** If a guest drops mid-turn / mid-dump, pass the seat so the table doesn't softlock. */
+    function markPlayerGoneById(playerId) {
+      if (!state.game || !state.game.players) return false;
+      const p = state.game.players.find((x) => x.id === playerId);
+      if (!p || p.connected === false) return !!p;
+      p.connected = false;
+      const g = state.game;
+      if (g.phase === "playing" && currentPlayer(g).id === playerId) {
+        if (state.chainRank != null) state.chainRank = null;
+        g.banner = p.name + " left — skipping";
+        advanceTurn(g, 1);
+        const next = currentPlayer(g);
+        if (g.pendingDraw > 0 && g.pendingKind === "J" && next) {
+          drawCards(g, next, g.pendingDraw);
+          g.banner = next.name + " draws " + g.pendingDraw + ", then plays";
+          g.pendingDraw = 0;
+          g.pendingKind = null;
+        }
+      }
+      return true;
+    }
+
+    function markPlayerGone(peerId) {
+      return markPlayerGoneById(playerIdFromPeer(peerId));
     }
 
     function modesFor(card, tip) {
@@ -1377,7 +1638,7 @@
           placedId: node.id,
           blockTop: false,
         })];
-        g.banner = player.name + " wild → " + SUIT_MARK[chosenSuit || SUITS[0]];
+        g.banner = player.name + " wild → " + suitMark(chosenSuit || SUITS[0]);
       } else if (play.mode === "top") {
         tip.blockTop = true;
         // Keep tip alive for open SIDE/FACE (e.g. 3♦ still accepts 3♣ → after 0♦ ↑)
@@ -1389,7 +1650,7 @@
           placedId: node.id,
         }));
         g.tips = nextTips;
-        g.banner = player.name + " ↑ TOP " + SUIT_MARK[card.suit];
+        g.banner = player.name + " ↑ TOP " + suitMark(card.suit);
       } else if (play.mode === "side") {
         tip.blockSide = true;
         if (tip.blockTop && tip.blockSide && tip.blockFace) tip.active = false;
@@ -1436,7 +1697,7 @@
         g.direction *= -1;
         g.banner = player.name + " played 0 — reverse";
       } else if (!card.wild) {
-        g.banner = player.name + " stacked " + labelRank(card.rank) + SUIT_MARK[card.suit];
+        g.banner = player.name + " stacked " + labelRank(card.rank) + suitMark(card.suit);
       }
 
       const canChain = !card.wild && !extra && !skip && player.hand.some((c) => {
@@ -1518,29 +1779,117 @@
     }
 
     function suitPath(suit, cx, cy, scale) {
-      // Pixel-ish suit marks as SVG path groups centered at cx,cy
       const s = scale;
+      const pack = state.deckPack || "classic";
+      const ink = "class=\"ink\"";
+      const g = (body) => `<g transform="translate(${cx},${cy}) scale(${s})" ${ink}>${body}</g>`;
+
+      if (pack === "space") {
+        if (suit === "spades") {
+          return g(`<path d="M0 10 L-6 2 L-2 2 L-2-10 L2-10 L2 2 L6 2 Z" fill="#0f172a"/>
+            <circle cx="0" cy="-12" r="3" fill="#0f172a"/>`);
+        }
+        if (suit === "hearts") {
+          return g(`<circle cx="0" cy="0" r="10" fill="#0f172a"/>
+            <ellipse cx="-4" cy="-2" rx="3" ry="2" fill="#fff" opacity="0.35"/>
+            <circle cx="4" cy="3" r="2.5" fill="#94a3b8"/>`);
+        }
+        if (suit === "clubs") {
+          return g(`<path d="M0-12 L3-2 L12 0 L3 2 L0 12 L-3 2 L-12 0 L-3-2 Z" fill="#0f172a"/>`);
+        }
+        if (suit === "diamonds") {
+          return g(`<path d="M0-11 C6-6 9 2 0 12 C-9 2 -6-6 0-11 Z" fill="#0f172a"/>
+            <circle cx="0" cy="-2" r="2" fill="#fff" opacity="0.4"/>`);
+        }
+      }
+
+      if (pack === "halloween") {
+        if (suit === "spades") {
+          return g(`<ellipse cx="0" cy="1" rx="11" ry="10" fill="#0f172a"/>
+            <path d="M-2-10 L0-14 L2-10 Z" fill="#166534"/>
+            <path d="M-5-1 L-2 2 L0-2 L2 2 L5-1" fill="none" stroke="#fbbf24" stroke-width="1.6"/>`);
+        }
+        if (suit === "hearts") {
+          return g(`<ellipse cx="0" cy="0" rx="9" ry="11" fill="#0f172a" opacity="0.15"/>
+            <path d="M-8 2 Q-10-8 0-6 Q10-8 8 2 Q4 12 0 14 Q-4 12 -8 2 Z" fill="#f8fafc" stroke="#0f172a" stroke-width="1.2"/>
+            <circle cx="-3" cy="0" r="1.4" fill="#0f172a"/><circle cx="3" cy="0" r="1.4" fill="#0f172a"/>
+            <path d="M-2 5 Q0 8 2 5" fill="none" stroke="#0f172a" stroke-width="1.2"/>`);
+        }
+        if (suit === "clubs") {
+          return g(`<ellipse cx="0" cy="2" rx="10" ry="6" fill="#0f172a"/>
+            <path d="M-8 0 Q-2-10 0-2 Q2-10 8 0" fill="#0f172a"/>
+            <circle cx="-4" cy="1" r="1.2" fill="#fbbf24"/><circle cx="4" cy="1" r="1.2" fill="#fbbf24"/>`);
+        }
+        if (suit === "diamonds") {
+          return g(`<rect x="-7" y="-10" width="14" height="18" rx="3" fill="#0f172a"/>
+            <circle cx="-3" cy="-4" r="1.5" fill="#fb7185"/><circle cx="3" cy="2" r="1.5" fill="#38bdf8"/>
+            <path d="M-4 8 H4" stroke="#fbbf24" stroke-width="2"/>`);
+        }
+      }
+
+      if (pack === "nature") {
+        if (suit === "spades") {
+          return g(`<path d="M0 12 C-12 2 -8-10 0-12 C8-10 12 2 0 12 Z" fill="#0f172a"/>
+            <path d="M0 12 L0-4" stroke="#fff" stroke-width="1.4" opacity="0.5"/>`);
+        }
+        if (suit === "hearts") {
+          return g(`<circle cx="0" cy="0" r="5" fill="#0f172a"/>
+            <circle cx="-7" cy="-2" r="4" fill="#0f172a"/><circle cx="7" cy="-2" r="4" fill="#0f172a"/>
+            <circle cx="-4" cy="6" r="4" fill="#0f172a"/><circle cx="4" cy="6" r="4" fill="#0f172a"/>
+            <circle cx="0" cy="-7" r="3.5" fill="#0f172a"/>`);
+        }
+        if (suit === "clubs") {
+          return g(`<path d="M0 12 L0 2" stroke="#0f172a" stroke-width="3"/>
+            <path d="M0 2 C-10-2 -8-12 0-10 C8-12 10-2 0 2 Z" fill="#0f172a"/>
+            <path d="M-6 4 C-10-2 -2-4 0 2" fill="#0f172a"/><path d="M6 4 C10-2 2-4 0 2" fill="#0f172a"/>`);
+        }
+        if (suit === "diamonds") {
+          return g(`<circle cx="0" cy="0" r="11" fill="#0f172a"/>
+            <circle cx="0" cy="0" r="7" fill="#fbbf24"/>
+            <path d="M0-11 L2-3 L0 0 L-2-3 Z M0 11 L2 3 L0 0 L-2 3 Z M-11 0 L-3 2 L0 0 L-3-2 Z M11 0 L3 2 L0 0 L3-2 Z" fill="#fbbf24"/>`);
+        }
+      }
+
+      if (pack === "animals") {
+        if (suit === "spades") {
+          return g(`<circle cx="0" cy="2" r="8" fill="#0f172a"/>
+            <path d="M-9-2 L-6-10 L-2-2 Z" fill="#0f172a"/><path d="M9-2 L6-10 L2-2 Z" fill="#0f172a"/>
+            <circle cx="-3" cy="1" r="1.3" fill="#fff"/><circle cx="3" cy="1" r="1.3" fill="#fff"/>
+            <path d="M-2 6 Q0 8 2 6" fill="none" stroke="#fff" stroke-width="1.2"/>`);
+        }
+        if (suit === "hearts") {
+          return g(`<ellipse cx="0" cy="2" rx="9" ry="8" fill="#0f172a"/>
+            <circle cx="-6" cy="-4" r="3.5" fill="#0f172a"/><circle cx="6" cy="-4" r="3.5" fill="#0f172a"/>
+            <circle cx="-3" cy="1" r="1.3" fill="#fff"/><circle cx="3" cy="1" r="1.3" fill="#fff"/>
+            <ellipse cx="0" cy="5" rx="2" ry="1.4" fill="#fb7185"/>`);
+        }
+        if (suit === "clubs") {
+          return g(`<ellipse cx="0" cy="2" rx="8" ry="7" fill="#0f172a"/>
+            <path d="M-5-2 Q-8-10 -2-8 Q0-4 -5-2" fill="#0f172a"/><path d="M5-2 Q8-10 2-8 Q0-4 5-2" fill="#0f172a"/>
+            <circle cx="-2.5" cy="1" r="1.2" fill="#fff"/><circle cx="2.5" cy="1" r="1.2" fill="#fff"/>
+            <path d="M-1 5 H1" stroke="#fff" stroke-width="1.2"/>`);
+        }
+        if (suit === "diamonds") {
+          return g(`<ellipse cx="0" cy="1" rx="11" ry="7" fill="#0f172a"/>
+            <path d="M8 0 Q14-4 12 2 Q10 4 8 0" fill="#0f172a"/>
+            <circle cx="-3" cy="0" r="1.4" fill="#fff"/><path d="M-6 3 Q0 6 4 3" fill="none" stroke="#fff" stroke-width="1.2"/>`);
+        }
+      }
+
+      // classic playing-card suits
       if (suit === "spades") {
-        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
-          <path d="M0-14 L8-2 C12 4 8 10 0 8 C-8 10 -12 4 -8-2 Z"/>
-          <rect x="-2" y="6" width="4" height="8" rx="1"/>
-        </g>`;
+        return g(`<path d="M0-14 L8-2 C12 4 8 10 0 8 C-8 10 -12 4 -8-2 Z"/>
+          <rect x="-2" y="6" width="4" height="8" rx="1"/>`);
       }
       if (suit === "hearts") {
-        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
-          <path d="M0 10 C-14 0 -12 -10 -6 -10 C-2 -10 0 -6 0 -4 C0 -6 2 -10 6 -10 C12 -10 14 0 0 10 Z"/>
-        </g>`;
+        return g(`<path d="M0 10 C-14 0 -12 -10 -6 -10 C-2 -10 0 -6 0 -4 C0 -6 2 -10 6 -10 C12 -10 14 0 0 10 Z"/>`);
       }
       if (suit === "clubs") {
-        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
-          <circle cx="0" cy="-8" r="5"/><circle cx="-7" cy="0" r="5"/><circle cx="7" cy="0" r="5"/>
-          <rect x="-2" y="2" width="4" height="10" rx="1"/>
-        </g>`;
+        return g(`<circle cx="0" cy="-8" r="5"/><circle cx="-7" cy="0" r="5"/><circle cx="7" cy="0" r="5"/>
+          <rect x="-2" y="2" width="4" height="10" rx="1"/>`);
       }
       if (suit === "diamonds") {
-        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
-          <path d="M0-12 L10 0 L0 12 L-10 0 Z"/>
-        </g>`;
+        return g(`<path d="M0-12 L10 0 L0 12 L-10 0 Z"/>`);
       }
       return "";
     }
@@ -1568,7 +1917,59 @@
       if (wild) {
         return { top: "#38bdf8", face: "#0ea5e9", side: "#0284c7", edge: "#0c4a6e" };
       }
-      // Suit-tinted faces so stacks scan by color, with clear top→side shading
+      const pack = state.deckPack || "classic";
+      if (pack === "space") {
+        const map = {
+          hearts:   { top: "#e0f2fe", face: "#7dd3fc", side: "#0284c7", edge: "#0c4a6e" },
+          diamonds: { top: "#f1f5f9", face: "#cbd5e1", side: "#64748b", edge: "#1e293b" },
+          spades:   { top: "#ede9fe", face: "#c4b5fd", side: "#7c3aed", edge: "#4c1d95" },
+          clubs:    { top: "#fef9c3", face: "#fde047", side: "#ca8a04", edge: "#713f12" },
+        };
+        return map[suit] || map.spades;
+      }
+      if (pack === "halloween") {
+        const map = {
+          hearts:   { top: "#f8fafc", face: "#e2e8f0", side: "#94a3b8", edge: "#1e293b" },
+          diamonds: { top: "#ffe4e6", face: "#fda4af", side: "#e11d48", edge: "#881337" },
+          spades:   { top: "#ffedd5", face: "#fdba74", side: "#ea580c", edge: "#7c2d12" },
+          clubs:    { top: "#1e1b4b", face: "#312e81", side: "#4c1d95", edge: "#0f172a" },
+        };
+        return map[suit] || map.spades;
+      }
+      if (pack === "nature") {
+        const map = {
+          hearts:   { top: "#fce7f3", face: "#f9a8d4", side: "#db2777", edge: "#9d174d" },
+          diamonds: { top: "#fef9c3", face: "#fde047", side: "#ca8a04", edge: "#854d0e" },
+          spades:   { top: "#dcfce7", face: "#86efac", side: "#16a34a", edge: "#14532d" },
+          clubs:    { top: "#d1fae5", face: "#6ee7b7", side: "#0f766e", edge: "#134e4a" },
+        };
+        return map[suit] || map.spades;
+      }
+      if (pack === "animals") {
+        const map = {
+          hearts:   { top: "#ffedd5", face: "#fdba74", side: "#c2410c", edge: "#7c2d12" },
+          diamonds: { top: "#e0f2fe", face: "#7dd3fc", side: "#0284c7", edge: "#0c4a6e" },
+          spades:   { top: "#f1f5f9", face: "#cbd5e1", side: "#64748b", edge: "#0f172a" },
+          clubs:    { top: "#e0e7ff", face: "#a5b4fc", side: "#4f46e5", edge: "#312e81" },
+        };
+        return map[suit] || map.spades;
+      }
+      const ed = document.body.getAttribute("data-edition") || "classic";
+      if (ed === "mono") {
+        return { top: "#f8fafc", face: "#e2e8f0", side: "#94a3b8", edge: "#334155" };
+      }
+      if (ed === "ink") {
+        return { top: "#fffef8", face: "#f5f0e6", side: "#e7dfd0", edge: "#1c1917" };
+      }
+      if (ed === "vivid") {
+        const vivid = {
+          hearts:   { top: "#ffe4e6", face: "#fda4af", side: "#e11d48", edge: "#881337" },
+          diamonds: { top: "#ffedd5", face: "#fdba74", side: "#ea580c", edge: "#7c2d12" },
+          spades:   { top: "#e2e8f0", face: "#94a3b8", side: "#334155", edge: "#020617" },
+          clubs:    { top: "#dcfce7", face: "#86efac", side: "#16a34a", edge: "#14532d" },
+        };
+        return vivid[suit] || vivid.spades;
+      }
       const map = {
         hearts:   { top: "#fff1f2", face: "#ffe4e6", side: "#fda4af", edge: "#9f1239" },
         diamonds: { top: "#fff7ed", face: "#ffedd5", side: "#fdba74", edge: "#9a3412" },
@@ -1664,6 +2065,17 @@
       $("dir-pick").classList.remove("show");
     }
 
+    function playActionMsg(play, extra) {
+      const tip = state.game && state.game.tips.find((t) => t.id === play.tipId);
+      return Object.assign({
+        type: "play",
+        cardId: play.cardId,
+        tipId: play.tipId,
+        mode: play.mode,
+        placedId: tip ? tip.placedId : null,
+      }, extra || {});
+    }
+
     function commitPlay(play) {
       if (!isAuthority()) {
         const g = state.game;
@@ -1675,7 +2087,7 @@
           $("suit-pick").classList.add("show");
           return;
         }
-        sendAction({ type: "play", cardId: play.cardId, tipId: play.tipId, mode: play.mode });
+        sendAction(playActionMsg(play));
         return;
       }
       const g = state.game;
@@ -2172,13 +2584,6 @@
       doneBtn.disabled = !chaining;
       if (chaining) {
         doneBtn.textContent = "Done · " + labelRank(state.chainRank);
-        // If nothing left to dump, end the chain automatically
-        if (!legal.length && isAuthority()) {
-          state.chainRank = null;
-          finishTurn(g, {});
-          renderAll();
-          return;
-        }
       } else {
         doneBtn.textContent = "Done";
       }
@@ -2210,6 +2615,15 @@
     function renderAll() {
       const g = state.game;
       if (!g) return;
+      if (isAuthority() && g.phase === "playing" && state.chainRank != null) {
+        const p = currentPlayer(g);
+        if (p && !legalPlays(g, p).length) {
+          const rank = state.chainRank;
+          state.chainRank = null;
+          g.banner = "Dump of " + labelRank(rank) + " done";
+          finishTurn(g, {});
+        }
+      }
       $("banner").textContent = g.banner;
       $("game-code").textContent = state.solo ? "SOLO" : (state.room || "----");
       renderSeats(g);
@@ -2223,6 +2637,11 @@
       MG.showScreen("game");
       if (state.solo) maybeBot();
       if (!state.solo && state.isHost) broadcastToGuests();
+      if (drawNotice && drawNotice.playerId === state.myId && drawNotice.kind !== "K") {
+        // K already shown from humanDraw; caught for local host
+        if (drawNotice.kind === "caught") showDrawExplain(drawNotice.n, "caught");
+      }
+      if (state.isHost) drawNotice = null;
     }
 
     function showEnd(g) {
@@ -2240,7 +2659,6 @@
         row.innerHTML = "<span>" + p.name + "</span><span>" + p.hand.length + " left</span>";
         box.append(row);
       });
-      $("btn-again").style.display = state.solo || state.isHost ? "inline-flex" : "none";
       $("btn-again").style.display = state.solo || state.isHost ? "inline-flex" : "none";
       sfx("win");
       MG.showScreen("end");
@@ -2270,13 +2688,7 @@
       $("suit-pick").classList.remove("show");
       if (!pendingWild) return;
       if (!isAuthority()) {
-        sendAction({
-          type: "play",
-          cardId: pendingWild.cardId,
-          tipId: pendingWild.tipId,
-          mode: pendingWild.mode,
-          suit,
-        });
+        sendAction(playActionMsg(pendingWild, { suit }));
         pendingWild = null;
         clearPendingPlay();
         return;
@@ -2291,6 +2703,34 @@
       renderAll();
     }
 
+    function showDrawExplain(n, kind) {
+      const title = $("draw-explain-title");
+      const sub = $("draw-explain-sub");
+      const list = $("draw-explain-list");
+      if (!title || !sub || !list) return;
+      list.replaceChildren();
+      const add = (t) => {
+        const li = document.createElement("li");
+        li.textContent = t;
+        list.append(li);
+      };
+      if (kind === "K") {
+        title.textContent = "King penalty — draw " + n;
+        sub.textContent = "You took the stacked King draw. Here’s why:";
+        add("Each King played against you adds +2 to the penalty.");
+        add("Kings can stack: 1K → 2 cards, 2K → 4, 3K → 6, and so on.");
+        add("You could play a King to stack more, or tap Draw to take the full penalty now.");
+      } else if (kind === "caught") {
+        title.textContent = "Caught — draw " + n;
+        sub.textContent = "UH OH! was missed:";
+        add("A player reached 1 card without tapping UH OH! first.");
+        add("Someone tapped Caught — that player draws 3.");
+      } else {
+        return;
+      }
+      $("draw-explain").classList.add("show");
+    }
+
     function humanDraw() {
       if (!isAuthority()) {
         sendAction({ type: "draw" });
@@ -2302,16 +2742,19 @@
       if (state.chainRank != null) return;
       const legal = legalPlays(g, me);
       if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        const n = g.pendingDraw;
         const stacked = legal.some((p) => me.hand.find((c) => c.id === p.cardId && c.rank === "K"));
         if (stacked) {
           toast("Play a King to stack, or you can take the draws");
         }
-        drawCards(g, me, g.pendingDraw);
-        g.banner = me.name + " draws " + g.pendingDraw;
+        drawCards(g, me, n);
+        g.banner = me.name + " draws " + n;
         g.pendingDraw = 0;
         g.pendingKind = null;
+        drawNotice = { playerId: me.id, n, kind: "K" };
         sfx("draw");
         renderAll();
+        showDrawExplain(n, "K");
         return;
       }
       if (legal.length) {
@@ -2401,20 +2844,46 @@
     function clearJoinWait() {
       clearTimeout(state.joinTimer);
       state.joinTimer = 0;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = 0;
     }
 
-    function destroyPeer() {
+    function destroyPeer(opts) {
       clearTimeout(botTimer);
       clearJoinWait();
+      dropTimers.forEach((t) => clearTimeout(t));
+      dropTimers.clear();
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
-      guests.clear();
+      if (!(opts && opts.keepGuests)) guests.clear();
       if (state.peer) {
         try { state.peer.destroy(); } catch (e) {}
         state.peer = null;
       }
-      state.game = null;
-      state.view = null;
+      if (!(opts && opts.keepGame)) {
+        state.game = null;
+        state.view = null;
+      }
+    }
+
+    function setReconnectUi(on, text) {
+      const el = $("reconnect-pick");
+      if (!el) return;
+      el.classList.toggle("show", !!on);
+      if (text && $("reconnect-sub")) $("reconnect-sub").textContent = text;
+      if (text && $("reconnect-status-text")) $("reconnect-status-text").textContent = text;
+    }
+
+    function scheduleGuestReconnect() {
+      if (state.leaving || state.isHost || !state.room) return;
+      if (reconnectTimer) return;
+      reconnectAttempt += 1;
+      const delay = Math.min(12000, 1500 * reconnectAttempt);
+      setReconnectUi(true, "Retrying in " + Math.round(delay / 1000) + "s…");
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = 0;
+        joinRoom(state.room, true);
+      }, delay);
     }
 
     function playerView(game, id) {
@@ -2435,6 +2904,8 @@
         catchTarget: game.catchTarget || null,
         chainRank: state.chainRank,
         deckCount: game.deck.length,
+        deckPack: game.deckPack || state.deckPack || "classic",
+        drawNotice: drawNotice && drawNotice.playerId === id ? drawNotice : null,
         placed: game.placed.map((n) => ({
           id: n.id,
           card: n.card,
@@ -2503,6 +2974,7 @@
         winnerId: view.winnerId || null,
         startedAt: Date.now(),
         catchTarget: view.catchTarget || null,
+        deckPack: view.deckPack || state.deckPack || "classic",
       };
     }
 
@@ -2510,8 +2982,7 @@
       if (!state.game || state.solo || !state.isHost) return;
       for (const [peerId, conn] of state.conns) {
         if (!conn.open) continue;
-        const meta = guests.get(peerId);
-        const pid = meta ? peerId : peerId;
+        const pid = playerIdFromPeer(peerId);
         try { conn.send({ type: "state", view: playerView(state.game, pid) }); } catch (e) {}
       }
     }
@@ -2522,7 +2993,7 @@
       for (const [id, meta] of guests) {
         players.push({ id, name: meta.name, color: SEAT_COLORS[i++ % SEAT_COLORS.length], connected: true });
       }
-      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+      return { phase: "lobby", room: state.room, players, you: { id: "host" }, deckPack: state.deckPack || "classic" };
     }
 
     function sendLobby() {
@@ -2536,12 +3007,14 @@
     }
 
     function renderLobby(view) {
+      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true });
       if ($("lobby-code")) $("lobby-code").textContent = view.room || state.room;
       MG.renderPlayerList(view.players || [], state.myId);
       if ($("host-settings")) $("host-settings").style.display = state.isHost ? "block" : "none";
+      syncPackPickers();
       if ($("lobby-hint")) {
         $("lobby-hint").textContent = state.isHost
-          ? "Up to " + MAX_PLAYERS + " players. Start when everyone is ready."
+          ? "Up to " + MAX_PLAYERS + " players. Pick a deck theme, then start when ready."
           : "Waiting for the host to start…";
       }
       MG.setQr(MG.inviteUrl(state.room));
@@ -2557,6 +3030,10 @@
 
     function applyView(view) {
       if (!view) return;
+      const prevTurn = state.game && state.game.players
+        ? (state.game.players[state.game.turn] || {}).id
+        : null;
+      const keepUi = !!(pendingWild || (pendingCardId && view.turnId === state.myId && view.turnId === prevTurn));
       state.view = view;
       clearConnectChrome();
       if (view.you && view.you.id) state.myId = view.you.id;
@@ -2567,11 +3044,16 @@
         MG.showScreen("lobby");
         return;
       }
+      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true });
       state.game = gameFromView(view);
-      tipSelect = null;
-      clearPendingPlay();
+      if (!keepUi) {
+        tipSelect = null;
+        clearPendingPlay();
+      }
       syncUiMode();
-      document.documentElement.style.setProperty("--mg-zoom", "1");
+      if (view.drawNotice && view.drawNotice.kind) {
+        showDrawExplain(view.drawNotice.n, view.drawNotice.kind);
+      }
       if (view.phase === "end") {
         $("game-code").textContent = state.room || "----";
         showEnd(state.game);
@@ -2599,11 +3081,28 @@
       if (!g || g.phase !== "playing") return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || currentPlayer(g).id !== playerId) return;
-      const play = { cardId: msg.cardId, tipId: msg.tipId, mode: msg.mode };
-      const ok = legalPlays(g, p).some((x) =>
+      ensureOpenTips(g);
+      let play = { cardId: msg.cardId, tipId: msg.tipId, mode: msg.mode };
+      let ok = legalPlays(g, p).some((x) =>
         x.cardId === play.cardId && x.tipId === play.tipId && x.mode === play.mode
       );
-      if (!ok) return;
+      // Guests may send a tipId that drifted; resolve by placed cube + mode
+      if (!ok && msg.placedId) {
+        const tip = g.tips.find((t) => t.active && t.placedId === msg.placedId);
+        if (tip) {
+          play = { cardId: msg.cardId, tipId: tip.id, mode: msg.mode };
+          ok = legalPlays(g, p).some((x) =>
+            x.cardId === play.cardId && x.tipId === play.tipId && x.mode === play.mode
+          );
+        }
+      }
+      if (!ok) {
+        try {
+          const conn = state.conns.get(playerId);
+          if (conn && conn.open) conn.send({ type: "error", message: "That play is not legal anymore" });
+        } catch (e) {}
+        return;
+      }
       const card = p.hand.find((c) => c.id === play.cardId);
       if (!card) return;
       if (card.wild || play.mode === "wild") {
@@ -2625,10 +3124,12 @@
       if (state.chainRank != null) return;
       const legal = legalPlays(g, p);
       if (g.pendingDraw > 0 && g.pendingKind === "K") {
-        drawCards(g, p, g.pendingDraw);
-        g.banner = p.name + " draws " + g.pendingDraw;
+        const n = g.pendingDraw;
+        drawCards(g, p, n);
+        g.banner = p.name + " draws " + n;
         g.pendingDraw = 0;
         g.pendingKind = null;
+        drawNotice = { playerId, n, kind: "K" };
         sfx("draw");
         renderAll();
         return;
@@ -2661,6 +3162,7 @@
       g.banner = victim.name + " caught! +3";
       g.catchTarget = null;
       victim.calledUhOh = false;
+      drawNotice = { playerId: victim.id, n: 3, kind: "caught" };
       sfx("bad");
       renderAll();
     }
@@ -2675,35 +3177,88 @@
       renderAll();
     }
 
+    function handleJoin(conn, msg) {
+      const name = String(msg.name || "Player").slice(0, 16);
+      const token = String(msg.token || "").slice(0, 80);
+      cancelDrop(conn.peer);
+
+      if (state.game && state.game.players) {
+        let seated = null;
+        if (token) {
+          seated = state.game.players.find((p) => p.id !== "host" && !p.bot && p.token === token);
+        }
+        if (!seated && name) {
+          const cands = state.game.players.filter((p) =>
+            p.id !== "host" && !p.bot && p.connected === false
+            && String(p.name || "").toLowerCase() === name.toLowerCase()
+          );
+          if (cands.length === 1) seated = cands[0];
+        }
+        if (seated) {
+          for (const [peer, meta] of [...guests.entries()]) {
+            if (peer !== conn.peer && (meta.playerId === seated.id || (token && meta.token === token))) {
+              cancelDrop(peer);
+              const old = state.conns.get(peer);
+              if (old && old !== conn) {
+                try { old.close(); } catch (e) {}
+              }
+              state.conns.delete(peer);
+              guests.delete(peer);
+            }
+          }
+          guests.set(conn.peer, {
+            name: name || seated.name,
+            token: token || seated.token || seated.id,
+            playerId: seated.id,
+          });
+          seated.connected = true;
+          if (name) seated.name = name;
+          if (token) seated.token = token;
+          state.game.banner = seated.name + " is back";
+          try { conn.send({ type: "state", view: playerView(state.game, seated.id) }); } catch (e) {}
+          broadcastToGuests();
+          toast(seated.name + " rejoined");
+          return;
+        }
+        if (state.game.phase === "playing" || state.game.phase === "end") {
+          try {
+            conn.send({
+              type: "error",
+              message: "Game already started. Rejoin with the same name (or refresh if you were in this room).",
+            });
+          } catch (e) {}
+          return;
+        }
+      }
+
+      if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
+        try { conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" }); } catch (e) {}
+        return;
+      }
+      guests.set(conn.peer, { name, token: token || conn.peer, playerId: conn.peer });
+      sendLobby();
+    }
+
     function attachHostConn(conn) {
       conn.on("data", (msg) => {
         if (!msg || typeof msg !== "object") return;
+        const pid = playerIdFromPeer(conn.peer);
         if (msg.type === "join") {
-          const name = String(msg.name || "Player").slice(0, 16);
-          if (state.game && (state.game.phase === "playing" || state.game.phase === "end")) {
-            try { conn.send({ type: "error", message: "Game already started" }); } catch (e) {}
-            return;
-          }
-          if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
-            try { conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" }); } catch (e) {}
-            return;
-          }
-          guests.set(conn.peer, { name });
-          sendLobby();
+          handleJoin(conn, msg);
           return;
         }
-        if (msg.type === "play") hostPlay(conn.peer, msg);
-        if (msg.type === "draw") hostDraw(conn.peer);
-        if (msg.type === "uhoh") hostUhOh(conn.peer);
-        if (msg.type === "caught") hostCaught(conn.peer);
-        if (msg.type === "end-chain") hostEndChain(conn.peer);
+        if (msg.type === "play") hostPlay(pid, msg);
+        if (msg.type === "draw") hostDraw(pid);
+        if (msg.type === "uhoh") hostUhOh(pid);
+        if (msg.type === "caught") hostCaught(pid);
+        if (msg.type === "end-chain") hostEndChain(pid);
         if (msg.type === "leave") {
+          cancelDrop(conn.peer);
           state.conns.delete(conn.peer);
           guests.delete(conn.peer);
           try { conn.close(); } catch (e) {}
           if (state.game && state.game.players) {
-            const p = state.game.players.find((x) => x.id === conn.peer);
-            if (p) p.connected = false;
+            markPlayerGoneById(pid);
             renderAll();
           } else {
             sendLobby();
@@ -2712,15 +3267,21 @@
       });
       conn.on("close", () => {
         if (state.leaving) return;
-        state.conns.delete(conn.peer);
-        guests.delete(conn.peer);
-        if (state.game && state.game.players) {
-          const p = state.game.players.find((x) => x.id === conn.peer);
-          if (p) p.connected = false;
-          renderAll();
-        } else if (!state.solo) {
-          sendLobby();
-        }
+        if (state.conns.get(conn.peer) !== conn) return;
+        const meta = guests.get(conn.peer);
+        const pid = (meta && meta.playerId) || conn.peer;
+        cancelDrop(conn.peer);
+        dropTimers.set(conn.peer, setTimeout(() => {
+          dropTimers.delete(conn.peer);
+          if (state.conns.get(conn.peer) === conn) state.conns.delete(conn.peer);
+          guests.delete(conn.peer);
+          if (state.game && state.game.players) {
+            markPlayerGoneById(pid);
+            renderAll();
+          } else if (!state.solo) {
+            sendLobby();
+          }
+        }, 10000));
       });
     }
 
@@ -2771,9 +3332,9 @@
       });
     }
 
-    function joinRoom(code) {
-      if (state.connecting) return;
-      const name = MG.requireName();
+    function joinRoom(code, reconnect) {
+      if (state.connecting && !reconnect) return;
+      const name = reconnect ? (state.myName || MG.requireName()) : MG.requireName();
       if (!name) return;
       code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
@@ -2782,7 +3343,11 @@
         return;
       }
       state.connecting = true;
-      MG.showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      if (!reconnect) {
+        MG.showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      } else {
+        setReconnectUi(true, "Finding the room again…");
+      }
       MG.waitForPeer(function () {
         state.leaving = false;
         state.isHost = false;
@@ -2791,70 +3356,113 @@
         localStorage.setItem("cubestacc-name", name);
         state.room = code;
         MG.showError("home-error", "");
-        destroyPeer();
-        MG.setJoinStatus("connecting", "Finding room " + code + "…");
+        destroyPeer({ keepGame: !!reconnect });
+        MG.setJoinStatus(reconnect ? "" : "connecting", reconnect ? "" : ("Finding room " + code + "…"));
         clearJoinWait();
         state.joinTimer = setTimeout(() => {
+          if (reconnect) {
+            setReconnectUi(true, "Still trying to rejoin…");
+            state.connecting = false;
+            scheduleGuestReconnect();
+            return;
+          }
           MG.setJoinStatus("fail", MG.wifiHint());
           if ($("btn-join")) $("btn-join").disabled = false;
           state.connecting = false;
           destroyPeer();
           MG.hideWarmup();
-        }, 14000);
+        }, reconnect ? 16000 : 14000);
         const peer = new Peer(MG.peerOptions());
         state.peer = peer;
         peer.on("open", () => {
           state.myId = peer.id;
-          MG.setJoinStatus("joining", "Connecting to the host…");
-          MG.showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          if (reconnect) setReconnectUi(true, "Connecting to the host…");
+          else {
+            MG.setJoinStatus("joining", "Connecting to the host…");
+            MG.showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          }
           const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
           state.conns.set("host", conn);
           conn.on("open", () => {
-            MG.setJoinStatus("joining", "Joining the lobby…");
-            conn.send({ type: "join", name: state.myName });
+            if (reconnect) setReconnectUi(true, "Rejoining your seat…");
+            else MG.setJoinStatus("joining", "Joining the lobby…");
+            conn.send({ type: "join", name: state.myName, token: mySeatToken() });
           });
           conn.on("data", (msg) => {
             if (!msg || typeof msg !== "object") return;
             if (msg.type === "state") {
               clearJoinWait();
+              reconnectAttempt = 0;
+              setReconnectUi(false);
               applyView(msg.view);
+              if (reconnect) toast("You're back in");
             }
             if (msg.type === "error") {
               clearJoinWait();
               MG.hideWarmup();
-              MG.setJoinStatus("fail", msg.message || "Could not join this room.");
-              toast(msg.message || "Could not join");
+              const text = msg.message || "Could not join this room.";
+              if (reconnect && /already started/i.test(text)) {
+                setReconnectUi(true, text);
+                scheduleGuestReconnect();
+                return;
+              }
+              setReconnectUi(false);
+              MG.setJoinStatus("fail", text);
+              toast(text);
+              if (reconnect) goHome();
             }
           });
           conn.on("close", () => {
             if (state.leaving) return;
-            if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
-            else if (state.game && state.game.phase === "playing") toast("Lost connection to host");
+            if (state.game && (state.game.phase === "playing" || state.game.phase === "end") && state.room) {
+              scheduleGuestReconnect();
+              return;
+            }
+            toast("Host disconnected");
+            goHome();
           });
           conn.on("error", () => {
             clearJoinWait();
+            if (reconnect) {
+              setReconnectUi(true, "Could not reach the host…");
+              state.connecting = false;
+              scheduleGuestReconnect();
+              return;
+            }
             MG.hideWarmup();
             MG.setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
           });
         });
         peer.on("error", () => {
           clearJoinWait();
-          MG.hideWarmup();
           state.connecting = false;
+          if (reconnect) {
+            setReconnectUi(true, "Connection error — retrying…");
+            scheduleGuestReconnect();
+            return;
+          }
+          MG.hideWarmup();
           MG.setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
           MG.showScreen("home");
         });
       }, function () {
         MG.hideWarmup();
         state.connecting = false;
+        if (reconnect) {
+          scheduleGuestReconnect();
+          return;
+        }
         MG.setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
       });
     }
 
     function startHostGame() {
       if (!state.isHost || state.solo) return;
-      const people = [{ id: "host", name: state.myName }];
-      for (const [id, meta] of guests) people.push({ id, name: meta.name });
+      const people = [{ id: "host", name: state.myName, token: "host" }];
+      for (const [id, meta] of guests) {
+        people.push({ id, name: meta.name, token: meta.token || id });
+        meta.playerId = id;
+      }
       if (people.length < 2) {
         toast("Need at least one friend to join");
         return;
@@ -2949,6 +3557,7 @@
       if ($("btn-create")) $("btn-create").style.display = invite ? "none" : "";
       if ($("solo-home-row")) $("solo-home-row").style.display = invite ? "none" : "";
       if ($("btn-solo")) $("btn-solo").style.display = invite ? "none" : "";
+      if ($("home-pack")) $("home-pack").style.display = invite ? "none" : "";
       if ($("btn-invite-leave")) $("btn-invite-leave").style.display = invite ? "" : "none";
       if ($("join-code")) {
         const wrap = $("join-code").closest("div");
@@ -2966,6 +3575,8 @@
 
     function goHome() {
       state.leaving = true;
+      reconnectAttempt = 0;
+      setReconnectUi(false);
       if (!state.solo && !state.isHost) {
         const hostConn = state.conns.get("host");
         if (hostConn && hostConn.open) {
@@ -3046,6 +3657,7 @@
       g.banner = victim.name + " caught! +3";
       g.catchTarget = null;
       victim.calledUhOh = false;
+      drawNotice = { playerId: victim.id, n: 3, kind: "caught" };
       toast("Caught!");
       sfx("bad");
       renderAll();
@@ -3157,6 +3769,14 @@
       muted = !muted;
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
     };
+    if ($("btn-reconnect-leave")) {
+      $("btn-reconnect-leave").onclick = () => {
+        state.leaving = true;
+        clearJoinWait();
+        setReconnectUi(false);
+        goHome();
+      };
+    }
     if ($("btn-rot-cw")) $("btn-rot-cw").onclick = (e) => {
       e.stopPropagation();
       setViewRot(viewRot + 1);
@@ -3166,19 +3786,95 @@
       setViewRot(viewRot - 1);
     };
     syncRotLabel();
+
+    const THEMES = [
+      { id: "light", label: "Sky", swatch: "linear-gradient(90deg,#bae6fd,#fff)" },
+      { id: "dark", label: "Ocean", swatch: "linear-gradient(90deg,#061828,#123a5c)" },
+      { id: "wood", label: "Wood", swatch: "linear-gradient(90deg,#5c3d2e,#f3e6d4)" },
+      { id: "neon", label: "Neon", swatch: "linear-gradient(90deg,#020617,#22d3ee)" },
+      { id: "midnight", label: "Midnight", swatch: "linear-gradient(90deg,#020617,#1e293b)" },
+    ];
+    const EDITIONS = [
+      { id: "classic", label: "Classic" },
+      { id: "vivid", label: "Vivid" },
+      { id: "mono", label: "Mono" },
+      { id: "ink", label: "Ink" },
+    ];
+
+    function openModal(id) {
+      const el = $(id);
+      if (el) el.classList.add("show");
+    }
+    function closeModal(id) {
+      const el = $(id);
+      if (el) el.classList.remove("show");
+    }
+
     function applyTheme(mode) {
-      const dark = mode === "dark";
-      document.body.classList.toggle("dark", dark);
+      const id = mode || "light";
+      document.body.classList.remove("dark", "theme-wood", "theme-neon", "theme-midnight");
+      if (id === "dark") document.body.classList.add("dark");
+      else if (id === "wood") document.body.classList.add("theme-wood");
+      else if (id === "neon") document.body.classList.add("theme-neon");
+      else if (id === "midnight") document.body.classList.add("theme-midnight");
       const btn = $("btn-theme");
       if (btn) {
-        btn.textContent = dark ? "☀" : "☾";
-        btn.title = dark ? "Light mode" : "Dark mode";
-        btn.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+        btn.textContent = id === "light" ? "☾" : "☀";
+        btn.title = "Quick light/dark · full looks in ◇";
       }
-      try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+      try { localStorage.setItem(THEME_KEY, id); } catch (e) {}
+      syncLookPickers();
     }
-    $("btn-theme").onclick = () => applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
+
+    function applyEdition(id) {
+      const ed = id || "classic";
+      document.body.setAttribute("data-edition", ed);
+      try { localStorage.setItem(EDITION_KEY, ed); } catch (e) {}
+      syncLookPickers();
+      if (state.game) renderAll();
+    }
+
+    function syncLookPickers() {
+      const theme = localStorage.getItem(THEME_KEY) || "light";
+      const edition = localStorage.getItem(EDITION_KEY) || "classic";
+      const tg = $("theme-grid");
+      const eg = $("edition-grid");
+      if (tg) {
+        tg.replaceChildren();
+        THEMES.forEach((t) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = theme === t.id ? "on" : "";
+          b.innerHTML = "<span class='theme-swatch' style='background:" + t.swatch + "'></span>" + t.label;
+          b.onclick = () => applyTheme(t.id);
+          tg.append(b);
+        });
+      }
+      if (eg) {
+        eg.replaceChildren();
+        EDITIONS.forEach((t) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = edition === t.id ? "on" : "";
+          b.textContent = t.label;
+          b.onclick = () => applyEdition(t.id);
+          eg.append(b);
+        });
+      }
+    }
+
+    $("btn-help").onclick = () => openModal("help-pick");
+    $("btn-help-close").onclick = () => closeModal("help-pick");
+    $("btn-draw-explain-close").onclick = () => closeModal("draw-explain");
+    $("btn-look").onclick = () => { syncLookPickers(); openModal("look-pick"); };
+    $("btn-look-close").onclick = () => closeModal("look-pick");
+    $("btn-theme").onclick = () => {
+      const cur = localStorage.getItem(THEME_KEY) || "light";
+      applyTheme(cur === "light" ? "dark" : "light");
+    };
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
+    applyEdition(localStorage.getItem(EDITION_KEY) || "classic");
+    setDeckPack(localStorage.getItem(PACK_KEY) || "classic", { skipRender: true });
     document.documentElement.classList.remove("booting");
 
     try {
