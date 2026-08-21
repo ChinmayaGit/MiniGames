@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="shared/shell.css" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
       --ink: #e8f4ff;
@@ -551,7 +552,11 @@
         </div>
       </div>
       <div class="error" id="home-error"></div>
-      <p class="hint">Online rooms are coming next. Solo vs bots is ready now.</p>
+      <div class="join-status" id="join-status">
+        <span id="join-status-text"></span>
+        <div class="join-bar"><i></i></div>
+      </div>
+      <p class="hint">Create a room and share the code, or practice solo vs bots. Host must keep their tab open.</p>
       <div class="rules-box">
         <b style="color:var(--ink)">Quick rules</b><br />
         Same suit → stack on TOP · Same rank → SIDE · Same face (J/J, Q/Q…) → FACE.<br />
@@ -563,9 +568,29 @@
 
   <div id="screen-lobby" class="screen">
     <p class="all-games"><a href="index.html">← All games</a></p>
-    <div class="panel">
-      <p class="hint">Online lobby is not wired yet. Use Practice solo from Home.</p>
-      <button class="btn ghost" id="btn-lobby-leave" type="button">Back home</button>
+    <div class="topbar" style="color:#fff;max-width:720px;width:100%;margin:0 auto 10px;padding:0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div>
+        <div class="room-label">Room</div>
+        <div class="code-pill" id="lobby-code">----</div>
+      </div>
+      <div class="topbar-actions" style="display:flex;gap:6px">
+        <button class="btn ghost" id="btn-copy" type="button" style="width:auto;margin:0;padding:8px 12px">Copy link</button>
+        <button class="btn ghost" id="btn-lobby-leave" type="button" style="width:auto;margin:0;padding:8px 12px">Leave</button>
+      </div>
+    </div>
+    <div class="lobby-grid">
+      <div class="panel" style="width:auto;margin:0">
+        <b>Players</b>
+        <div class="player-list" id="lobby-players"></div>
+        <div class="settings" id="host-settings" style="margin-top:12px">
+          <button class="btn teal" id="btn-start" type="button">Start game</button>
+        </div>
+        <p class="hint" id="lobby-hint">Waiting for the host to start…</p>
+      </div>
+      <div class="qr">
+        <img id="qr" alt="Invite QR code" />
+        <b>Scan to join</b>
+      </div>
     </div>
   </div>
 
@@ -655,6 +680,9 @@
     const RANKS = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"];
     const FACES = new Set(["J", "Q", "K", "A"]);
     const BOT_NAMES = ["Brick", "Voxel", "Pixel", "Cubey"];
+    const SEAT_COLORS = ["#5eead4", "#fbbf24", "#f87171", "#60a5fa", "#c084fc"];
+    const PEER_PREFIX = "cubestacchost-";
+    const MAX_PLAYERS = 5;
     const THEME_KEY = "cubestacc-theme";
     let muted = false;
     let audioCtx = null;
@@ -663,6 +691,7 @@
     let pendingCardId = null;
     let botTimer = 0;
     let tipSelect = null;
+    const guests = new Map();
     const drag = {
       tracking: false,
       active: false,
@@ -718,11 +747,23 @@
 
     const state = {
       solo: true,
+      isHost: true,
       myId: "host",
       myName: "",
+      room: "",
       game: null,
+      view: null,
       chainRank: null,
+      peer: null,
+      conns: new Map(),
+      connecting: false,
+      joinTimer: 0,
+      leaving: false,
     };
+
+    function isAuthority() {
+      return state.solo || state.isHost;
+    }
 
     function ctx() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -802,6 +843,7 @@
         bot: !!p.bot,
         hand: [],
         calledUhOh: false,
+        connected: true,
       }));
       for (let r = 0; r < handSize; r++) {
         for (const p of players) p.hand.push(deck.pop());
@@ -1200,6 +1242,19 @@
     }
 
     function commitPlay(play) {
+      if (!isAuthority()) {
+        const g = state.game;
+        const me = g && g.players.find((p) => p.id === state.myId);
+        const card = me && me.hand.find((c) => c.id === play.cardId);
+        clearPendingPlay();
+        if (card && (card.wild || play.mode === "wild")) {
+          pendingWild = play;
+          $("suit-pick").classList.add("show");
+          return;
+        }
+        sendAction({ type: "play", cardId: play.cardId, tipId: play.tipId, mode: play.mode });
+        return;
+      }
       const g = state.game;
       const me = g.players.find((p) => p.id === state.myId);
       const card = me.hand.find((c) => c.id === play.cardId);
@@ -1639,15 +1694,18 @@
       const g = state.game;
       if (!g) return;
       $("banner").textContent = g.banner;
+      $("game-code").textContent = state.solo ? "SOLO" : (state.room || "----");
       renderSeats(g);
       renderStacc(g);
       renderHand(g);
       if (g.phase === "end") {
         showEnd(g);
+        if (!state.solo && state.isHost) broadcastToGuests();
         return;
       }
       MG.showScreen("game");
-      maybeBot();
+      if (state.solo) maybeBot();
+      if (!state.solo && state.isHost) broadcastToGuests();
     }
 
     function showEnd(g) {
@@ -1665,6 +1723,8 @@
         row.innerHTML = "<span>" + p.name + "</span><span>" + p.hand.length + " left</span>";
         box.append(row);
       });
+      $("btn-again").style.display = state.solo || state.isHost ? "inline-flex" : "none";
+      $("btn-again").style.display = state.solo || state.isHost ? "inline-flex" : "none";
       sfx("win");
       MG.showScreen("end");
     }
@@ -1686,12 +1746,24 @@
       pendingCardId = cardId;
       pendingOptions = options;
       showDirPick(options);
-      renderAll();
+      renderStacc(g);
     }
 
     function confirmWild(suit) {
       $("suit-pick").classList.remove("show");
       if (!pendingWild) return;
+      if (!isAuthority()) {
+        sendAction({
+          type: "play",
+          cardId: pendingWild.cardId,
+          tipId: pendingWild.tipId,
+          mode: pendingWild.mode,
+          suit,
+        });
+        pendingWild = null;
+        clearPendingPlay();
+        return;
+      }
       const g = state.game;
       const me = g.players.find((p) => p.id === state.myId);
       applyPlay(g, me, pendingWild, suit);
@@ -1703,6 +1775,10 @@
     }
 
     function humanDraw() {
+      if (!isAuthority()) {
+        sendAction({ type: "draw" });
+        return;
+      }
       const g = state.game;
       const me = currentPlayer(g);
       if (me.id !== state.myId) return;
@@ -1797,6 +1873,7 @@
 
     function maybeBot() {
       clearTimeout(botTimer);
+      if (!state.solo) return;
       const g = state.game;
       if (!g || g.phase !== "playing") return;
       const p = currentPlayer(g);
@@ -1804,13 +1881,507 @@
       botTimer = setTimeout(botAct, 650 + Math.random() * 400);
     }
 
+    function clearJoinWait() {
+      clearTimeout(state.joinTimer);
+      state.joinTimer = 0;
+    }
+
+    function destroyPeer() {
+      clearTimeout(botTimer);
+      clearJoinWait();
+      state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
+      state.conns.clear();
+      guests.clear();
+      if (state.peer) {
+        try { state.peer.destroy(); } catch (e) {}
+        state.peer = null;
+      }
+      state.game = null;
+      state.view = null;
+    }
+
+    function playerView(game, id) {
+      const p = game.players.find((x) => x.id === id);
+      const hand = p ? p.hand.slice() : [];
+      const legal = p && game.phase === "playing" && currentPlayer(game).id === id
+        ? legalPlays(game, p)
+        : [];
+      return {
+        phase: game.phase,
+        room: state.room,
+        banner: game.banner,
+        winnerId: game.winnerId,
+        direction: game.direction,
+        turnId: currentPlayer(game).id,
+        pendingDraw: game.pendingDraw || 0,
+        pendingKind: game.pendingKind || null,
+        catchTarget: game.catchTarget || null,
+        chainRank: state.chainRank,
+        deckCount: game.deck.length,
+        placed: game.placed.map((n) => ({
+          id: n.id,
+          card: n.card,
+          px: n.px,
+          py: n.py,
+          mode: n.mode,
+          coverTop: !!n.coverTop,
+          coverSide: !!n.coverSide,
+          coverFace: !!n.coverFace,
+        })),
+        tips: game.tips.filter((t) => t.active).map((t) => ({
+          id: t.id,
+          card: t.card,
+          chosenSuit: t.chosenSuit,
+          blockTop: !!t.blockTop,
+          blockSide: !!t.blockSide,
+          blockFace: !!t.blockFace,
+          active: true,
+          px: t.px,
+          py: t.py,
+          placedId: t.placedId,
+        })),
+        you: {
+          id,
+          hand,
+          calledUhOh: p ? !!p.calledUhOh : false,
+          isTurn: currentPlayer(game).id === id,
+        },
+        legal,
+        players: game.players.map((x) => ({
+          id: x.id,
+          name: x.name,
+          count: x.hand.length,
+          bot: !!x.bot,
+          connected: x.connected !== false,
+          calledUhOh: !!x.calledUhOh,
+          isTurn: currentPlayer(game).id === x.id,
+        })),
+      };
+    }
+
+    function gameFromView(view) {
+      const players = (view.players || []).map((x) => ({
+        id: x.id,
+        name: x.name,
+        bot: !!x.bot,
+        connected: x.connected !== false,
+        calledUhOh: !!x.calledUhOh,
+        hand: x.id === view.you.id
+          ? (view.you.hand || []).slice()
+          : Array(x.count || 0).fill(null).map((_, i) => ({ id: "x" + x.id + i, suit: "spades", rank: 2, wild: false })),
+      }));
+      const turn = Math.max(0, players.findIndex((p) => p.id === view.turnId));
+      return {
+        phase: view.phase === "end" ? "end" : "playing",
+        deck: Array(view.deckCount || 0).fill(null),
+        players,
+        tips: (view.tips || []).map((t) => Object.assign({}, t, { active: true })),
+        placed: (view.placed || []).map((n) => Object.assign({}, n)),
+        direction: view.direction || 1,
+        turn: turn < 0 ? 0 : turn,
+        pendingDraw: view.pendingDraw || 0,
+        pendingKind: view.pendingKind || null,
+        banner: view.banner || "",
+        winnerId: view.winnerId || null,
+        startedAt: Date.now(),
+        catchTarget: view.catchTarget || null,
+      };
+    }
+
+    function broadcastToGuests() {
+      if (!state.game || state.solo || !state.isHost) return;
+      for (const [peerId, conn] of state.conns) {
+        if (!conn.open) continue;
+        const meta = guests.get(peerId);
+        const pid = meta ? peerId : peerId;
+        try { conn.send({ type: "state", view: playerView(state.game, pid) }); } catch (e) {}
+      }
+    }
+
+    function lobbySnapshot() {
+      const players = [{ id: "host", name: state.myName, color: SEAT_COLORS[0], connected: true }];
+      let i = 1;
+      for (const [id, meta] of guests) {
+        players.push({ id, name: meta.name, color: SEAT_COLORS[i++ % SEAT_COLORS.length], connected: true });
+      }
+      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+    }
+
+    function sendLobby() {
+      const snap = lobbySnapshot();
+      applyView(Object.assign({}, snap, { you: { id: state.myId } }));
+      for (const [id, conn] of state.conns) {
+        if (conn.open) {
+          try { conn.send({ type: "state", view: Object.assign({}, snap, { you: { id } }) }); } catch (e) {}
+        }
+      }
+    }
+
+    function renderLobby(view) {
+      if ($("lobby-code")) $("lobby-code").textContent = view.room || state.room;
+      MG.renderPlayerList(view.players || [], state.myId);
+      if ($("host-settings")) $("host-settings").style.display = state.isHost ? "block" : "none";
+      if ($("lobby-hint")) {
+        $("lobby-hint").textContent = state.isHost
+          ? "Up to " + MAX_PLAYERS + " players. Start when everyone is ready."
+          : "Waiting for the host to start…";
+      }
+      MG.setQr(MG.inviteUrl(state.room));
+    }
+
+    function applyView(view) {
+      if (!view) return;
+      state.view = view;
+      state.connecting = false;
+      if (view.you && view.you.id) state.myId = view.you.id;
+      if (view.room) state.room = view.room;
+      state.chainRank = view.chainRank != null ? view.chainRank : null;
+      if (view.phase === "lobby") {
+        renderLobby(view);
+        MG.showScreen("lobby");
+        return;
+      }
+      state.game = gameFromView(view);
+      tipSelect = null;
+      clearPendingPlay();
+      syncUiMode();
+      document.documentElement.style.setProperty("--mg-zoom", "1");
+      if (view.phase === "end") {
+        $("game-code").textContent = state.room || "----";
+        showEnd(state.game);
+        return;
+      }
+      $("banner").textContent = state.game.banner;
+      $("game-code").textContent = state.room || "----";
+      renderSeats(state.game);
+      renderStacc(state.game);
+      renderHand(state.game);
+      MG.showScreen("game");
+    }
+
+    function sendAction(msg) {
+      const conn = state.conns.get("host");
+      if (conn && conn.open) {
+        try { conn.send(msg); } catch (e) {}
+      } else {
+        toast("Not connected to host");
+      }
+    }
+
+    function hostPlay(playerId, msg) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || currentPlayer(g).id !== playerId) return;
+      const play = { cardId: msg.cardId, tipId: msg.tipId, mode: msg.mode };
+      const ok = legalPlays(g, p).some((x) =>
+        x.cardId === play.cardId && x.tipId === play.tipId && x.mode === play.mode
+      );
+      if (!ok) return;
+      const card = p.hand.find((c) => c.id === play.cardId);
+      if (!card) return;
+      if (card.wild || play.mode === "wild") {
+        if (!msg.suit) return;
+        applyPlay(g, p, play, msg.suit);
+      } else {
+        applyPlay(g, p, play, null);
+      }
+      sfx("play");
+      tipSelect = null;
+      renderAll();
+    }
+
+    function hostDraw(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || currentPlayer(g).id !== playerId) return;
+      if (state.chainRank != null) return;
+      const legal = legalPlays(g, p);
+      if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        drawCards(g, p, g.pendingDraw);
+        g.banner = p.name + " draws " + g.pendingDraw;
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        sfx("draw");
+        renderAll();
+        return;
+      }
+      if (legal.length) return;
+      drawCards(g, p, 1);
+      g.banner = p.name + " draws 1";
+      advanceTurn(g, 1);
+      sfx("draw");
+      renderAll();
+    }
+
+    function hostUhOh(playerId) {
+      const g = state.game;
+      if (!g) return;
+      const p = g.players.find((x) => x.id === playerId);
+      if (!p || p.hand.length !== 2) return;
+      p.calledUhOh = true;
+      if (g.catchTarget === p.id) g.catchTarget = null;
+      g.banner = p.name + " — UH OH!";
+      renderAll();
+    }
+
+    function hostCaught(playerId) {
+      const g = state.game;
+      if (!g || !g.catchTarget) return;
+      const victim = g.players.find((p) => p.id === g.catchTarget);
+      if (!victim || victim.id === playerId) return;
+      drawCards(g, victim, 3);
+      g.banner = victim.name + " caught! +3";
+      g.catchTarget = null;
+      victim.calledUhOh = false;
+      sfx("bad");
+      renderAll();
+    }
+
+    function hostEndChain(playerId) {
+      const g = state.game;
+      if (!g || state.chainRank == null) return;
+      if (currentPlayer(g).id !== playerId) return;
+      state.chainRank = null;
+      finishTurn(g, {});
+      renderAll();
+    }
+
+    function attachHostConn(conn) {
+      conn.on("data", (msg) => {
+        if (!msg || typeof msg !== "object") return;
+        if (msg.type === "join") {
+          const name = String(msg.name || "Player").slice(0, 16);
+          if (state.game && (state.game.phase === "playing" || state.game.phase === "end")) {
+            try { conn.send({ type: "error", message: "Game already started" }); } catch (e) {}
+            return;
+          }
+          if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
+            try { conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" }); } catch (e) {}
+            return;
+          }
+          guests.set(conn.peer, { name });
+          sendLobby();
+          return;
+        }
+        if (msg.type === "play") hostPlay(conn.peer, msg);
+        if (msg.type === "draw") hostDraw(conn.peer);
+        if (msg.type === "uhoh") hostUhOh(conn.peer);
+        if (msg.type === "caught") hostCaught(conn.peer);
+        if (msg.type === "end-chain") hostEndChain(conn.peer);
+        if (msg.type === "leave") {
+          state.conns.delete(conn.peer);
+          guests.delete(conn.peer);
+          try { conn.close(); } catch (e) {}
+          if (state.game && state.game.players) {
+            const p = state.game.players.find((x) => x.id === conn.peer);
+            if (p) p.connected = false;
+            renderAll();
+          } else {
+            sendLobby();
+          }
+        }
+      });
+      conn.on("close", () => {
+        if (state.leaving) return;
+        state.conns.delete(conn.peer);
+        guests.delete(conn.peer);
+        if (state.game && state.game.players) {
+          const p = state.game.players.find((x) => x.id === conn.peer);
+          if (p) p.connected = false;
+          renderAll();
+        } else if (!state.solo) {
+          sendLobby();
+        }
+      });
+    }
+
+    function createRoom(isRetry) {
+      if (state.connecting && !isRetry) return;
+      const name = MG.requireName();
+      if (!name) return;
+      state.connecting = true;
+      MG.showWarmup("Waking up the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      MG.waitForPeer(function () {
+        state.leaving = false;
+        state.isHost = true;
+        state.solo = false;
+        state.myId = "host";
+        state.myName = name;
+        localStorage.setItem("cubestacc-name", name);
+        state.room = isRetry ? (state.room || MG.randomCode()) : MG.randomCode();
+        MG.showError("home-error", "");
+        MG.setJoinStatus("", "");
+        destroyPeer();
+        const peer = new Peer(PEER_PREFIX + state.room, MG.peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          MG.hideWarmup();
+          state.connecting = false;
+          sendLobby();
+          toast("Room " + state.room + " ready");
+        });
+        peer.on("connection", (conn) => {
+          state.conns.set(conn.peer, conn);
+          attachHostConn(conn);
+        });
+        peer.on("error", (err) => {
+          if (err && err.type === "unavailable-id") {
+            state.room = MG.randomCode();
+            destroyPeer();
+            createRoom(true);
+            return;
+          }
+          MG.hideWarmup();
+          state.connecting = false;
+          MG.showError("home-error", "Could not create room. Try again.");
+          MG.showScreen("home");
+        });
+      }, function () {
+        MG.hideWarmup();
+        state.connecting = false;
+        MG.showError("home-error", "Could not load multiplayer library. Check your internet and refresh.");
+      });
+    }
+
+    function joinRoom(code) {
+      if (state.connecting) return;
+      const name = MG.requireName();
+      if (!name) return;
+      code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (code.length !== 4) {
+        MG.setJoinStatus("fail", "Enter a 4-character room code.");
+        $("join-code").focus();
+        return;
+      }
+      state.connecting = true;
+      MG.showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      MG.waitForPeer(function () {
+        state.leaving = false;
+        state.isHost = false;
+        state.solo = false;
+        state.myName = name;
+        localStorage.setItem("cubestacc-name", name);
+        state.room = code;
+        MG.showError("home-error", "");
+        destroyPeer();
+        MG.setJoinStatus("connecting", "Finding room " + code + "…");
+        clearJoinWait();
+        state.joinTimer = setTimeout(() => {
+          MG.setJoinStatus("fail", MG.wifiHint());
+          if ($("btn-join")) $("btn-join").disabled = false;
+          state.connecting = false;
+          destroyPeer();
+          MG.hideWarmup();
+        }, 14000);
+        const peer = new Peer(MG.peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          state.myId = peer.id;
+          MG.setJoinStatus("joining", "Connecting to the host…");
+          MG.showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+          state.conns.set("host", conn);
+          conn.on("open", () => {
+            MG.setJoinStatus("joining", "Joining the lobby…");
+            conn.send({ type: "join", name: state.myName });
+          });
+          conn.on("data", (msg) => {
+            if (!msg || typeof msg !== "object") return;
+            if (msg.type === "state") {
+              clearJoinWait();
+              MG.setJoinStatus("ok", "You're in!");
+              MG.hideWarmup();
+              applyView(msg.view);
+            }
+            if (msg.type === "error") {
+              clearJoinWait();
+              MG.hideWarmup();
+              MG.setJoinStatus("fail", msg.message || "Could not join this room.");
+              toast(msg.message || "Could not join");
+            }
+          });
+          conn.on("close", () => {
+            if (state.leaving) return;
+            if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
+            else if (state.game && state.game.phase === "playing") toast("Lost connection to host");
+          });
+          conn.on("error", () => {
+            clearJoinWait();
+            MG.hideWarmup();
+            MG.setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
+          });
+        });
+        peer.on("error", () => {
+          clearJoinWait();
+          MG.hideWarmup();
+          state.connecting = false;
+          MG.setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
+          MG.showScreen("home");
+        });
+      }, function () {
+        MG.hideWarmup();
+        state.connecting = false;
+        MG.setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
+      });
+    }
+
+    function startHostGame() {
+      if (!state.isHost || state.solo) return;
+      const people = [{ id: "host", name: state.myName }];
+      for (const [id, meta] of guests) people.push({ id, name: meta.name });
+      if (people.length < 2) {
+        toast("Need at least one friend to join");
+        return;
+      }
+      state.chainRank = null;
+      tipSelect = null;
+      clearPendingPlay();
+      pendingWild = null;
+      $("suit-pick").classList.remove("show");
+      syncUiMode();
+      document.documentElement.style.setProperty("--mg-zoom", "1");
+      MG.showScreen("game");
+      const waitBoard = (tries) => {
+        const wrap = $("board-wrap");
+        const frame = wrap && wrap.parentElement;
+        const ok = wrap && frame && wrap.clientWidth > 80 && wrap.clientHeight > 120;
+        if (ok || tries <= 0) {
+          origin = boardOrigin();
+          state.game = createGame(people);
+          renderAll();
+          requestAnimationFrame(() => { if (state.game) renderStacc(state.game); });
+          return;
+        }
+        requestAnimationFrame(() => waitBoard(tries - 1));
+      };
+      requestAnimationFrame(() => waitBoard(30));
+    }
+
+    function playAgain() {
+      if (state.solo) {
+        startSolo();
+        return;
+      }
+      if (!state.isHost) return;
+      state.game = null;
+      state.chainRank = null;
+      tipSelect = null;
+      clearPendingPlay();
+      sendLobby();
+    }
+
     function startSolo() {
       const name = MG.requireName();
       if (!name) return;
+      destroyPeer();
       state.myName = name;
       localStorage.setItem("cubestacc-name", name);
       state.myId = "host";
       state.solo = true;
+      state.isHost = true;
+      state.room = "SOLO";
       state.chainRank = null;
       tipSelect = null;
       clearPendingPlay();
@@ -1824,7 +2395,6 @@
       syncUiMode();
       document.documentElement.style.setProperty("--mg-zoom", "1");
       MG.showScreen("game");
-      // Wait until the board frame has real dimensions before dealing
       const waitBoard = (tries) => {
         const wrap = $("board-wrap");
         const frame = wrap && wrap.parentElement;
@@ -1836,7 +2406,6 @@
           origin = boardOrigin();
           state.game = createGame(people);
           renderAll();
-          // Second pass after layout settles (mobile address bar / flex)
           requestAnimationFrame(() => {
             if (state.game) renderStacc(state.game);
           });
@@ -1848,8 +2417,16 @@
     }
 
     function goHome() {
-      clearTimeout(botTimer);
-      state.game = null;
+      state.leaving = true;
+      if (!state.solo && !state.isHost) {
+        const hostConn = state.conns.get("host");
+        if (hostConn && hostConn.open) {
+          try { hostConn.send({ type: "leave" }); } catch (e) {}
+        }
+      }
+      destroyPeer();
+      state.isHost = false;
+      state.solo = false;
       state.chainRank = null;
       pendingWild = null;
       tipSelect = null;
@@ -1860,10 +2437,15 @@
       document.body.style.width = "";
       document.body.style.height = "";
       document.body.style.overflow = "";
+      MG.stripRoomFromUrl();
+      MG.setJoinStatus("", "");
+      if ($("btn-join")) $("btn-join").disabled = false;
+      MG.hideWarmup();
       MG.showScreen("home");
+      state.leaving = false;
     }
 
-    MG.init({ nameKey: "cubestacc-name", hubHref: "index.html", maxPlayers: 5 });
+    MG.init({ nameKey: "cubestacc-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
     syncUiMode();
     window.addEventListener("resize", () => {
       syncUiMode();
@@ -1874,19 +2456,22 @@
       setTimeout(() => { if (state.game) renderStacc(state.game); }, 120);
     });
     MG.bindHome({
-      onCreate() { toast("Online rooms coming soon — try Practice solo"); },
-      onJoin() { toast("Online rooms coming soon — try Practice solo"); },
+      onCreate: createRoom,
+      onJoin: joinRoom,
       onSolo: startSolo,
       onLeave: goHome,
       onHome: goHome,
-      onAgain: startSolo,
-      onStart() {},
-      inviteUrl: () => location.href,
+      onAgain: playAgain,
+      onStart: startHostGame,
+      inviteUrl: () => MG.inviteUrl(state.room),
     });
     $("btn-leave-game").onclick = goHome;
-    $("btn-lobby-leave").onclick = goHome;
     $("btn-draw").onclick = humanDraw;
     $("btn-uhoh").onclick = () => {
+      if (!isAuthority()) {
+        sendAction({ type: "uhoh" });
+        return;
+      }
       const g = state.game;
       const me = g.players.find((p) => p.id === state.myId);
       if (!me || me.hand.length !== 2) return;
@@ -1897,6 +2482,10 @@
       renderAll();
     };
     $("btn-caught").onclick = () => {
+      if (!isAuthority()) {
+        sendAction({ type: "caught" });
+        return;
+      }
       const g = state.game;
       if (!g.catchTarget) return;
       const victim = g.players.find((p) => p.id === g.catchTarget);
@@ -1910,6 +2499,10 @@
       renderAll();
     };
     $("btn-end-chain").onclick = () => {
+      if (!isAuthority()) {
+        sendAction({ type: "end-chain" });
+        return;
+      }
       const g = state.game;
       if (!g || state.chainRank == null) return;
       state.chainRank = null;
@@ -2016,6 +2609,15 @@
     $("btn-theme").onclick = () => applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
     document.documentElement.classList.remove("booting");
+
+    try {
+      const params = new URLSearchParams(location.search);
+      const roomParam = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (roomParam.length === 4) {
+        if ($("join-code")) $("join-code").value = roomParam;
+        setTimeout(() => joinRoom(roomParam), 200);
+      }
+    } catch (e) {}
   </script>
 </body>
 </html>

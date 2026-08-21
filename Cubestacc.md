@@ -2,9 +2,20 @@
 
 Fan recreation inspired by the commercial card game [STACCS](https://sticcy.cc/) (STICCY©© / Dave Chau). **Not affiliated** with the publisher. Original cube UI and name; mechanics follow the published rulebook essentials plus public how-to sources where the supplied PDF ends.
 
-**Play:** [Cubestacc.html](Cubestacc.html) · **Status:** Solo vs bots (online rooms later)
+**Play:** [Cubestacc.html](Cubestacc.html) · **Status:** Online rooms (PeerJS) + solo vs bots
 
 ---
+
+## Online
+
+Same pattern as Uno / Dobble: **no server**. The host browser is the room (`cubestacchost-CODE` on PeerJS). Guests connect to the host; the host validates plays and broadcasts each player’s private view (own hand + shared STACC).
+
+1. Host: **Create room** → share code / link / QR.  
+2. Friends: open the same page → **Join** (or open `?room=ABCD`).  
+3. Host taps **Start game** when everyone is in (2–5 players).  
+4. Keep the host tab open for the whole match.
+
+**Practice solo** still deals bots locally with no lobby.
 
 ## Sources
 
@@ -80,8 +91,8 @@ When you drop to **one** card, call **UH OH!** (button). If you play to one with
 
 ## Modes in this build
 
-- **Solo vs bots** — primary  
-- **Online rooms** — not yet (same kit as Uno later)
+- **Online rooms** — PeerJS host-authoritative, up to 5 players  
+- **Solo vs bots** — local practice, no lobby
 
 ---
 

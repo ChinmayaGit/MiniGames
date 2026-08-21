@@ -14,7 +14,7 @@ The hub is [index.html](index.html): a grid of every title. Open that first, or 
 | **Dobble** | Playable | [Dobble.html](Dobble.html) |
 | **Uno** | Playable | [Uno.html](Uno.html) |
 | **Uno Flip** | Playable | [unoflip.html](unoflip.html) |
-| **Cubestacc** | Solo vs bots | [Cubestacc.html](Cubestacc.html) |
+| **Cubestacc** | Playable | [Cubestacc.html](Cubestacc.html) |
 | More minigames | Coming soon | — |
 
 How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md) · [Cubestacc.md](Cubestacc.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
@@ -124,7 +124,7 @@ Everyone must open the **same** `unoflip.html` page (Uno rooms do not mix with F
 
 ## How to play Cubestacc
 
-Open [Cubestacc.html](Cubestacc.html). Solo vs bots is ready; online rooms come later.
+Open [Cubestacc.html](Cubestacc.html). **Create room** / **Join** for friends (same PeerJS pattern as Uno), or **Practice solo** vs bots.
 
 Match **suit** (TOP), **rank** (SIDE), or **face** (FACE) onto the shared cube STACC. First empty hand wins. At two cards, tap **UH OH!** before going to one — or get Caught for +3.
 
@@ -138,7 +138,6 @@ More one-file minigames will land in this folder. Each will get its own `.html` 
 
 Ideas on the list (not built yet):
 
-- Online Cubestacc rooms
 - Party / reaction games
 - Short cooperative puzzles
 
