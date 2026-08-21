@@ -4,6 +4,8 @@ Fan recreation inspired by the commercial card game [STACCS](https://sticcy.cc/)
 
 **Play:** [Cubestacc.html](Cubestacc.html) · **Status:** Online rooms (PeerJS) + solo vs bots
 
+In-game: tap **?** (bottom-right of the board) for a short how-to.
+
 ---
 
 ## Online
@@ -16,6 +18,22 @@ Same pattern as Uno / Dobble: **no server**. The host browser is the room (`cube
 4. Keep the host tab open for the whole match.
 
 **Practice solo** still deals bots locally with no lobby.
+
+---
+
+## Controls (this build)
+
+| Action | How |
+| --- | --- |
+| Play | Drag a **legal** (glowing) hand cube onto a tip face, or tap the card then pick a side |
+| Attach sides | **↑ TOP** same suit · **→ SIDE** same rank · **← FACE** same face (J/J, Q/Q…) |
+| Pan board | Drag empty wood |
+| Same-rank dump | After a play, if you still have that **same rank** legal, keep playing; tap **Done** to end your turn |
+| No match | **Draw** — take 1, turn ends (drawn card not playable same turn) |
+| UH OH! | At **2** cards left, tap before going to 1 |
+| Caught | If someone reaches 1 without UH OH!, tap **Caught** → they draw **3** |
+
+---
 
 ## Sources
 
@@ -68,7 +86,16 @@ Treat each card as a cube with **TOP**, **FACE**, **SIDE**:
 
 **Adjacency (simplified digital rule):** a play must match the chosen tip; tight two-neighbor “must match both” slots from physical play are approximated by tip-based legal moves so the browser game stays clear.
 
-**Same-rank dump:** if you play by rank (or continue on a tip of that rank), you may play **additional cards of that same rank** before ending your turn.
+### Same-rank dump (Done)
+
+If after you play you still hold **another card of that same rank** that can legally attach somewhere on the STACC, your turn continues (banner: keep going or **Done**).
+
+- Play as many of that rank as you can (or want).  
+- Tap **Done** to end the dump and pass the turn.  
+- If nothing of that rank remains legal, the turn ends on its own.  
+- Does **not** apply after **Wild**, **Q** (skip), or while resolving an **A** extra-turn the same way — wilds/specials follow their own turn flow.
+
+Example: play **6♥**, still hold a legal **6♠** → you may play it, then **Done**.
 
 ## Specials (inferred mapping)
 
@@ -105,5 +132,6 @@ Board and hand use **hexagonal isometric tiles** (SVG), matching the physical ST
 - **SIDE** (right) — rank  
 - **Wilds** — blue cube with pixel face  
 
-Reference: `assets/cubestacc-deck-ref.png`
+Active tips stay bright; buried cubes dim. Suit-tinted faces help scan a busy stack.
 
+Reference: `assets/cubestacc-deck-ref.png`

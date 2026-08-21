@@ -14,6 +14,32 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
+      /* Light theme — dark text on light surfaces */
+      --ink: #0c4a6e;
+      --muted: #0369a1;
+      --surface: #f0f9ff;
+      --surface-soft: #e0f2fe;
+      --surface-muted: #dbeafe;
+      --line: #7dd3fc;
+      --accent: #0d9488;
+      --teal: #14b8a6;
+      --red: #e11d48;
+      --gold: #d97706;
+      --felt: #bae6fd;
+      --paper: #ffffff;
+      --paper-ink: #0c4a6e;
+      --card: #ffffff;
+      --toast-bg: #0c4a6e;
+      --toast-fg: #e0f2fe;
+      --safe: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --heart: #e11d48;
+      --diamond: #ea580c;
+      --spade: #0f172a;
+      --club: #166534;
+    }
+    body.dark {
+      /* Dark theme — light text on dark surfaces */
       --ink: #e8f4ff;
       --muted: #8eb6d8;
       --surface: #123a5c;
@@ -24,24 +50,16 @@
       --teal: #2dd4bf;
       --red: #f87171;
       --gold: #fbbf24;
-      --felt: #0b3d6e;
+      --felt: #061828;
       --paper: #0a2740;
       --paper-ink: #e8f4ff;
+      --card: #0a2740;
       --toast-bg: #041525;
       --toast-fg: #e8f4ff;
-      --safe: env(safe-area-inset-top, 0px);
-      --safe-b: env(safe-area-inset-bottom, 0px);
       --heart: #f87171;
       --diamond: #fb7185;
       --spade: #e2e8f0;
       --club: #cbd5e1;
-    }
-    body.dark {
-      --ink: #e8f4ff;
-      --muted: #7aa3c4;
-      --surface: #0a2740;
-      --surface-soft: #0f3352;
-      --felt: #061828;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; }
@@ -83,6 +101,21 @@
       padding: 12px 14px;
       font: inherit;
       font-weight: 600;
+      caret-color: var(--ink);
+    }
+    input::placeholder,
+    select::placeholder {
+      color: var(--muted);
+      opacity: 0.85;
+    }
+    /* Autofill often forces a light field — keep typed text readable */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--ink) !important;
+      caret-color: var(--ink);
+      box-shadow: 0 0 0 1000px var(--surface-muted) inset;
+      transition: background-color 99999s ease-out;
     }
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -90,6 +123,10 @@
       padding: 13px 16px; font: inherit; font-weight: 700; cursor: pointer;
       background: var(--accent); color: #062438;
     }
+    body:not(.dark) .btn { color: #042f2e; }
+    body:not(.dark) .btn.yellow { color: #431407; }
+    body:not(.dark) .btn.teal { color: #042f2e; }
+    body:not(.dark) .brand .logo { text-shadow: 2px 2px 0 #ffffffaa; }
     .btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--line); }
     .btn.teal { background: var(--teal); color: #062438; }
     .btn.yellow { background: var(--gold); color: #062438; }
@@ -114,13 +151,14 @@
     }
     .topbar {
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      color: #fff; min-width: 0; flex-shrink: 0;
+      color: var(--ink); min-width: 0; flex-shrink: 0;
     }
     .topbar-mid { flex: 1; min-width: 0; display: flex; justify-content: center; }
     .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .code-pill {
       font-family: "Press Start 2P", monospace; font-size: 9px;
-      background: #062438; color: var(--accent); padding: 8px 9px; border-radius: 10px;
+      background: var(--surface); color: var(--accent); padding: 8px 9px; border-radius: 10px;
+      border: 1px solid var(--line);
       flex-shrink: 0;
     }
     .players-inline {
@@ -130,14 +168,15 @@
     .players-drop { position: relative; max-width: min(220px, 52vw); }
     .players-btn {
       width: 100%; border: 0; border-radius: 999px; padding: 7px 12px;
-      background: #062438cc; color: #fff; font: inherit; font-size: 12px; font-weight: 700;
+      background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; font-weight: 700;
+      border: 1px solid var(--line);
       cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .players-btn .who { color: var(--accent); }
     .players-menu {
       display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
-      min-width: 180px; background: #0a2740; border: 2px solid #2a5f8a; border-radius: 12px;
-      padding: 6px; box-shadow: 0 12px 28px #0008;
+      min-width: 180px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px;
+      padding: 6px; box-shadow: 0 12px 28px #0008; color: var(--ink);
     }
     .players-menu.open { display: block; }
     .players-menu .seat-chip {
@@ -145,14 +184,14 @@
     }
     .seat-chip {
       display: flex; align-items: center; gap: 6px;
-      background: #062438cc; border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 700;
+      background: var(--surface-muted); color: var(--ink); border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 700;
       flex: 0 0 auto;
     }
     .seat-chip.turn { outline: 2px solid var(--accent); }
     .seat-chip .n { opacity: .75; font-variant-numeric: tabular-nums; }
     .banner {
-      text-align: center; font-weight: 700; font-size: 12px; color: #fff;
-      background: #062438aa; border-radius: 10px; padding: 6px 10px;
+      text-align: center; font-weight: 700; font-size: 12px; color: var(--ink);
+      background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       flex-shrink: 0;
     }
@@ -187,19 +226,49 @@
       position: absolute;
       width: var(--w); height: var(--h);
       border: 0; padding: 0; background: transparent;
+      transition: filter .15s ease, opacity .15s ease, transform .15s ease;
     }
-    .hex svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(3px 5px 0 #00000055); }
+    .hex svg { width: 100%; height: 100%; display: block; overflow: visible; }
     .hex .ink { fill: #111; }
     .hex.red .ink { fill: #c41e3a; }
-    .hex.wild .face-fill { fill: #1a8fd0; }
-    .hex.wild .side-fill { fill: #1578b0; }
-    .hex.wild .top-fill { fill: #2aa3e0; }
     .hex.wild .ink { fill: #fff; }
-    .hex.tip-hot { cursor: pointer; }
-    .hex.tip-hot svg { filter: drop-shadow(0 0 6px #fbbf24) drop-shadow(3px 5px 0 #00000055); }
-    .hex.tip-hot.on svg { filter: drop-shadow(0 0 8px #5eead4) drop-shadow(3px 5px 0 #00000055); }
-    .hex.tip-hot .rim { stroke: #fbbf24; stroke-width: 3; }
-    .hex.tip-hot.on .rim { stroke: #5eead4; }
+    /* Buried cubes fade so active tips read clearly */
+    .hex.buried {
+      opacity: 0.78;
+    }
+    .hex.buried svg {
+      filter: drop-shadow(2px 4px 0 #00000044) saturate(0.85) brightness(0.94);
+    }
+    .hex.buried.fully-covered {
+      opacity: 0.55;
+    }
+    .hex.buried.fully-covered svg {
+      filter: drop-shadow(1px 2px 0 #00000033) saturate(0.55) brightness(0.88);
+    }
+    .hex.tip-hot {
+      cursor: pointer;
+      transform: scale(1.08);
+      transform-origin: 50% 55%;
+    }
+    .hex.tip-hot svg {
+      filter:
+        drop-shadow(0 0 5px #fbbf24cc)
+        drop-shadow(0 0 12px #fbbf2488)
+        drop-shadow(4px 7px 0 #00000066);
+    }
+    .hex.tip-hot.on {
+      transform: scale(1.12);
+    }
+    .hex.tip-hot.on svg {
+      filter:
+        drop-shadow(0 0 6px #5eead4)
+        drop-shadow(0 0 14px #5eead4aa)
+        drop-shadow(4px 7px 0 #00000066);
+    }
+    .hex.tip-hot .rim { stroke: #fbbf24; stroke-width: 4; }
+    .hex.tip-hot.on .rim { stroke: #5eead4; stroke-width: 4.5; }
+    .hex .cube-shade { pointer-events: none; }
+    .hex .cover-hatch { opacity: 0.55; }
     .hand-actions {
       display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
       margin: 0 10px 4px;
@@ -208,6 +277,17 @@
       flex-shrink: 0;
     }
     .hand-actions .btn { width: auto; margin: 0; padding: 7px 10px; font-size: 12px; flex: 0 0 auto; }
+    #btn-end-chain {
+      display: none;
+      min-width: 4.5rem;
+      box-shadow: 0 0 0 2px var(--accent);
+      animation: done-pulse 1.1s ease-in-out infinite alternate;
+    }
+    #btn-end-chain.is-on { display: inline-flex !important; }
+    @keyframes done-pulse {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.12); }
+    }
     .hand-scroller {
       width: 100%;
       overflow-x: auto;
@@ -417,7 +497,7 @@
           8px
           4px;
         gap: 6px;
-        background: #062438cc;
+        background: var(--surface);
       }
       .code-pill { font-size: 8px; padding: 6px 7px; }
       .players-btn { padding: 6px 10px; font-size: 11px; }
@@ -427,7 +507,7 @@
         border-radius: 0;
         font-size: 11px;
         padding: 5px 8px;
-        background: #041525dd;
+        background: var(--surface-muted);
       }
       /* Board takes ALL leftover height between header and hand */
       .board-frame {
@@ -494,7 +574,7 @@
     .hex.ghost svg { filter: drop-shadow(0 0 6px #5eead4); }
     @keyframes ghost-pulse { from { opacity: 0.45; } to { opacity: 0.9; } }
     .end-card { text-align: center; width: min(420px, 100%); margin-top: 24px; }
-    .end-card h2 { font-size: 32px; margin: 8px 0; color: #fff; }
+    .end-card h2 { font-size: 32px; margin: 8px 0; color: var(--ink); }
     .rules-box {
       margin-top: 10px; font-size: 12px; color: var(--muted); text-align: left;
       max-height: 140px; overflow: auto; line-height: 1.4;
@@ -503,10 +583,73 @@
     #btn-theme {
       position: fixed; right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
       z-index: 30; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
-      background: var(--surface); color: var(--ink); cursor: pointer; font-size: 16px;
+      background: var(--card); color: var(--ink); cursor: pointer; font-size: 16px;
     }
+    .zoom-bar {
+      background: var(--card) !important;
+      color: var(--ink) !important;
+      border-color: var(--line) !important;
+    }
+    .zoom-bar button {
+      background: var(--ink) !important;
+      color: var(--card) !important;
+    }
+    .zoom-bar span { color: var(--ink) !important; }
+    .help-fab {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      z-index: 25;
+      max-width: min(220px, 46vw);
+    }
+    .help-fab summary {
+      list-style: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 6px 16px #0005;
+      user-select: none;
+    }
+    .help-fab summary::-webkit-details-marker { display: none; }
+    .help-fab[open] summary {
+      border-radius: 12px 12px 4px 12px;
+      width: auto;
+      padding: 6px 12px;
+      height: auto;
+    }
+    .help-fab[open] summary::after { content: " How to play"; font-size: 12px; font-weight: 700; }
+    .help-panel {
+      margin-top: 6px;
+      background: var(--card);
+      color: var(--ink);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.45;
+      box-shadow: 0 10px 24px #0006;
+    }
+    .help-panel b { display: block; margin-bottom: 4px; font-size: 12px; }
+    .help-panel ul { margin: 0; padding-left: 1.1em; }
+    .help-panel li { margin: 3px 0; }
     @media (max-width: 767px) {
       body[data-phase="game"] #btn-theme { top: auto; bottom: auto; display: none; }
+      .help-fab {
+        right: 8px;
+        bottom: 8px;
+        max-width: min(200px, 55vw);
+      }
+      .help-panel { font-size: 10px; padding: 8px 10px; }
     }
   </style>
 </head>
@@ -568,7 +711,7 @@
 
   <div id="screen-lobby" class="screen">
     <p class="all-games"><a href="index.html">← All games</a></p>
-    <div class="topbar" style="color:#fff;max-width:720px;width:100%;margin:0 auto 10px;padding:0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <div class="topbar" style="color:var(--ink);max-width:720px;width:100%;margin:0 auto 10px;padding:0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <div>
         <div class="room-label">Room</div>
         <div class="code-pill" id="lobby-code">----</div>
@@ -621,13 +764,26 @@
           </div>
           <div class="stacc" id="stacc"></div>
         </div>
+        <details class="help-fab" id="help-fab">
+          <summary aria-label="How to play">?</summary>
+          <div class="help-panel">
+            <b>Quick guide</b>
+            <ul>
+              <li><b>↑</b> same suit · <b>→</b> same rank · <b>←</b> same face</li>
+              <li>Drag a glowing hand cube onto a tip, or tap</li>
+              <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
+              <li>No match → <b>Draw</b> (turn ends)</li>
+              <li>At 2 cards → <b>UH OH!</b> or get <b>Caught</b> (+3)</li>
+            </ul>
+          </div>
+        </details>
       </div>
       <div class="hand-bar">
         <div class="hand-actions">
           <button class="btn yellow" id="btn-uhoh" type="button" disabled>UH OH!</button>
           <button class="btn danger" id="btn-caught" type="button" disabled>Caught</button>
           <button class="btn ghost" id="btn-draw" type="button">Draw</button>
-          <button class="btn teal" id="btn-end-chain" type="button" style="display:none">Done</button>
+          <button class="btn teal" id="btn-end-chain" type="button" title="End same-rank dump and pass the turn">Done</button>
         </div>
         <div class="hand-scroller" id="hand-scroller">
           <div class="hand" id="hand"></div>
@@ -640,7 +796,7 @@
     <div class="end-card">
       <div style="font-size:48px" id="end-emoji">🏆</div>
       <h2 id="end-title">Winner</h2>
-      <p class="hint" id="end-sub" style="color:#fff"></p>
+      <p class="hint" id="end-sub" style="color:var(--muted)"></p>
       <div id="end-scores" style="margin:12px 0"></div>
       <button class="btn yellow" id="btn-again" type="button">Play again</button>
       <button class="btn ghost" id="btn-home" type="button">Home</button>
@@ -708,10 +864,11 @@
     };
 
     const STACK_OFF_RATIO = {
-      top:  { x: 0, y: -0.55 },
-      wild: { x: 0, y: -0.55 },
-      side: { x: 0.55, y: 0.3 },
-      face: { x: -0.55, y: 0.3 },
+      /* Tight stack, still a bit of air so faces stay readable */
+      top:  { x: 0, y: -0.6 },
+      wild: { x: 0, y: -0.6 },
+      side: { x: 0.6, y: 0.32 },
+      face: { x: -0.6, y: 0.32 },
     };
     let origin = { x: 0, y: 0 };
 
@@ -1060,6 +1217,7 @@
       if (canChain) {
         state.chainRank = card.rank;
         g.banner += " · same rank — keep going or Done";
+        if (player.id === state.myId) toast("Same rank — play more or tap Done");
         return true;
       }
 
@@ -1175,51 +1333,85 @@
       </g>`;
     }
 
+    function facePalette(suit, wild) {
+      if (wild) {
+        return { top: "#38bdf8", face: "#0ea5e9", side: "#0284c7", edge: "#0c4a6e" };
+      }
+      // Suit-tinted faces so stacks scan by color, with clear top→side shading
+      const map = {
+        hearts:   { top: "#fff1f2", face: "#ffe4e6", side: "#fda4af", edge: "#9f1239" },
+        diamonds: { top: "#fff7ed", face: "#ffedd5", side: "#fdba74", edge: "#9a3412" },
+        spades:   { top: "#f8fafc", face: "#e2e8f0", side: "#94a3b8", edge: "#1e293b" },
+        clubs:    { top: "#f0fdf4", face: "#dcfce7", side: "#86efac", edge: "#14532d" },
+      };
+      return map[suit] || map.spades;
+    }
+
     function hexCardSvg(card, tip, covers) {
       covers = covers || {};
       const wild = !!card.wild;
       const suit = wild ? (tip && tip.chosenSuit) : card.suit;
       const rank = wild ? "W" : labelRank(card.rank);
       const blocked = tip && tip.blockTop;
-      const ink = wild ? "#fff" : (isRed(suit) ? "#c41e3a" : "#111");
+      const ink = wild ? "#fff" : (isRed(suit) ? "#be123c" : "#0f172a");
       const topSuit = suit || null;
+      const pal = facePalette(suit || "spades", wild);
+      const coverFill = "#64748b";
+      const edge = pal.edge;
 
       let topMark = "";
       if (!covers.top) {
         if (blocked) {
-          topMark = `<text x="60" y="42" text-anchor="middle" font-size="18" font-weight="900" fill="#c41e3a">⊘</text>`;
+          topMark = `<text x="60" y="42" text-anchor="middle" font-size="18" font-weight="900" fill="#e11d48">⊘</text>`;
         } else if (wild && !topSuit) {
           topMark = `<g transform="translate(60,38) scale(0.55)">${wildFaceSvg()}</g>`;
         } else {
-          topMark = suitPath(topSuit || "spades", 60, 38, 0.85);
+          topMark = suitPath(topSuit || "spades", 60, 38, 0.9);
         }
+      } else {
+        topMark = `<g class="cover-hatch" stroke="#334155" stroke-width="1.6">
+          <line x1="40" y1="34" x2="80" y2="58"/><line x1="32" y1="42" x2="72" y2="66"/>
+          <line x1="48" y1="28" x2="88" y2="52"/>
+        </g>`;
       }
 
       let faceBody = "";
       if (!covers.face) {
         faceBody = wild
           ? `<g transform="translate(38,88)">${wildFaceSvg()}</g>`
-          : `${suitPath(suit, 38, 90, 1.15)}${isFace(card.rank) ? `<g transform="translate(38,68) scale(0.9)">${faceHat(card.rank)}</g>` : ""}`;
+          : `${suitPath(suit, 38, 90, 1.2)}${isFace(card.rank) ? `<g transform="translate(38,68) scale(0.9)">${faceHat(card.rank)}</g>` : ""}`;
+      } else {
+        faceBody = `<g class="cover-hatch" stroke="#334155" stroke-width="1.6">
+          <line x1="22" y1="60" x2="50" y2="110"/><line x1="30" y1="55" x2="58" y2="105"/>
+          <line x1="38" y1="58" x2="54" y2="100"/>
+        </g>`;
       }
 
       let sideBody = "";
       if (!covers.side) {
         sideBody = wild
           ? `<text x="88" y="96" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="22" font-weight="800" fill="#fff">★</text>`
-          : `<text x="88" y="100" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="28" font-weight="800" fill="${ink}">${rank}</text>`;
+          : `<text x="88" y="100" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="30" font-weight="800" fill="${ink}" stroke="#fff" stroke-width="3" paint-order="stroke fill">${rank}</text>`;
+      } else {
+        sideBody = `<g class="cover-hatch" stroke="#334155" stroke-width="1.6">
+          <line x1="70" y1="60" x2="100" y2="100"/><line x1="78" y1="55" x2="104" y2="92"/>
+        </g>`;
       }
 
-      const corner = (wild || covers.face) ? "" : `<text x="18" y="72" font-family="Fredoka,sans-serif" font-size="11" font-weight="800" fill="${ink}">${rank}</text>`;
+      const corner = (wild || covers.face) ? "" : `<text x="18" y="72" font-family="Fredoka,sans-serif" font-size="12" font-weight="800" fill="${ink}" stroke="#fff" stroke-width="2.5" paint-order="stroke fill">${rank}</text>`;
 
-      const topFill = covers.top ? "#9ca3af" : (wild ? "#2aa3e0" : "#f3f4f6");
-      const faceFill = covers.face ? "#9ca3af" : (wild ? "#1a8fd0" : "#ffffff");
-      const sideFill = covers.side ? "#9ca3af" : (wild ? "#1578b0" : "#e8ecf0");
+      const topFill = covers.top ? coverFill : pal.top;
+      const faceFill = covers.face ? coverFill : pal.face;
+      const sideFill = covers.side ? coverFill : pal.side;
 
       return `<svg viewBox="0 0 120 140" aria-hidden="true">
-        <polygon class="rim" points="60,14 112,44 112,96 60,126 8,96 8,44" fill="none"/>
-        <polygon class="top-fill" points="60,18 108,46 60,74 12,46" fill="${topFill}" stroke="#1a1a1a" stroke-width="1.5"/>
-        <polygon class="face-fill" points="12,46 60,74 60,122 12,94" fill="${faceFill}" stroke="#1a1a1a" stroke-width="1.5"/>
-        <polygon class="side-fill" points="60,74 108,46 108,94 60,122" fill="${sideFill}" stroke="#1a1a1a" stroke-width="1.5"/>
+        <!-- Soft ground blob for separation from board -->
+        <ellipse cx="60" cy="128" rx="34" ry="7" fill="#000" opacity="0.22"/>
+        <polygon class="rim" points="60,12 114,43 114,97 60,128 6,97 6,43" fill="none" stroke="${edge}" stroke-width="2.5"/>
+        <polygon class="top-fill" points="60,18 108,46 60,74 12,46" fill="${topFill}" stroke="${edge}" stroke-width="2"/>
+        <polygon class="face-fill" points="12,46 60,74 60,122 12,94" fill="${faceFill}" stroke="${edge}" stroke-width="2"/>
+        <polygon class="side-fill" points="60,74 108,46 108,94 60,122" fill="${sideFill}" stroke="${edge}" stroke-width="2"/>
+        <polygon class="cube-shade" points="60,74 108,46 108,94 60,122" fill="#000" opacity="0.14"/>
         ${topMark}
         ${faceBody}
         ${corner}
@@ -1351,7 +1543,11 @@
           face: !!node.coverFace,
         };
         const isHot = !!tip;
-        const cls = "hex" + (isHot ? " tip-hot" : "") + (isHot && tipSelect === tip.id ? " on" : "");
+        const fullyCovered = covers.top && covers.side && covers.face;
+        const cls = "hex"
+          + (isHot ? " tip-hot" : " buried")
+          + (isHot && tipSelect === tip.id ? " on" : "")
+          + (fullyCovered && !isHot ? " fully-covered" : "");
         const el = makeHexEl(isHot ? "button" : "div", node.card, tip || null, cls, covers);
         if (isHot) {
           el.type = "button";
@@ -1664,7 +1860,24 @@
       $("btn-draw").disabled = !myTurn || state.chainRank != null || (legalIds.size > 0 && g.pendingDraw === 0);
       $("btn-uhoh").disabled = !(me && me.hand.length === 2 && !me.calledUhOh);
       $("btn-caught").disabled = !(g.catchTarget && g.catchTarget !== state.myId);
-      $("btn-end-chain").style.display = state.chainRank != null && myTurn ? "inline-flex" : "none";
+
+      const chaining = state.chainRank != null && myTurn;
+      const doneBtn = $("btn-end-chain");
+      doneBtn.classList.toggle("is-on", chaining);
+      doneBtn.style.display = chaining ? "inline-flex" : "none";
+      doneBtn.disabled = !chaining;
+      if (chaining) {
+        doneBtn.textContent = "Done · " + labelRank(state.chainRank);
+        // If nothing left to dump, end the chain automatically
+        if (!legal.length && isAuthority()) {
+          state.chainRank = null;
+          finishTurn(g, {});
+          renderAll();
+          return;
+        }
+      } else {
+        doneBtn.textContent = "Done";
+      }
 
       for (const card of me.hand) {
         const canPlay = myTurn && legalIds.has(card.id);
@@ -1719,7 +1932,7 @@
       box.replaceChildren();
       g.players.slice().sort((a, b) => a.hand.length - b.hand.length).forEach((p) => {
         const row = document.createElement("div");
-        row.style.cssText = "display:flex;justify-content:space-between;padding:8px 10px;background:#06243888;border-radius:10px;margin:6px 0;font-weight:700";
+        row.style.cssText = "display:flex;justify-content:space-between;padding:8px 10px;background:var(--surface-muted);color:var(--ink);border-radius:10px;margin:6px 0;font-weight:700";
         row.innerHTML = "<span>" + p.name + "</span><span>" + p.hand.length + " left</span>";
         box.append(row);
       });
@@ -2029,10 +2242,18 @@
       MG.setQr(MG.inviteUrl(state.room));
     }
 
+    function clearConnectChrome() {
+      MG.hideWarmup();
+      MG.setJoinStatus("", "");
+      state.connecting = false;
+      const warn = $("net-warn");
+      if (warn) warn.style.display = "none";
+    }
+
     function applyView(view) {
       if (!view) return;
       state.view = view;
-      state.connecting = false;
+      clearConnectChrome();
       if (view.you && view.you.id) state.myId = view.you.id;
       if (view.room) state.room = view.room;
       state.chainRank = view.chainRank != null ? view.chainRank : null;
@@ -2144,6 +2365,7 @@
       if (!g || state.chainRank == null) return;
       if (currentPlayer(g).id !== playerId) return;
       state.chainRank = null;
+      g.banner = (g.players.find((p) => p.id === playerId) || {}).name + " ended the dump";
       finishTurn(g, {});
       renderAll();
     }
@@ -2217,8 +2439,7 @@
         const peer = new Peer(PEER_PREFIX + state.room, MG.peerOptions());
         state.peer = peer;
         peer.on("open", () => {
-          MG.hideWarmup();
-          state.connecting = false;
+          clearConnectChrome();
           sendLobby();
           toast("Room " + state.room + " ready");
         });
@@ -2291,8 +2512,6 @@
             if (!msg || typeof msg !== "object") return;
             if (msg.type === "state") {
               clearJoinWait();
-              MG.setJoinStatus("ok", "You're in!");
-              MG.hideWarmup();
               applyView(msg.view);
             }
             if (msg.type === "error") {
@@ -2441,6 +2660,8 @@
       MG.setJoinStatus("", "");
       if ($("btn-join")) $("btn-join").disabled = false;
       MG.hideWarmup();
+      const warn = $("net-warn");
+      if (warn) warn.style.display = "";
       MG.showScreen("home");
       state.leaving = false;
     }
@@ -2501,11 +2722,14 @@
     $("btn-end-chain").onclick = () => {
       if (!isAuthority()) {
         sendAction({ type: "end-chain" });
+        toast("Ending dump…");
         return;
       }
       const g = state.game;
       if (!g || state.chainRank == null) return;
+      const rank = state.chainRank;
       state.chainRank = null;
+      g.banner = "Dump of " + labelRank(rank) + " done";
       finishTurn(g, {});
       renderAll();
     };
