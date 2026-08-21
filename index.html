@@ -190,6 +190,11 @@
     .art.unoflip {
       background: linear-gradient(120deg, #3caf58 0 50%, #3b0764 50%);
     }
+    .art.cubestacc {
+      background:
+        radial-gradient(circle at 30% 40%, #5eead466 0 40px, transparent 41px),
+        linear-gradient(145deg, #1a5a94 0%, #0b3d6e 55%, #062438 100%);
+    }
     .art.soon {
       background: repeating-linear-gradient(-32deg, #1a1612 0 12px, #241e18 12px 24px);
     }
@@ -379,6 +384,7 @@
       <a href="Dobble.html">Dobble</a>
       <a href="Uno.html">Uno</a>
       <a href="unoflip.html">Uno Flip</a>
+      <a href="Cubestacc.html">Cubestacc</a>
     </nav>
 
     <main class="grid">
@@ -433,6 +439,22 @@
         </div>
       </a>
 
+      <a class="tile" href="Cubestacc.html">
+        <div class="art cubestacc" aria-hidden="true">
+          <div class="disc" style="border-radius:14px;font-size:28px;font-weight:800;color:#0b3d6e">▣</div>
+        </div>
+        <div class="body">
+          <h2>Cubestacc</h2>
+          <p>Match suit, rank, or face on a shared 3D cube stack. UH OH at one card. Solo vs bots.</p>
+          <div class="tags">
+            <span class="tag">Solo vs bots</span>
+            <span class="tag">3D stack</span>
+            <span class="tag">Inspired by STACCS</span>
+          </div>
+          <span class="play">Play Cubestacc</span>
+        </div>
+      </a>
+
       <div class="tile soon">
         <div class="art soon" aria-hidden="true">
           <span class="soon-mark">Soon</span>
@@ -454,6 +476,8 @@
         <a href="Dobble.md">Dobble notes</a>
         ·
         <a href="Uno.md">Uno notes</a>
+        ·
+        <a href="Cubestacc.md">Cubestacc notes</a>
       </span>
     </footer>
   </div>
@@ -484,7 +508,7 @@
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
           e.preventDefault();
           var href = a.getAttribute("href") || "";
-          var name = /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
+          var name = /Cubestacc/i.test(href) ? "Cubestacc" : /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
           openGame(href, name);
         });
       });

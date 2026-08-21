@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en" class="booting" style="--boot-bg:#0b3d6e;--boot-accent:#5eead4;--boot-ink:#e8f4ff;--boot-title:'Waking up Cubestacc…'">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3d6e" />
+  <title>Cubestacc</title>
+  <link rel="stylesheet" href="shared/boot.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230b3d6e'/><rect x='22' y='28' width='56' height='56' rx='8' fill='%235eead4'/><text y='66' x='50' text-anchor='middle' font-size='28' font-family='Arial Black' fill='%230b3d6e'>C</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/shell.css" />
+  <style>
+    :root {
+      --ink: #e8f4ff;
+      --muted: #8eb6d8;
+      --surface: #123a5c;
+      --surface-soft: #18486f;
+      --surface-muted: #0f2f4c;
+      --line: #2a5f8a;
+      --accent: #5eead4;
+      --teal: #2dd4bf;
+      --red: #f87171;
+      --gold: #fbbf24;
+      --felt: #0b3d6e;
+      --paper: #0a2740;
+      --paper-ink: #e8f4ff;
+      --toast-bg: #041525;
+      --toast-fg: #e8f4ff;
+      --safe: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --heart: #f87171;
+      --diamond: #fb7185;
+      --spade: #e2e8f0;
+      --club: #cbd5e1;
+    }
+    body.dark {
+      --ink: #e8f4ff;
+      --muted: #7aa3c4;
+      --surface: #0a2740;
+      --surface-soft: #0f3352;
+      --felt: #061828;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; }
+    body {
+      font-family: Fredoka, "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -5%, #1a5a94 0%, transparent 55%),
+        repeating-linear-gradient(0deg, transparent 0 23px, #ffffff08 23px 24px),
+        repeating-linear-gradient(90deg, transparent 0 23px, #ffffff08 23px 24px),
+        var(--felt);
+    }
+    .screen { display: none; height: 100%; height: 100dvh; overflow: auto; padding: calc(12px + var(--safe)) 16px calc(16px + var(--safe-b)); }
+    .screen.active { display: flex; flex-direction: column; align-items: center; }
+    .brand { text-align: center; margin-bottom: 10px; }
+    .brand .logo {
+      font-family: "Press Start 2P", monospace;
+      font-size: clamp(18px, 4.5vw, 28px);
+      color: var(--accent);
+      text-shadow: 3px 3px 0 #062438;
+      letter-spacing: 1px;
+    }
+    .brand p { color: var(--muted); margin-top: 8px; font-size: 14px; max-width: 34ch; margin-inline: auto; }
+    .panel {
+      width: min(420px, 100%);
+      background: var(--surface);
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 16px 40px #0006;
+    }
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+    input, select {
+      width: 100%;
+      border: 2px solid var(--line);
+      background: var(--surface-muted);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      font-weight: 600;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; margin-top: 10px; border: 0; border-radius: 14px;
+      padding: 13px 16px; font: inherit; font-weight: 700; cursor: pointer;
+      background: var(--accent); color: #062438;
+    }
+    .btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--line); }
+    .btn.teal { background: var(--teal); color: #062438; }
+    .btn.yellow { background: var(--gold); color: #062438; }
+    .btn.danger { background: var(--red); color: #1a0a0a; }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+    .error { color: var(--red); font-size: 13px; font-weight: 700; margin-top: 8px; display: none; }
+    .error.show { display: block; }
+    .row { display: flex; gap: 10px; align-items: end; }
+    .row > * { flex: 1; }
+
+    #screen-game { padding: 0; align-items: stretch; overflow: hidden; }
+    .game-shell {
+      flex: 1; min-height: 0; display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: 0;
+      padding:
+        calc(6px + var(--safe))
+        max(12px, env(safe-area-inset-right, 0px))
+        0
+        max(12px, env(safe-area-inset-left, 0px));
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      color: #fff; margin-bottom: 4px; min-width: 0;
+    }
+    .topbar-mid { flex: 1; min-width: 0; display: flex; justify-content: center; }
+    .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .code-pill {
+      font-family: "Press Start 2P", monospace; font-size: 9px;
+      background: #062438; color: var(--accent); padding: 8px 9px; border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .players-inline {
+      display: none; gap: 4px; overflow-x: auto; max-width: 100%;
+      padding: 2px; -webkit-overflow-scrolling: touch;
+    }
+    .players-drop { position: relative; max-width: min(220px, 52vw); }
+    .players-btn {
+      width: 100%; border: 0; border-radius: 999px; padding: 7px 12px;
+      background: #062438cc; color: #fff; font: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .players-btn .who { color: var(--accent); }
+    .players-menu {
+      display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
+      min-width: 180px; background: #0a2740; border: 2px solid #2a5f8a; border-radius: 12px;
+      padding: 6px; box-shadow: 0 12px 28px #0008;
+    }
+    .players-menu.open { display: block; }
+    .players-menu .seat-chip {
+      width: 100%; justify-content: space-between; margin: 0; border-radius: 8px;
+    }
+    .seat-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: #062438cc; border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 700;
+      flex: 0 0 auto;
+    }
+    .seat-chip.turn { outline: 2px solid var(--accent); }
+    .seat-chip .n { opacity: .75; font-variant-numeric: tabular-nums; }
+    @media (min-width: 720px) {
+      .players-inline { display: flex; }
+      .players-drop { display: none; }
+    }
+    .banner {
+      text-align: center; font-weight: 700; font-size: 12px; color: #fff;
+      background: #062438aa; border-radius: 10px; padding: 6px 10px; margin-bottom: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .board-wrap {
+      min-height: 0; overflow: auto; border-radius: 14px;
+      background:
+        radial-gradient(ellipse at 50% 0%, #3a2418 0%, transparent 50%),
+        repeating-linear-gradient(90deg, #2a1810 0 2px, #1a100c 2px 28px),
+        #1a100c;
+      border: 2px solid #4a3020;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      cursor: grab;
+      touch-action: pan-x pan-y;
+      margin: 0;
+    }
+    .board-wrap.panning { cursor: grabbing; user-select: none; }
+    .board-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+    .board-wrap::-webkit-scrollbar-thumb { background: #5a4030; border-radius: 8px; }
+    .board-legend {
+      position: sticky; top: 0; z-index: 9000;
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      padding: 6px; font-size: 10px; font-weight: 700; color: #f5e6d3;
+      background: #120c08cc; backdrop-filter: blur(4px);
+    }
+    .board-legend span {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #2a1810; border-radius: 999px; padding: 3px 7px;
+    }
+    .stacc {
+      position: relative;
+      min-width: 100%;
+      min-height: 100%;
+      padding: 0;
+    }
+
+    /* Hexagonal isometric cube card (matches physical STACCS silhouette) */
+    .hex {
+      --w: 92px;
+      --h: 106px;
+      position: absolute;
+      width: var(--w); height: var(--h);
+      border: 0; padding: 0; background: transparent;
+      filter: drop-shadow(3px 5px 0 #00000055);
+    }
+    .hex svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .hex .ink { fill: #111; }
+    .hex.red .ink { fill: #c41e3a; }
+    .hex.wild .face-fill { fill: #1a8fd0; }
+    .hex.wild .side-fill { fill: #1578b0; }
+    .hex.wild .top-fill { fill: #2aa3e0; }
+    .hex.wild .ink { fill: #fff; }
+    .hex.tip-hot {
+      cursor: pointer;
+      filter: drop-shadow(0 0 0 transparent) drop-shadow(0 0 6px #fbbf24);
+    }
+    .hex.tip-hot.on { filter: drop-shadow(0 0 8px #5eead4); }
+    .hex.tip-hot .rim { stroke: #fbbf24; stroke-width: 3; }
+    .hex.tip-hot.on .rim { stroke: #5eead4; }
+
+    .hand-bar {
+      background: #120c08f2; border-radius: 16px 16px 0 0;
+      padding: 6px 4px calc(8px + var(--safe-b));
+      margin-top: 6px;
+      max-height: min(42vh, 280px);
+      display: flex; flex-direction: column; min-height: 0;
+      box-shadow: 0 -8px 24px #0006;
+    }
+    .hand-actions {
+      display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
+      margin-bottom: 4px; padding: 0 2px; -webkit-overflow-scrolling: touch;
+    }
+    .hand-actions .btn { width: auto; margin: 0; padding: 7px 10px; font-size: 12px; flex: 0 0 auto; }
+    .hand {
+      display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 4px;
+      min-height: 0; flex: 1; -webkit-overflow-scrolling: touch; align-items: flex-end;
+    }
+    .hcard {
+      --w: 72px;
+      --h: 84px;
+      flex: 0 0 auto;
+      width: var(--w); height: var(--h);
+      border: 0; padding: 0; background: transparent; cursor: pointer;
+      filter: drop-shadow(2px 3px 0 #00000066);
+    }
+    .hcard svg { width: 100%; height: 100%; display: block; }
+    .hcard .ink { fill: #111; }
+    .hcard.red .ink { fill: #c41e3a; }
+    .hcard.wild .face-fill { fill: #1a8fd0; }
+    .hcard.wild .side-fill { fill: #1578b0; }
+    .hcard.wild .top-fill { fill: #2aa3e0; }
+    .hcard.wild .ink { fill: #fff; }
+    .hcard.legal { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 12px; transform: translateY(-8px); }
+    .hcard:disabled { opacity: .42; cursor: default; transform: none; outline: none; }
+
+    .modal {
+      position: fixed; inset: 0; background: #041525cc; display: none;
+      align-items: center; justify-content: center; z-index: 40; padding: 16px;
+    }
+    .modal.show { display: flex; }
+    .modal .sheet {
+      width: min(360px, 100%); background: var(--surface); border-radius: 18px;
+      padding: 18px; border: 2px solid var(--line); text-align: center;
+    }
+    .suit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .suit-grid button { font-size: 28px; padding: 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface-soft); cursor: pointer; color: inherit; }
+    .dir-grid { display: grid; gap: 8px; margin-top: 12px; }
+    .dir-grid button {
+      display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+      padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line);
+      background: var(--surface-soft); cursor: pointer; color: inherit; font: inherit; font-weight: 700; text-align: left;
+    }
+    .dir-grid button .arrow { font-size: 22px; width: 28px; text-align: center; }
+    .hex.ghost {
+      opacity: 0.72; cursor: pointer;
+      filter: drop-shadow(0 0 6px #5eead4);
+      animation: ghost-pulse 1s ease-in-out infinite alternate;
+    }
+    @keyframes ghost-pulse { from { opacity: 0.45; } to { opacity: 0.9; } }
+    .end-card { text-align: center; width: min(420px, 100%); margin-top: 24px; }
+    .end-card h2 { font-size: 32px; margin: 8px 0; color: #fff; }
+    .rules-box {
+      margin-top: 10px; font-size: 12px; color: var(--muted); text-align: left;
+      max-height: 140px; overflow: auto; line-height: 1.4;
+      background: var(--surface-muted); border-radius: 12px; padding: 10px;
+    }
+    #btn-theme {
+      position: fixed; right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
+      z-index: 30; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
+      background: var(--surface); color: var(--ink); cursor: pointer; font-size: 16px;
+    }
+    @media (max-width: 520px) {
+      .hex { --w: 76px; --h: 88px; }
+      .hcard { --w: 64px; --h: 74px; }
+      .board-legend .hide-sm { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Waking up…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
+
+  <div id="screen-home" class="screen active">
+    <p class="all-games"><a href="index.html">← All games</a></p>
+    <div class="brand">
+      <div class="logo">CUBESTACC</div>
+      <p>Match suit, rank, or face. Build one shared cube stack. First hand empty wins.</p>
+    </div>
+    <div class="panel">
+      <label for="name">Your name</label>
+      <input id="name" maxlength="16" placeholder="Player" autocomplete="nickname" />
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="bot-count">Practice vs bots</label>
+          <select id="bot-count">
+            <option value="1">1 bot</option>
+            <option value="2" selected>2 bots</option>
+            <option value="3">3 bots</option>
+            <option value="4">4 bots</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn yellow" id="btn-solo" type="button">Practice solo</button>
+      <button class="btn ghost" id="btn-create" type="button">Create room</button>
+      <div class="row">
+        <div>
+          <label for="join-code">Join code</label>
+          <input id="join-code" maxlength="4" placeholder="ABCD" autocomplete="off" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn teal" id="btn-join" type="button">Join</button>
+        </div>
+      </div>
+      <div class="error" id="home-error"></div>
+      <p class="hint">Online rooms are coming next. Solo vs bots is ready now.</p>
+      <div class="rules-box">
+        <b style="color:var(--ink)">Quick rules</b><br />
+        Same suit → stack on TOP · Same rank → SIDE · Same face (J/J, Q/Q…) → FACE.<br />
+        J +1 draw · Q skip · K +2 (stackable) · A extra turn · 0 reverse + block top · Wild picks suit.<br />
+        At 1 card, tap <b>UH OH!</b> or get Caught for +3.
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-lobby" class="screen">
+    <p class="all-games"><a href="index.html">← All games</a></p>
+    <div class="panel">
+      <p class="hint">Online lobby is not wired yet. Use Practice solo from Home.</p>
+      <button class="btn ghost" id="btn-lobby-leave" type="button">Back home</button>
+    </div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="game-shell">
+      <div class="topbar">
+        <div class="code-pill" id="game-code">SOLO</div>
+        <div class="topbar-mid">
+          <div class="players-inline" id="players-inline"></div>
+          <div class="players-drop">
+            <button type="button" class="players-btn" id="btn-players" aria-expanded="false">Players ▾</button>
+            <div class="players-menu" id="players-menu"></div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn ghost" id="btn-mute" type="button" style="width:auto;margin:0;padding:8px 10px">🔊</button>
+          <button class="btn ghost" id="btn-leave-game" type="button" style="width:auto;margin:0;padding:8px 10px">Leave</button>
+        </div>
+      </div>
+      <div class="banner" id="banner">Match a tip on the STACC</div>
+      <div class="board-wrap" id="board-wrap">
+        <div class="board-legend">
+          <span>↑ suit</span>
+          <span>→ rank</span>
+          <span>← face</span>
+          <span class="hide-sm">Drag to pan</span>
+        </div>
+        <div class="stacc" id="stacc"></div>
+      </div>
+      <div class="hand-bar">
+        <div class="hand-actions">
+          <button class="btn yellow" id="btn-uhoh" type="button" disabled>UH OH!</button>
+          <button class="btn danger" id="btn-caught" type="button" disabled>Caught</button>
+          <button class="btn ghost" id="btn-draw" type="button">Draw</button>
+          <button class="btn teal" id="btn-end-chain" type="button" style="display:none">Done</button>
+        </div>
+        <div class="hand" id="hand"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-end" class="screen">
+    <div class="end-card">
+      <div style="font-size:48px" id="end-emoji">🏆</div>
+      <h2 id="end-title">Winner</h2>
+      <p class="hint" id="end-sub" style="color:#fff"></p>
+      <div id="end-scores" style="margin:12px 0"></div>
+      <button class="btn yellow" id="btn-again" type="button">Play again</button>
+      <button class="btn ghost" id="btn-home" type="button">Home</button>
+    </div>
+  </div>
+
+  <div class="modal" id="suit-pick" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <b>Wild — pick a suit</b>
+      <div class="suit-grid">
+        <button type="button" data-suit="spades">♠</button>
+        <button type="button" data-suit="hearts">♥</button>
+        <button type="button" data-suit="clubs">♣</button>
+        <button type="button" data-suit="diamonds">♦</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dir-pick" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <b>Where to STACC?</b>
+      <p class="hint" style="margin:8px 0 0">Same suit → up · same rank → right · same face → left</p>
+      <div class="dir-grid" id="dir-grid"></div>
+      <button class="btn ghost" id="btn-dir-cancel" type="button" style="margin-top:12px">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <button type="button" id="btn-theme" title="Theme" aria-label="Toggle theme">◐</button>
+
+  <script src="shared/kit.js"></script>
+  <script>
+    const MG = MiniGames;
+    const $ = (id) => document.getElementById(id);
+    const SUITS = ["spades", "hearts", "clubs", "diamonds"];
+    const SUIT_MARK = { spades: "♠", hearts: "♥", clubs: "♣", diamonds: "♦" };
+    const RANKS = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"];
+    const FACES = new Set(["J", "Q", "K", "A"]);
+    const BOT_NAMES = ["Brick", "Voxel", "Pixel", "Cubey"];
+    const THEME_KEY = "cubestacc-theme";
+    let muted = false;
+    let audioCtx = null;
+    let pendingWild = null;
+    let pendingOptions = null;
+    let pendingCardId = null;
+    let botTimer = 0;
+    let tipSelect = null;
+
+    const STACK_OFF = {
+      top:  { x: 0, y: -50 },
+      wild: { x: 0, y: -50 },
+      side: { x: 50, y: 27 },
+      face: { x: -50, y: 27 },
+    };
+    let origin = { x: 160, y: 280 };
+
+    function boardOrigin() {
+      const wrap = $("board-wrap");
+      const w = Math.max(280, wrap ? wrap.clientWidth : 360);
+      const h = Math.max(220, wrap ? wrap.clientHeight : 360);
+      return {
+        x: Math.round(w / 2 - 46),
+        y: Math.round(Math.max(160, h - 130)),
+      };
+    }
+
+    const state = {
+      solo: true,
+      myId: "host",
+      myName: "",
+      game: null,
+      chainRank: null,
+    };
+
+    function ctx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function tone(freq, dur, type = "square", gain = 0.04) {
+      if (muted) return;
+      const c = ctx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(gain, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(); o.stop(c.currentTime + dur);
+    }
+    function sfx(kind) {
+      if (kind === "play") { tone(320, 0.06); setTimeout(() => tone(480, 0.08), 40); }
+      else if (kind === "draw") tone(180, 0.1, "triangle", 0.03);
+      else if (kind === "win") [400, 520, 660, 880].forEach((f, i) => setTimeout(() => tone(f, 0.12), i * 70));
+      else if (kind === "bad") tone(120, 0.2, "sawtooth", 0.03);
+    }
+    function toast(msg) { MG.toast(msg); }
+    function shuffle(arr, rng = Math.random) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function isFace(rank) { return FACES.has(rank); }
+    function isNumber(rank) { return typeof rank === "number" && rank >= 2 && rank <= 10; }
+    function isRed(suit) { return suit === "hearts" || suit === "diamonds"; }
+    function labelRank(rank) { return rank === 0 ? "0" : String(rank); }
+    function tipSuit(tip) {
+      if (tip.card.wild) return tip.chosenSuit;
+      return tip.card.suit;
+    }
+
+    function buildDeck() {
+      const cards = [];
+      let id = 1;
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          cards.push({ id: id++, suit, rank, wild: false });
+        }
+      }
+      for (let i = 0; i < 4; i++) {
+        cards.push({ id: id++, suit: null, rank: null, wild: true });
+      }
+      return cards;
+    }
+
+    function makeTip(card, opts = {}) {
+      return {
+        id: "t" + card.id + "-" + Math.random().toString(36).slice(2, 6),
+        card,
+        chosenSuit: opts.chosenSuit || null,
+        blockTop: !!opts.blockTop || card.rank === 0,
+        blockSide: !!opts.blockSide,
+        blockFace: !!opts.blockFace,
+        active: true,
+        px: opts.px != null ? opts.px : origin.x,
+        py: opts.py != null ? opts.py : origin.y,
+        placedId: opts.placedId || null,
+      };
+    }
+
+    function createGame(people) {
+      let deck = shuffle(buildDeck());
+      const handSize = people.length >= 5 ? 5 : 7;
+      const players = people.map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        bot: !!p.bot,
+        hand: [],
+        calledUhOh: false,
+      }));
+      for (let r = 0; r < handSize; r++) {
+        for (const p of players) p.hand.push(deck.pop());
+      }
+      const parked = [];
+      let start = deck.pop();
+      while (start && (start.wild || !isNumber(start.rank))) {
+        parked.push(start);
+        start = deck.pop();
+      }
+      deck = shuffle(deck.concat(parked));
+      const startNode = {
+        id: "p" + start.id,
+        card: start,
+        px: origin.x,
+        py: origin.y,
+        mode: "start",
+        coverTop: false,
+        coverSide: false,
+        coverFace: false,
+      };
+      const tip = makeTip(start, { px: origin.x, py: origin.y, placedId: startNode.id });
+      return {
+        phase: "playing",
+        deck,
+        players,
+        tips: [tip],
+        placed: [startNode],
+        direction: 1,
+        turn: 0,
+        pendingDraw: 0,
+        pendingKind: null,
+        banner: "Match suit ↑ · rank → · face ←",
+        winnerId: null,
+        startedAt: Date.now(),
+        catchTarget: null,
+      };
+    }
+
+    function currentPlayer(g) { return g.players[g.turn]; }
+
+    function advanceTurn(g, steps = 1) {
+      const n = g.players.length;
+      g.turn = (g.turn + ((g.direction * steps) % n) + n) % n;
+    }
+
+    function modesFor(card, tip) {
+      const modes = [];
+      if (!tip.active) return modes;
+      if (card.wild) {
+        modes.push("wild");
+        return modes;
+      }
+      if (tip.card.wild) {
+        if (card.suit === tip.chosenSuit && !tip.blockTop) modes.push("top");
+        return modes;
+      }
+      if (!tip.blockTop && card.suit === tip.card.suit) modes.push("top");
+      if (!tip.blockSide && card.rank === tip.card.rank && card.rank !== null) modes.push("side");
+      if (!tip.blockFace && isFace(card.rank) && isFace(tip.card.rank) && card.rank === tip.card.rank) modes.push("face");
+      return modes;
+    }
+
+    function legalPlays(g, player) {
+      const out = [];
+      for (const card of player.hand) {
+        if (g.pendingDraw > 0) {
+          if (g.pendingKind === "K" && card.rank === "K") {
+            for (const tip of g.tips) {
+              const m = modesFor(card, tip);
+              if (m.length) out.push({ cardId: card.id, tipId: tip.id, mode: m.includes("face") ? "face" : m[0] });
+            }
+          }
+          continue;
+        }
+        if (state.chainRank != null && card.rank !== state.chainRank) continue;
+        for (const tip of g.tips) {
+          for (const mode of modesFor(card, tip)) {
+            out.push({ cardId: card.id, tipId: tip.id, mode });
+          }
+        }
+      }
+      const seen = new Set();
+      return out.filter((p) => {
+        const k = p.cardId + "|" + p.tipId + "|" + p.mode;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    }
+
+    function drawCards(g, player, n) {
+      for (let i = 0; i < n; i++) {
+        if (!g.deck.length) break;
+        player.hand.push(g.deck.pop());
+      }
+      player.calledUhOh = false;
+    }
+
+    function findPlaced(g, placedId) {
+      return g.placed.find((p) => p.id === placedId);
+    }
+
+    function placeOnBoard(g, card, tip, mode) {
+      const off = STACK_OFF[mode] || STACK_OFF.top;
+      const px = tip.px + off.x;
+      const py = tip.py + off.y;
+      const parent = tip.placedId ? findPlaced(g, tip.placedId) : null;
+      if (parent) {
+        if (mode === "top" || mode === "wild") parent.coverTop = true;
+        if (mode === "side") parent.coverSide = true;
+        if (mode === "face") parent.coverFace = true;
+      }
+      const node = {
+        id: "p" + card.id + "-" + g.placed.length,
+        card,
+        px,
+        py,
+        mode,
+        coverTop: false,
+        coverSide: false,
+        coverFace: false,
+      };
+      g.placed.push(node);
+      return node;
+    }
+
+    function applyPlay(g, player, play, chosenSuit) {
+      const card = player.hand.find((c) => c.id === play.cardId);
+      const tip = g.tips.find((t) => t.id === play.tipId);
+      if (!card || !tip) return false;
+      const modes = modesFor(card, tip);
+      if (g.pendingDraw > 0) {
+        if (!(g.pendingKind === "K" && card.rank === "K")) return false;
+      } else if (!modes.includes(play.mode) && !(card.wild && play.mode === "wild")) {
+        return false;
+      }
+
+      player.hand = player.hand.filter((c) => c.id !== card.id);
+      const node = placeOnBoard(g, card, tip, play.mode);
+
+      if (play.mode === "wild" || card.wild) {
+        g.tips.forEach((t) => { t.active = false; });
+        g.tips = [makeTip(card, {
+          chosenSuit: chosenSuit || SUITS[0],
+          px: node.px,
+          py: node.py,
+          placedId: node.id,
+          blockTop: false,
+        })];
+        g.banner = player.name + " wild → " + SUIT_MARK[chosenSuit || SUITS[0]];
+      } else if (play.mode === "top") {
+        tip.blockTop = true;
+        tip.active = false;
+        g.tips = g.tips.filter((t) => t.active).concat([makeTip(card, {
+          px: node.px,
+          py: node.py,
+          placedId: node.id,
+        })]);
+        g.banner = player.name + " ↑ TOP " + SUIT_MARK[card.suit];
+      } else if (play.mode === "side") {
+        tip.blockSide = true;
+        if (tip.blockTop && tip.blockSide && tip.blockFace) tip.active = false;
+        g.tips.push(makeTip(card, { px: node.px, py: node.py, placedId: node.id }));
+        g.banner = player.name + " → SIDE " + labelRank(card.rank);
+      } else if (play.mode === "face") {
+        tip.blockFace = true;
+        if (tip.blockTop && tip.blockSide && tip.blockFace) tip.active = false;
+        g.tips.push(makeTip(card, { px: node.px, py: node.py, placedId: node.id }));
+        g.banner = player.name + " ← FACE " + labelRank(card.rank);
+      }
+
+      // UH OH catch window
+      if (player.hand.length === 1) {
+        g.catchTarget = player.calledUhOh ? null : player.id;
+      } else if (player.hand.length !== 1) {
+        if (g.catchTarget === player.id) g.catchTarget = null;
+      }
+
+      if (!player.hand.length) {
+        g.phase = "end";
+        g.winnerId = player.id;
+        g.banner = player.name + " wins!";
+        return true;
+      }
+
+      let extra = false;
+      let skip = 0;
+      if (card.rank === "J") {
+        g.pendingDraw += 1;
+        g.pendingKind = "J";
+        g.banner = player.name + " played J — draw 1";
+      } else if (card.rank === "K") {
+        g.pendingDraw += 2;
+        g.pendingKind = "K";
+        g.banner = player.name + " played K — draw " + g.pendingDraw;
+      } else if (card.rank === "Q") {
+        skip = 1;
+        g.banner = player.name + " played Q — skip";
+      } else if (card.rank === "A") {
+        extra = true;
+        g.banner = player.name + " played A — go again";
+      } else if (card.rank === 0) {
+        g.direction *= -1;
+        g.banner = player.name + " played 0 — reverse";
+      } else if (!card.wild) {
+        g.banner = player.name + " stacked " + labelRank(card.rank) + SUIT_MARK[card.suit];
+      }
+
+      const canChain = !card.wild && !extra && !skip && player.hand.some((c) => {
+        if (c.rank !== card.rank) return false;
+        return g.tips.some((t) => modesFor(c, t).length);
+      });
+      if (canChain) {
+        state.chainRank = card.rank;
+        g.banner += " · same rank — keep going or Done";
+        return true;
+      }
+
+      state.chainRank = null;
+      finishTurn(g, { extra, skip });
+      return true;
+    }
+
+    function finishTurn(g, { extra = false, skip = 0 } = {}) {
+      if (extra) return;
+      // resolve pending draw on the next player before their play
+      advanceTurn(g, 1 + skip);
+      const next = currentPlayer(g);
+      if (g.pendingDraw > 0 && g.pendingKind === "J") {
+        drawCards(g, next, g.pendingDraw);
+        g.banner = next.name + " draws " + g.pendingDraw + ", then plays";
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+      } else if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        // next may stack K; if not, they must take draws then play — handled on draw/pass
+      }
+    }
+
+    function takePendingOrDraw(g, player) {
+      if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        const canStack = legalPlays(g, player).some((p) => {
+          const c = player.hand.find((h) => h.id === p.cardId);
+          return c && c.rank === "K";
+        });
+        if (!canStack) {
+          drawCards(g, player, g.pendingDraw);
+          g.banner = player.name + " draws " + g.pendingDraw;
+          g.pendingDraw = 0;
+          g.pendingKind = null;
+          return "drew-pending";
+        }
+        return "must-stack-or-draw";
+      }
+      if (legalPlays(g, player).length) return "must-play";
+      drawCards(g, player, 1);
+      g.banner = player.name + " draws 1";
+      advanceTurn(g, 1);
+      return "drew";
+    }
+
+    function seatChip(p, i, turn) {
+      const el = document.createElement("div");
+      el.className = "seat-chip" + (i === turn ? " turn" : "");
+      el.innerHTML = "<span>" + p.name + (p.bot ? " 🤖" : "") + "</span><span class='n'>" + p.hand.length + "</span>";
+      return el;
+    }
+
+    function renderSeats(g) {
+      const inline = $("players-inline");
+      const menu = $("players-menu");
+      const btn = $("btn-players");
+      if (!inline || !menu || !btn) return;
+      inline.replaceChildren();
+      menu.replaceChildren();
+      g.players.forEach((p, i) => {
+        inline.append(seatChip(p, i, g.turn));
+        menu.append(seatChip(p, i, g.turn));
+      });
+      const cur = currentPlayer(g);
+      btn.innerHTML = "<span class='who'>" + cur.name + "</span> · " + cur.hand.length + " ▾";
+      btn.setAttribute("aria-expanded", menu.classList.contains("open") ? "true" : "false");
+    }
+
+    function suitPath(suit, cx, cy, scale) {
+      // Pixel-ish suit marks as SVG path groups centered at cx,cy
+      const s = scale;
+      if (suit === "spades") {
+        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
+          <path d="M0-14 L8-2 C12 4 8 10 0 8 C-8 10 -12 4 -8-2 Z"/>
+          <rect x="-2" y="6" width="4" height="8" rx="1"/>
+        </g>`;
+      }
+      if (suit === "hearts") {
+        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
+          <path d="M0 10 C-14 0 -12 -10 -6 -10 C-2 -10 0 -6 0 -4 C0 -6 2 -10 6 -10 C12 -10 14 0 0 10 Z"/>
+        </g>`;
+      }
+      if (suit === "clubs") {
+        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
+          <circle cx="0" cy="-8" r="5"/><circle cx="-7" cy="0" r="5"/><circle cx="7" cy="0" r="5"/>
+          <rect x="-2" y="2" width="4" height="10" rx="1"/>
+        </g>`;
+      }
+      if (suit === "diamonds") {
+        return `<g transform="translate(${cx},${cy}) scale(${s})" class="ink">
+          <path d="M0-12 L10 0 L0 12 L-10 0 Z"/>
+        </g>`;
+      }
+      return "";
+    }
+
+    function faceHat(rank) {
+      if (rank === "J") return `<g class="ink"><path d="M-9-1 L-9-7 L9-7 L9-1 Z" fill="none" stroke="#111" stroke-width="2"/><path d="M-7-7 L-3-13 L1-7 Z" fill="#111"/></g>`;
+      if (rank === "Q") return `<g><path d="M-8-2 L-4-12 L0-6 L4-12 L8-2 Z" fill="#fbbf24" stroke="#111" stroke-width="1"/></g>`;
+      if (rank === "K") return `<g><path d="M-10-1 L-6-14 L-2-6 L2-14 L6-6 L10-14 L10-1 Z" fill="#fbbf24" stroke="#111" stroke-width="1"/></g>`;
+      if (rank === "A") return `<g class="ink"><circle cx="-4" cy="-8" r="1.6" fill="#111"/><circle cx="4" cy="-8" r="1.6" fill="#111"/><path d="M-5-4 H5" stroke="#111" stroke-width="1.6" fill="none"/></g>`;
+      return "";
+    }
+
+    function wildFaceSvg() {
+      return `<g fill="#fff">
+        <rect x="-14" y="-10" width="10" height="10" rx="1"/>
+        <rect x="4" y="-10" width="10" height="10" rx="1"/>
+        <rect x="-10" y="-6" width="3" height="3" fill="#111"/>
+        <rect x="8" y="-6" width="3" height="3" fill="#111"/>
+        <path d="M-10 6 Q0 16 10 6" fill="#e11d48"/>
+        <rect x="-2" y="4" width="4" height="4" fill="#fff"/>
+      </g>`;
+    }
+
+    function hexCardSvg(card, tip, covers) {
+      covers = covers || {};
+      const wild = !!card.wild;
+      const suit = wild ? (tip && tip.chosenSuit) : card.suit;
+      const rank = wild ? "W" : labelRank(card.rank);
+      const blocked = tip && tip.blockTop;
+      const ink = wild ? "#fff" : (isRed(suit) ? "#c41e3a" : "#111");
+      const topSuit = suit || null;
+
+      let topMark = "";
+      if (!covers.top) {
+        if (blocked) {
+          topMark = `<text x="60" y="42" text-anchor="middle" font-size="18" font-weight="900" fill="#c41e3a">⊘</text>`;
+        } else if (wild && !topSuit) {
+          topMark = `<g transform="translate(60,38) scale(0.55)">${wildFaceSvg()}</g>`;
+        } else {
+          topMark = suitPath(topSuit || "spades", 60, 38, 0.85);
+        }
+      }
+
+      let faceBody = "";
+      if (!covers.face) {
+        faceBody = wild
+          ? `<g transform="translate(38,88)">${wildFaceSvg()}</g>`
+          : `${suitPath(suit, 38, 90, 1.15)}${isFace(card.rank) ? `<g transform="translate(38,68) scale(0.9)">${faceHat(card.rank)}</g>` : ""}`;
+      }
+
+      let sideBody = "";
+      if (!covers.side) {
+        sideBody = wild
+          ? `<text x="88" y="96" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="22" font-weight="800" fill="#fff">★</text>`
+          : `<text x="88" y="100" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="28" font-weight="800" fill="${ink}">${rank}</text>`;
+      }
+
+      const corner = (wild || covers.face) ? "" : `<text x="18" y="72" font-family="Fredoka,sans-serif" font-size="11" font-weight="800" fill="${ink}">${rank}</text>`;
+
+      const topFill = covers.top ? "#9ca3af" : (wild ? "#2aa3e0" : "#f3f4f6");
+      const faceFill = covers.face ? "#9ca3af" : (wild ? "#1a8fd0" : "#ffffff");
+      const sideFill = covers.side ? "#9ca3af" : (wild ? "#1578b0" : "#e8ecf0");
+
+      return `<svg viewBox="0 0 120 140" aria-hidden="true">
+        <polygon class="rim" points="60,14 112,44 112,96 60,126 8,96 8,44" fill="none"/>
+        <polygon class="top-fill" points="60,18 108,46 60,74 12,46" fill="${topFill}" stroke="#1a1a1a" stroke-width="1.5"/>
+        <polygon class="face-fill" points="12,46 60,74 60,122 12,94" fill="${faceFill}" stroke="#1a1a1a" stroke-width="1.5"/>
+        <polygon class="side-fill" points="60,74 108,46 108,94 60,122" fill="${sideFill}" stroke="#1a1a1a" stroke-width="1.5"/>
+        ${topMark}
+        ${faceBody}
+        ${corner}
+        ${sideBody}
+      </svg>`;
+    }
+
+    function makeHexEl(tag, card, tip, className, covers) {
+      const el = document.createElement(tag);
+      const red = !card.wild && isRed(card.suit);
+      el.className = className + (card.wild ? " wild" : "") + (red ? " red" : "");
+      el.innerHTML = hexCardSvg(card, tip, covers);
+      return el;
+    }
+
+    function clearPendingPlay() {
+      pendingCardId = null;
+      pendingOptions = null;
+      $("dir-pick").classList.remove("show");
+    }
+
+    function commitPlay(play) {
+      const g = state.game;
+      const me = g.players.find((p) => p.id === state.myId);
+      const card = me.hand.find((c) => c.id === play.cardId);
+      clearPendingPlay();
+      if (card && (card.wild || play.mode === "wild")) {
+        pendingWild = play;
+        $("suit-pick").classList.add("show");
+        return;
+      }
+      applyPlay(g, me, play, null);
+      sfx("play");
+      tipSelect = null;
+      renderAll();
+    }
+
+    function showDirPick(options) {
+      pendingOptions = options;
+      const grid = $("dir-grid");
+      grid.replaceChildren();
+      const labels = {
+        top: { arrow: "↑", title: "TOP — same suit" },
+        side: { arrow: "→", title: "SIDE — same rank" },
+        face: { arrow: "←", title: "FACE — same face" },
+        wild: { arrow: "★", title: "WILD — anywhere" },
+      };
+      options.forEach((opt) => {
+        const meta = labels[opt.mode] || { arrow: "·", title: opt.mode };
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.innerHTML = "<span class='arrow'>" + meta.arrow + "</span><span>" + meta.title + "</span>";
+        btn.onclick = () => commitPlay(opt);
+        grid.append(btn);
+      });
+      $("dir-pick").classList.add("show");
+    }
+
+    function renderStacc(g) {
+      const root = $("stacc");
+      const wrap = $("board-wrap");
+      root.replaceChildren();
+      const tipByPlaced = new Map();
+      g.tips.forEach((t) => {
+        if (t.active && t.placedId) tipByPlaced.set(t.placedId, t);
+      });
+
+      // Bounds so upward / sideways stacks stay inside scrollable space
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      const bump = (x, y) => {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + 92);
+        maxY = Math.max(maxY, y + 106);
+      };
+      g.placed.forEach((n) => bump(n.px, n.py));
+      if (pendingCardId && pendingOptions) {
+        pendingOptions.forEach((opt) => {
+          const tip = g.tips.find((t) => t.id === opt.tipId);
+          if (!tip) return;
+          const off = STACK_OFF[opt.mode] || STACK_OFF.top;
+          bump(tip.px + off.x, tip.py + off.y);
+        });
+      }
+        if (!isFinite(minX)) {
+        minX = origin.x; minY = origin.y; maxX = origin.x + 92; maxY = origin.y + 106;
+      }
+      const padX = 72;
+      const padY = 72;
+      const ox = padX - minX;
+      const oy = padY - minY;
+      root.style.width = Math.max(wrap.clientWidth || 320, maxX - minX + padX * 2) + "px";
+      root.style.height = Math.max(wrap.clientHeight || 240, maxY - minY + padY * 2) + "px";
+
+      g.placed.forEach((node, i) => {
+        const tip = tipByPlaced.get(node.id);
+        const covers = {
+          top: !!node.coverTop,
+          side: !!node.coverSide,
+          face: !!node.coverFace,
+        };
+        const isHot = !!tip;
+        const cls = "hex" + (isHot ? " tip-hot" : "") + (isHot && tipSelect === tip.id ? " on" : "");
+        const el = makeHexEl(isHot ? "button" : "div", node.card, tip || null, cls, covers);
+        if (isHot) {
+          el.type = "button";
+          el.title = "Active tip — tap to aim here";
+          el.onclick = (e) => {
+            e.stopPropagation();
+            tipSelect = tip.id;
+            if (pendingCardId) {
+              const opts = (pendingOptions || []).filter((o) => o.tipId === tip.id);
+              if (opts.length === 1) commitPlay(opts[0]);
+              else if (opts.length > 1) showDirPick(opts);
+              else renderAll();
+              return;
+            }
+            renderAll();
+          };
+        }
+        el.style.left = (node.px + ox) + "px";
+        el.style.top = (node.py + oy) + "px";
+        // Later plays always paint above earlier ones (covers TOP/SIDE/FACE correctly)
+        el.style.zIndex = String(10 + i + (isHot ? 5 : 0));
+        el.dataset.placed = String(i);
+        root.append(el);
+      });
+
+      if (pendingCardId && pendingOptions) {
+        const me = g.players.find((p) => p.id === state.myId);
+        const card = me && me.hand.find((c) => c.id === pendingCardId);
+        pendingOptions.forEach((opt) => {
+          const tip = g.tips.find((t) => t.id === opt.tipId);
+          if (!tip || !card) return;
+          const off = STACK_OFF[opt.mode] || STACK_OFF.top;
+          const slot = makeHexEl("button", card, null, "hex ghost");
+          slot.type = "button";
+          slot.style.left = (tip.px + off.x + ox) + "px";
+          slot.style.top = (tip.py + off.y + oy) + "px";
+          slot.style.zIndex = "5000";
+          const labels = { top: "↑ TOP", side: "→ SIDE", face: "← FACE", wild: "★ WILD" };
+          slot.title = labels[opt.mode] || opt.mode;
+          slot.onclick = () => commitPlay(opt);
+          root.append(slot);
+        });
+      }
+
+      // Keep the active tip (or newest card) in view; start near bottom-center
+      requestAnimationFrame(() => {
+        if (!wrap) return;
+        if (g.placed.length <= 1) {
+          wrap.scrollLeft = Math.max(0, (root.scrollWidth - wrap.clientWidth) / 2);
+          wrap.scrollTop = Math.max(0, root.scrollHeight - wrap.clientHeight);
+          return;
+        }
+        const focus =
+          root.querySelector(".hex.tip-hot.on") ||
+          root.querySelector(".hex.tip-hot") ||
+          root.querySelector(".hex.ghost") ||
+          root.lastElementChild;
+        if (!focus) return;
+        const fr = focus.getBoundingClientRect();
+        const wr = wrap.getBoundingClientRect();
+        const margin = 48;
+        let nextLeft = wrap.scrollLeft;
+        let nextTop = wrap.scrollTop;
+        if (fr.left < wr.left + margin) nextLeft -= wr.left + margin - fr.left;
+        if (fr.right > wr.right - margin) nextLeft += fr.right - (wr.right - margin);
+        if (fr.top < wr.top + margin + 36) nextTop -= wr.top + margin + 36 - fr.top;
+        if (fr.bottom > wr.bottom - margin) nextTop += fr.bottom - (wr.bottom - margin);
+        wrap.scrollTo({ left: Math.max(0, nextLeft), top: Math.max(0, nextTop), behavior: "smooth" });
+      });
+    }
+
+    function renderHand(g) {
+      const me = g.players.find((p) => p.id === state.myId);
+      const hand = $("hand");
+      hand.replaceChildren();
+      const myTurn = currentPlayer(g).id === state.myId && g.phase === "playing";
+      const legal = myTurn ? legalPlays(g, me) : [];
+      const legalIds = new Set(legal.map((p) => p.cardId));
+      $("btn-draw").disabled = !myTurn || state.chainRank != null || (legalIds.size > 0 && g.pendingDraw === 0);
+      $("btn-uhoh").disabled = !(me && me.hand.length === 2 && !me.calledUhOh);
+      $("btn-caught").disabled = !(g.catchTarget && g.catchTarget !== state.myId);
+      $("btn-end-chain").style.display = state.chainRank != null && myTurn ? "inline-flex" : "none";
+
+      for (const card of me.hand) {
+        const btn = makeHexEl("button", card, null, "hcard" + (legalIds.has(card.id) ? " legal" : ""));
+        btn.type = "button";
+        btn.disabled = !myTurn || !legalIds.has(card.id);
+        btn.onclick = () => onPlayCard(card.id);
+        hand.append(btn);
+      }
+    }
+
+    function renderAll() {
+      const g = state.game;
+      if (!g) return;
+      $("banner").textContent = g.banner;
+      renderSeats(g);
+      renderStacc(g);
+      renderHand(g);
+      if (g.phase === "end") {
+        showEnd(g);
+        return;
+      }
+      MG.showScreen("game");
+      maybeBot();
+    }
+
+    function showEnd(g) {
+      clearTimeout(botTimer);
+      const winner = g.players.find((p) => p.id === g.winnerId);
+      const youWin = g.winnerId === state.myId;
+      $("end-emoji").textContent = youWin ? "🏆" : "⭐";
+      $("end-title").textContent = winner ? winner.name + " wins!" : "Game over";
+      $("end-sub").textContent = "First empty hand takes the STACC.";
+      const box = $("end-scores");
+      box.replaceChildren();
+      g.players.slice().sort((a, b) => a.hand.length - b.hand.length).forEach((p) => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;justify-content:space-between;padding:8px 10px;background:#06243888;border-radius:10px;margin:6px 0;font-weight:700";
+        row.innerHTML = "<span>" + p.name + "</span><span>" + p.hand.length + " left</span>";
+        box.append(row);
+      });
+      sfx("win");
+      MG.showScreen("end");
+    }
+
+    function onPlayCard(cardId) {
+      const g = state.game;
+      const me = g.players.find((p) => p.id === state.myId);
+      if (currentPlayer(g).id !== state.myId) return;
+      let options = legalPlays(g, me).filter((p) => p.cardId === cardId);
+      if (!options.length) { sfx("bad"); return; }
+      if (tipSelect) {
+        const aimed = options.filter((p) => p.tipId === tipSelect);
+        if (aimed.length) options = aimed;
+      }
+      if (options.length === 1) {
+        commitPlay(options[0]);
+        return;
+      }
+      pendingCardId = cardId;
+      pendingOptions = options;
+      showDirPick(options);
+      renderAll();
+    }
+
+    function confirmWild(suit) {
+      $("suit-pick").classList.remove("show");
+      if (!pendingWild) return;
+      const g = state.game;
+      const me = g.players.find((p) => p.id === state.myId);
+      applyPlay(g, me, pendingWild, suit);
+      pendingWild = null;
+      sfx("play");
+      tipSelect = null;
+      clearPendingPlay();
+      renderAll();
+    }
+
+    function humanDraw() {
+      const g = state.game;
+      const me = currentPlayer(g);
+      if (me.id !== state.myId) return;
+      if (state.chainRank != null) return;
+      const legal = legalPlays(g, me);
+      if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        const stacked = legal.some((p) => me.hand.find((c) => c.id === p.cardId && c.rank === "K"));
+        if (stacked) {
+          toast("Play a King to stack, or you can take the draws");
+        }
+        drawCards(g, me, g.pendingDraw);
+        g.banner = me.name + " draws " + g.pendingDraw;
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        sfx("draw");
+        renderAll();
+        return;
+      }
+      if (legal.length) {
+        toast("You have a match — STACC IT");
+        sfx("bad");
+        return;
+      }
+      drawCards(g, me, 1);
+      g.banner = "You draw 1";
+      advanceTurn(g, 1);
+      sfx("draw");
+      renderAll();
+    }
+
+    function botAct() {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = currentPlayer(g);
+      if (!p.bot) return;
+
+      if (p.hand.length === 2 && !p.calledUhOh) p.calledUhOh = true;
+
+      if (g.pendingDraw > 0 && g.pendingKind === "K") {
+        const stack = legalPlays(g, p).find((lp) => {
+          const c = p.hand.find((h) => h.id === lp.cardId);
+          return c && c.rank === "K";
+        });
+        if (stack) {
+          applyPlay(g, p, stack, null);
+          renderAll();
+          return;
+        }
+        drawCards(g, p, g.pendingDraw);
+        g.banner = p.name + " draws " + g.pendingDraw;
+        g.pendingDraw = 0;
+        g.pendingKind = null;
+        renderAll();
+        return;
+      }
+
+      let legal = legalPlays(g, p);
+      if (!legal.length) {
+        drawCards(g, p, 1);
+        g.banner = p.name + " draws 1";
+        advanceTurn(g, 1);
+        renderAll();
+        return;
+      }
+      // prefer action cards, then wilds, then numbers
+      legal.sort((a, b) => {
+        const ca = p.hand.find((c) => c.id === a.cardId);
+        const cb = p.hand.find((c) => c.id === b.cardId);
+        const score = (c) => (c.wild ? 2 : isFace(c.rank) || c.rank === 0 ? 3 : 1);
+        return score(cb) - score(ca);
+      });
+      const play = legal[0];
+      const card = p.hand.find((c) => c.id === play.cardId);
+      let suit = null;
+      if (card.wild) {
+        const counts = Object.fromEntries(SUITS.map((s) => [s, 0]));
+        p.hand.forEach((c) => { if (c.suit) counts[c.suit]++; });
+        suit = SUITS.slice().sort((a, b) => counts[b] - counts[a])[0];
+      }
+      applyPlay(g, p, play, suit);
+      while (g.phase === "playing" && state.chainRank != null && currentPlayer(g).id === p.id) {
+        const more = legalPlays(g, p);
+        if (!more.length) {
+          state.chainRank = null;
+          finishTurn(g, {});
+          break;
+        }
+        applyPlay(g, p, more[0], null);
+      }
+      renderAll();
+    }
+
+    function maybeBot() {
+      clearTimeout(botTimer);
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = currentPlayer(g);
+      if (!p.bot) return;
+      botTimer = setTimeout(botAct, 650 + Math.random() * 400);
+    }
+
+    function startSolo() {
+      const name = MG.requireName();
+      if (!name) return;
+      state.myName = name;
+      localStorage.setItem("cubestacc-name", name);
+      state.myId = "host";
+      state.solo = true;
+      state.chainRank = null;
+      tipSelect = null;
+      clearPendingPlay();
+      pendingWild = null;
+      $("suit-pick").classList.remove("show");
+      $("players-menu").classList.remove("open");
+      const n = Math.max(1, Math.min(4, Number($("bot-count").value) || 2));
+      const people = [{ id: "host", name }];
+      for (let i = 0; i < n; i++) people.push({ id: "bot-" + i, name: BOT_NAMES[i], bot: true });
+      $("game-code").textContent = "SOLO";
+      MG.showScreen("game");
+      requestAnimationFrame(() => {
+        origin = boardOrigin();
+        state.game = createGame(people);
+        renderAll();
+      });
+    }
+
+    function goHome() {
+      clearTimeout(botTimer);
+      state.game = null;
+      state.chainRank = null;
+      pendingWild = null;
+      tipSelect = null;
+      clearPendingPlay();
+      $("suit-pick").classList.remove("show");
+      MG.showScreen("home");
+    }
+
+    MG.init({ nameKey: "cubestacc-name", hubHref: "index.html", maxPlayers: 5 });
+    MG.bindHome({
+      onCreate() { toast("Online rooms coming soon — try Practice solo"); },
+      onJoin() { toast("Online rooms coming soon — try Practice solo"); },
+      onSolo: startSolo,
+      onLeave: goHome,
+      onHome: goHome,
+      onAgain: startSolo,
+      onStart() {},
+      inviteUrl: () => location.href,
+    });
+    $("btn-leave-game").onclick = goHome;
+    $("btn-lobby-leave").onclick = goHome;
+    $("btn-draw").onclick = humanDraw;
+    $("btn-uhoh").onclick = () => {
+      const g = state.game;
+      const me = g.players.find((p) => p.id === state.myId);
+      if (!me || me.hand.length !== 2) return;
+      me.calledUhOh = true;
+      if (g.catchTarget === me.id) g.catchTarget = null;
+      g.banner = me.name + " — UH OH!";
+      toast("UH OH!");
+      renderAll();
+    };
+    $("btn-caught").onclick = () => {
+      const g = state.game;
+      if (!g.catchTarget) return;
+      const victim = g.players.find((p) => p.id === g.catchTarget);
+      if (!victim || victim.id === state.myId) return;
+      drawCards(g, victim, 3);
+      g.banner = victim.name + " caught! +3";
+      g.catchTarget = null;
+      victim.calledUhOh = false;
+      toast("Caught!");
+      sfx("bad");
+      renderAll();
+    };
+    $("btn-end-chain").onclick = () => {
+      const g = state.game;
+      if (!g || state.chainRank == null) return;
+      state.chainRank = null;
+      finishTurn(g, {});
+      renderAll();
+    };
+    document.querySelectorAll("#suit-pick [data-suit]").forEach((btn) => {
+      btn.onclick = () => confirmWild(btn.getAttribute("data-suit"));
+    });
+    $("btn-dir-cancel").onclick = () => {
+      clearPendingPlay();
+      renderAll();
+    };
+    $("btn-players").onclick = (e) => {
+      e.stopPropagation();
+      $("players-menu").classList.toggle("open");
+      $("btn-players").setAttribute("aria-expanded", $("players-menu").classList.contains("open") ? "true" : "false");
+    };
+    document.addEventListener("click", () => {
+      const menu = $("players-menu");
+      if (menu) menu.classList.remove("open");
+    });
+    $("players-menu").onclick = (e) => e.stopPropagation();
+
+    // Drag / touch pan the board when stacks grow off-screen
+    (function bindBoardPan() {
+      const wrap = $("board-wrap");
+      if (!wrap) return;
+      const pan = { on: false, moved: false, x: 0, y: 0, sl: 0, st: 0, id: 0 };
+      wrap.addEventListener("pointerdown", (e) => {
+        if (e.button != null && e.button !== 0) return;
+        if (e.target.closest(".hex.tip-hot, .hex.ghost, .hcard, button.hex")) return;
+        pan.on = true;
+        pan.moved = false;
+        pan.x = e.clientX;
+        pan.y = e.clientY;
+        pan.sl = wrap.scrollLeft;
+        pan.st = wrap.scrollTop;
+        pan.id = e.pointerId;
+        try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+        wrap.classList.add("panning");
+      });
+      wrap.addEventListener("pointermove", (e) => {
+        if (!pan.on || e.pointerId !== pan.id) return;
+        const dx = e.clientX - pan.x;
+        const dy = e.clientY - pan.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) pan.moved = true;
+        wrap.scrollLeft = pan.sl - dx;
+        wrap.scrollTop = pan.st - dy;
+      });
+      const endPan = (e) => {
+        if (!pan.on || (e && e.pointerId !== pan.id)) return;
+        pan.on = false;
+        wrap.classList.remove("panning");
+        try { wrap.releasePointerCapture(pan.id); } catch (err) {}
+      };
+      wrap.addEventListener("pointerup", endPan);
+      wrap.addEventListener("pointercancel", endPan);
+    })();
+
+    $("btn-mute").onclick = () => {
+      muted = !muted;
+      $("btn-mute").textContent = muted ? "🔇" : "🔊";
+    };
+    function applyTheme(mode) {
+      document.body.classList.toggle("dark", mode === "dark");
+      try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+    }
+    $("btn-theme").onclick = () => applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
+    applyTheme(localStorage.getItem(THEME_KEY) || "light");
+    document.documentElement.classList.remove("booting");
+  </script>
+</body>
+</html>

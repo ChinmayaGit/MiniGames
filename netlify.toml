@@ -37,3 +37,13 @@
   from = "/UnoFlip.html"
   to = "/unoflip.html"
   status = 200
+
+[[redirects]]
+  from = "/cubestacc"
+  to = "/Cubestacc.html"
+  status = 200
+
+[[redirects]]
+  from = "/cubestacc.html"
+  to = "/Cubestacc.html"
+  status = 200

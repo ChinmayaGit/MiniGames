@@ -14,9 +14,10 @@ The hub is [index.html](index.html): a grid of every title. Open that first, or 
 | **Dobble** | Playable | [Dobble.html](Dobble.html) |
 | **Uno** | Playable | [Uno.html](Uno.html) |
 | **Uno Flip** | Playable | [unoflip.html](unoflip.html) |
+| **Cubestacc** | Solo vs bots | [Cubestacc.html](Cubestacc.html) |
 | More minigames | Coming soon | — |
 
-How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
+How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md) · [Cubestacc.md](Cubestacc.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
 
 ---
 
@@ -121,12 +122,23 @@ Everyone must open the **same** `unoflip.html` page (Uno rooms do not mix with F
 
 ---
 
+## How to play Cubestacc
+
+Open [Cubestacc.html](Cubestacc.html). Solo vs bots is ready; online rooms come later.
+
+Match **suit** (TOP), **rank** (SIDE), or **face** (FACE) onto the shared cube STACC. First empty hand wins. At two cards, tap **UH OH!** before going to one — or get Caught for +3.
+
+Specials: J +1 · Q skip · K +2 (stackable) · A extra turn · 0 reverse + block top · Wild picks suit. Full notes: [Cubestacc.md](Cubestacc.md). Inspired by STACCS; not affiliated with STICCY.
+
+---
+
 ## Coming soon
 
 More one-file minigames will land in this folder. Each will get its own `.html` page and a short how-to, same pattern as Dobble and Uno.
 
 Ideas on the list (not built yet):
 
+- Online Cubestacc rooms
 - Party / reaction games
 - Short cooperative puzzles
 
