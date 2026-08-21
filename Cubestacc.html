@@ -1686,21 +1686,22 @@
 
     /**
      * 1) Higher stack level in front
-     * 2) Children (face/side/top) in front of their parent — so J♦ left of J♥ stays visible
-     * 3) Then screen depth / extremity
+     * 2) Children in front of their parent (face/side/top)
+     * 3) Isometric depth: right/forward (larger px/py) in front of left/back
+     *    so 4♥ above 9♥ stays behind 8♦ on the right branch
      */
     function paintScore(node, isHot, playIndex, byId, center) {
       const kids = childCount(node.id, byId);
       const covers = (node.coverTop ? 1 : 0) + (node.coverSide ? 1 : 0) + (node.coverFace ? 1 : 0);
       const height = cellHeight(node, byId);
       const depth = ancestryDepth(node, byId);
-      const dx = node.px - center.x;
-      const tipBoost = (isHot && kids === 0) ? 40 : 0;
+      const tipBoost = (isHot && kids === 0) ? 30 : 0;
+      // Camera from bottom-front: lower-right reads closer than upper-left
+      const iso = node.px * 8 + node.py * 10;
       return (
         height * 100000
         + depth * 1000
-        + node.py * 2
-        + Math.abs(dx) * 40
+        + iso
         + tipBoost
         - covers * 15
         - kids * 10
