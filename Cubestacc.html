@@ -211,13 +211,27 @@
     .board-wrap::-webkit-scrollbar-thumb { background: #5a4030; border-radius: 8px; }
     .board-legend {
       position: sticky; top: 0; z-index: 9000;
-      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
       padding: 6px; font-size: 10px; font-weight: 700; color: #f5e6d3;
       background: #120c08cc; backdrop-filter: blur(4px);
     }
     .board-legend span {
       display: inline-flex; align-items: center; gap: 4px;
       background: #2a1810; border-radius: 999px; padding: 3px 7px;
+    }
+    .view-rot {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #2a1810; border-radius: 999px; padding: 2px 4px 2px 8px;
+    }
+    .view-rot button {
+      width: 28px; height: 28px; border: 1px solid #5a4030; border-radius: 50%;
+      background: #3a2418; color: #f5e6d3; font-size: 16px; line-height: 1;
+      cursor: pointer; padding: 0;
+    }
+    .view-rot button:active { background: #5a4030; }
+    .view-rot b {
+      font-size: 10px; font-weight: 700; min-width: 2.2em; text-align: center;
+      font-variant-numeric: tabular-nums;
     }
     .stacc { position: relative; isolation: isolate; }
     .hex {
@@ -235,6 +249,7 @@
     /* Buried cubes fade so active tips read clearly */
     .hex.buried {
       opacity: 0.78;
+      pointer-events: none;
     }
     .hex.buried svg {
       filter: drop-shadow(2px 4px 0 #00000044) saturate(0.85) brightness(0.94);
@@ -247,8 +262,8 @@
     }
     .hex.tip-hot {
       cursor: pointer;
-      transform: scale(1.08);
-      transform-origin: 50% 55%;
+      transform: scale(1.04);
+      transform-origin: 50% 50%;
     }
     .hex.tip-hot svg {
       filter:
@@ -257,7 +272,7 @@
         drop-shadow(4px 7px 0 #00000066);
     }
     .hex.tip-hot.on {
-      transform: scale(1.12);
+      transform: scale(1.07);
     }
     .hex.tip-hot.on svg {
       filter:
@@ -686,7 +701,7 @@
     <div class="panel">
       <label for="name">Your name</label>
       <input id="name" maxlength="16" placeholder="Player" autocomplete="nickname" />
-      <div class="row" style="margin-top:8px">
+      <div class="row" id="solo-home-row" style="margin-top:8px">
         <div>
           <label for="bot-count">Practice vs bots</label>
           <select id="bot-count">
@@ -699,7 +714,7 @@
       </div>
       <button class="btn yellow" id="btn-solo" type="button">Practice solo</button>
       <button class="btn ghost" id="btn-create" type="button">Create room</button>
-      <div class="row">
+      <div class="row" id="join-home-row">
         <div>
           <label for="join-code">Join code</label>
           <input id="join-code" maxlength="4" placeholder="ABCD" autocomplete="off" />
@@ -709,17 +724,20 @@
           <button class="btn teal" id="btn-join" type="button">Join</button>
         </div>
       </div>
+      <button class="btn ghost" id="btn-invite-leave" type="button" style="display:none;margin-top:10px">Leave this invite</button>
       <div class="error" id="home-error"></div>
       <div class="join-status" id="join-status">
         <span id="join-status-text"></span>
         <div class="join-bar"><i></i></div>
       </div>
-      <p class="hint">Create a room and share the code, or practice solo vs bots. Host must keep their tab open.</p>
+      <p class="hint" id="home-hint">Create a room and share the code, or practice solo vs bots. Host must keep their tab open.</p>
       <div class="rules-box">
         <b style="color:var(--ink)">Quick rules</b><br />
         Same suit → stack on TOP · Same rank → SIDE · Same face (J/J, Q/Q…) → FACE.<br />
         J +1 draw · Q skip · K +2 (stackable) · A extra turn · 0 reverse + block top · Wild picks suit.<br />
-        At 1 card, tap <b>UH OH!</b> or get Caught for +3.
+        <b>Draw:</b> no match → take <b>1</b>. After <b>K</b>s → take the whole stack (2, 4, 6…). Button shows <b>Draw N</b>. Caught → <b>+3</b>.<br />
+        A slot is blocked only if that exact cell is already filled (screen overlap alone does not block).<br />
+        At 2 cards, tap <b>UH OH!</b> before going to 1, or get Caught.
       </div>
     </div>
   </div>
@@ -776,6 +794,11 @@
             <span>→ rank</span>
             <span>← face</span>
             <span class="hide-sm">Drag to pan</span>
+            <div class="view-rot" title="Rotate board view to see cubes hiding behind">
+              <button type="button" id="btn-rot-ccw" aria-label="Rotate view left">↺</button>
+              <b id="rot-label">0°</b>
+              <button type="button" id="btn-rot-cw" aria-label="Rotate view right">↻</button>
+            </div>
           </div>
           <div class="stacc" id="stacc"></div>
         </div>
@@ -836,9 +859,12 @@
         <ul>
           <li><b>↑</b> same suit · <b>→</b> same rank · <b>←</b> same face</li>
           <li>Drag a glowing hand cube onto a tip, or tap</li>
+          <li>Use <b>↺ ↻</b> to rotate the view if a cube is hidden</li>
           <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
-          <li>No match → <b>Draw</b> (turn ends)</li>
-          <li>At 2 cards → <b>UH OH!</b> or get <b>Caught</b> (+3)</li>
+          <li><b>Draw</b> = 1 if no match; after <b>K</b>s take the full stack (2/4/6…) — button shows the number</li>
+          <li>Blocked only if that exact cell is already filled</li>
+          <li><b>J</b> → next draws 1 then plays · <b>Caught</b> → +3</li>
+          <li>At 2 cards → <b>UH OH!</b> before going to 1</li>
         </ul>
       </div>
     </details>
@@ -888,6 +914,8 @@
       face: { x: -0.6, y: 0.32 },
     };
     let origin = { x: 0, y: 0 };
+    /** Local camera yaw in 90° steps (0–3). Does not change game rules. */
+    let viewRot = 0;
 
     function isMobileUi() {
       return window.matchMedia("(max-width: 767px)").matches;
@@ -914,9 +942,72 @@
       return { w, h };
     }
 
+    function negOff(v) {
+      return { x: -v.x, y: -v.y };
+    }
+
+    /** Top stays up; side/face orbit so you can peek around the stack. */
+    function stackOffRatio(mode) {
+      const T = STACK_OFF_RATIO.top;
+      const S = STACK_OFF_RATIO.side;
+      const F = STACK_OFF_RATIO.face;
+      const tables = [
+        { top: T, wild: T, side: S, face: F },
+        { top: T, wild: T, side: F, face: negOff(S) },
+        { top: T, wild: T, side: negOff(S), face: negOff(F) },
+        { top: T, wild: T, side: negOff(F), face: S },
+      ];
+      const table = tables[viewRot & 3];
+      return table[mode] || T;
+    }
+
     function stackOff(mode, metrics) {
-      const r = STACK_OFF_RATIO[mode] || STACK_OFF_RATIO.top;
+      const r = stackOffRatio(mode);
       return { x: Math.round(r.x * metrics.w), y: Math.round(r.y * metrics.h) };
+    }
+
+    function syncRotLabel() {
+      if ($("rot-label")) $("rot-label").textContent = ((viewRot & 3) * 90) + "°";
+    }
+
+    function setViewRot(next) {
+      viewRot = ((next % 4) + 4) % 4;
+      syncRotLabel();
+      if (state.game) {
+        reflowBoard(state.game);
+        renderAll();
+      }
+    }
+
+    /** Rebuild px/py from parent links + current view rotation. */
+    function reflowBoard(g) {
+      if (!g || !g.placed || !g.placed.length) return;
+      const metrics = hexMetrics();
+      const byId = new Map(g.placed.map((n) => [n.id, n]));
+      const memo = new Map();
+      const posOf = (node) => {
+        if (!node) return { x: origin.x, y: origin.y };
+        if (memo.has(node.id)) return memo.get(node.id);
+        let p;
+        if (!node.parentId || node.mode === "start" || !byId.has(node.parentId)) {
+          p = { x: origin.x, y: origin.y };
+        } else {
+          const par = posOf(byId.get(node.parentId));
+          const off = stackOff(node.mode, metrics);
+          p = { x: par.x + off.x, y: par.y + off.y };
+        }
+        memo.set(node.id, p);
+        node.px = p.x;
+        node.py = p.y;
+        return p;
+      };
+      g.placed.forEach((n) => posOf(n));
+      (g.tips || []).forEach((t) => {
+        if (!t.placedId || !byId.has(t.placedId)) return;
+        const p = posOf(byId.get(t.placedId));
+        t.px = p.x;
+        t.py = p.y;
+      });
     }
 
     const state = {
@@ -1035,6 +1126,7 @@
         px: origin.x,
         py: origin.y,
         mode: "start",
+        parentId: null,
         coverTop: false,
         coverSide: false,
         coverFace: false,
@@ -1081,13 +1173,77 @@
       return modes;
     }
 
+    /** Where a play would land in board pixels (current view). */
+    function slotPos(tip, mode, metrics) {
+      const off = stackOff(mode, metrics);
+      return { px: tip.px + off.x, py: tip.py + off.y };
+    }
+
+    function modeCellDelta(mode) {
+      if (mode === "top" || mode === "wild") return { x: 0, y: 1, z: 0 };
+      if (mode === "side") return { x: 1, y: 0, z: 0 };
+      if (mode === "face") return { x: 0, y: 0, z: 1 };
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    /** Discrete STACC cell from parent chain (not screen overlap). */
+    function cellKeyOfNode(node, byId) {
+      const chain = [];
+      let cur = node;
+      const seen = new Set();
+      while (cur && !seen.has(cur.id)) {
+        seen.add(cur.id);
+        chain.push(cur);
+        cur = cur.parentId ? byId.get(cur.parentId) : null;
+      }
+      let x = 0;
+      let y = 0;
+      let z = 0;
+      for (let i = chain.length - 1; i >= 0; i--) {
+        const d = modeCellDelta(chain[i].mode);
+        x += d.x;
+        y += d.y;
+        z += d.z;
+      }
+      return x + "," + y + "," + z;
+    }
+
+    function cellKeyOfPlay(tip, mode, byId) {
+      const parent = tip.placedId ? byId.get(tip.placedId) : null;
+      let x = 0;
+      let y = 0;
+      let z = 0;
+      if (parent) {
+        const parts = cellKeyOfNode(parent, byId).split(",");
+        x = Number(parts[0]) || 0;
+        y = Number(parts[1]) || 0;
+        z = Number(parts[2]) || 0;
+      }
+      const d = modeCellDelta(mode);
+      return (x + d.x) + "," + (y + d.y) + "," + (z + d.z);
+    }
+
+    /**
+     * Only the same 3D stack cell is blocked.
+     * Screen-overlap with a neighbor tip (e.g. 0♥ near top-of-9♦) does NOT block a match.
+     */
+    function slotOccupied(g, tip, mode) {
+      const byId = new Map(g.placed.map((n) => [n.id, n]));
+      const want = cellKeyOfPlay(tip, mode, byId);
+      for (const n of g.placed) {
+        if (cellKeyOfNode(n, byId) === want) return true;
+      }
+      return false;
+    }
+
     function legalPlays(g, player) {
+      reflowBoard(g);
       const out = [];
       for (const card of player.hand) {
         if (g.pendingDraw > 0) {
           if (g.pendingKind === "K" && card.rank === "K") {
             for (const tip of g.tips) {
-              const m = modesFor(card, tip);
+              const m = modesFor(card, tip).filter((mode) => !slotOccupied(g, tip, mode));
               if (m.length) out.push({ cardId: card.id, tipId: tip.id, mode: m.includes("face") ? "face" : m[0] });
             }
           }
@@ -1096,6 +1252,7 @@
         if (state.chainRank != null && card.rank !== state.chainRank) continue;
         for (const tip of g.tips) {
           for (const mode of modesFor(card, tip)) {
+            if (slotOccupied(g, tip, mode)) continue;
             out.push({ cardId: card.id, tipId: tip.id, mode });
           }
         }
@@ -1137,6 +1294,7 @@
         px,
         py,
         mode,
+        parentId: parent ? parent.id : null,
         coverTop: false,
         coverSide: false,
         coverFace: false,
@@ -1155,6 +1313,7 @@
       } else if (!modes.includes(play.mode) && !(card.wild && play.mode === "wild")) {
         return false;
       }
+      if (slotOccupied(g, tip, play.mode)) return false;
 
       player.hand = player.hand.filter((c) => c.id !== card.id);
       const node = placeOnBoard(g, card, tip, play.mode);
@@ -1229,7 +1388,9 @@
 
       const canChain = !card.wild && !extra && !skip && player.hand.some((c) => {
         if (c.rank !== card.rank) return false;
-        return g.tips.some((t) => modesFor(c, t).length);
+        return g.tips.some((t) =>
+          modesFor(c, t).some((mode) => !slotOccupied(g, t, mode))
+        );
       });
       if (canChain) {
         state.chainRank = card.rank;
@@ -1500,10 +1661,58 @@
       $("dir-pick").classList.add("show");
     }
 
+    function childCount(nodeId, byId) {
+      let n = 0;
+      byId.forEach((p) => { if (p.parentId === nodeId) n += 1; });
+      return n;
+    }
+
+    function cellHeight(node, byId) {
+      const parts = cellKeyOfNode(node, byId).split(",");
+      return Number(parts[1]) || 0;
+    }
+
+    function ancestryDepth(node, byId) {
+      let d = 0;
+      let cur = node;
+      const seen = new Set();
+      while (cur && cur.parentId && !seen.has(cur.id)) {
+        seen.add(cur.id);
+        d += 1;
+        cur = byId.get(cur.parentId);
+      }
+      return d;
+    }
+
+    /**
+     * 1) Higher stack level in front
+     * 2) Children (face/side/top) in front of their parent — so J♦ left of J♥ stays visible
+     * 3) Then screen depth / extremity
+     */
+    function paintScore(node, isHot, playIndex, byId, center) {
+      const kids = childCount(node.id, byId);
+      const covers = (node.coverTop ? 1 : 0) + (node.coverSide ? 1 : 0) + (node.coverFace ? 1 : 0);
+      const height = cellHeight(node, byId);
+      const depth = ancestryDepth(node, byId);
+      const dx = node.px - center.x;
+      const tipBoost = (isHot && kids === 0) ? 40 : 0;
+      return (
+        height * 100000
+        + depth * 1000
+        + node.py * 2
+        + Math.abs(dx) * 40
+        + tipBoost
+        - covers * 15
+        - kids * 10
+        + playIndex * 0.001
+      );
+    }
+
     function renderStacc(g) {
       const root = $("stacc");
       const wrap = $("board-wrap");
       root.replaceChildren();
+      reflowBoard(g);
       const metrics = hexMetrics();
       const tipByPlaced = new Map();
       g.tips.forEach((t) => {
@@ -1552,14 +1761,30 @@
       root.style.width = contentW + "px";
       root.style.height = contentH + "px";
 
-      g.placed.forEach((node, i) => {
+      const byId = new Map(g.placed.map((n) => [n.id, n]));
+      let sx = 0;
+      let sy = 0;
+      g.placed.forEach((n) => { sx += n.px; sy += n.py; });
+      const center = g.placed.length
+        ? { x: sx / g.placed.length, y: sy / g.placed.length }
+        : { x: 0, y: 0 };
+
+      const paintOrder = g.placed
+        .map((node, i) => {
+          const isHot = tipByPlaced.has(node.id);
+          return { node, i, isHot, score: paintScore(node, isHot, i, byId, center) };
+        })
+        .sort((a, b) => a.score - b.score || a.i - b.i);
+
+      paintOrder.forEach((item, order) => {
+        const node = item.node;
         const tip = tipByPlaced.get(node.id);
         const covers = {
           top: !!node.coverTop,
           side: !!node.coverSide,
           face: !!node.coverFace,
         };
-        const isHot = !!tip;
+        const isHot = item.isHot;
         const fullyCovered = covers.top && covers.side && covers.face;
         const cls = "hex"
           + (isHot ? " tip-hot" : " buried")
@@ -1584,9 +1809,8 @@
         }
         el.style.left = (node.px + ox) + "px";
         el.style.top = (node.py + oy) + "px";
-        // Later plays always above earlier — never boost tips above newer cards
-        el.style.zIndex = String(100 + i);
-        el.dataset.placed = String(i);
+        el.style.zIndex = String(100 + order);
+        el.dataset.placed = String(item.i);
         if (tip) el.dataset.tipId = tip.id;
         root.append(el);
       });
@@ -1874,7 +2098,16 @@
       const myTurn = currentPlayer(g).id === state.myId && g.phase === "playing";
       const legal = myTurn ? legalPlays(g, me) : [];
       const legalIds = new Set(legal.map((p) => p.cardId));
-      $("btn-draw").disabled = !myTurn || state.chainRank != null || (legalIds.size > 0 && g.pendingDraw === 0);
+      const pendingK = g.pendingDraw > 0 && g.pendingKind === "K";
+      const drawBtn = $("btn-draw");
+      drawBtn.disabled = !myTurn || state.chainRank != null || (legalIds.size > 0 && !pendingK);
+      if (pendingK && myTurn) {
+        drawBtn.textContent = "Draw " + g.pendingDraw;
+        drawBtn.title = "Take the stacked King penalty (" + g.pendingDraw + " cards), or play a King to stack more";
+      } else {
+        drawBtn.textContent = "Draw";
+        drawBtn.title = "No match? Draw 1 and end your turn";
+      }
       $("btn-uhoh").disabled = !(me && me.hand.length === 2 && !me.calledUhOh);
       $("btn-caught").disabled = !(g.catchTarget && g.catchTarget !== state.myId);
 
@@ -2154,6 +2387,7 @@
           px: n.px,
           py: n.py,
           mode: n.mode,
+          parentId: n.parentId || null,
           coverTop: !!n.coverTop,
           coverSide: !!n.coverSide,
           coverFace: !!n.coverFace,
@@ -2578,6 +2812,8 @@
       $("suit-pick").classList.remove("show");
       syncUiMode();
       document.documentElement.style.setProperty("--mg-zoom", "1");
+      viewRot = 0;
+      syncRotLabel();
       MG.showScreen("game");
       const waitBoard = (tries) => {
         const wrap = $("board-wrap");
@@ -2630,6 +2866,8 @@
       $("game-code").textContent = "SOLO";
       syncUiMode();
       document.documentElement.style.setProperty("--mg-zoom", "1");
+      viewRot = 0;
+      syncRotLabel();
       MG.showScreen("game");
       const waitBoard = (tries) => {
         const wrap = $("board-wrap");
@@ -2650,6 +2888,26 @@
         requestAnimationFrame(() => waitBoard(tries - 1));
       };
       requestAnimationFrame(() => waitBoard(30));
+    }
+
+    function setInviteHome(code) {
+      const invite = !!(code && String(code).length === 4);
+      if ($("btn-create")) $("btn-create").style.display = invite ? "none" : "";
+      if ($("solo-home-row")) $("solo-home-row").style.display = invite ? "none" : "";
+      if ($("btn-solo")) $("btn-solo").style.display = invite ? "none" : "";
+      if ($("btn-invite-leave")) $("btn-invite-leave").style.display = invite ? "" : "none";
+      if ($("join-code")) {
+        const wrap = $("join-code").closest("div");
+        if (wrap) wrap.style.display = invite ? "none" : "";
+      }
+      if ($("btn-join")) {
+        $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join";
+      }
+      if ($("home-hint")) {
+        $("home-hint").textContent = invite
+          ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
+          : "Create a room and share the code, or practice solo vs bots. Host must keep their tab open.";
+      }
     }
 
     function goHome() {
@@ -2674,6 +2932,8 @@
       document.body.style.height = "";
       document.body.style.overflow = "";
       MG.stripRoomFromUrl();
+      setInviteHome("");
+      if ($("join-code")) $("join-code").value = "";
       MG.setJoinStatus("", "");
       if ($("btn-join")) $("btn-join").disabled = false;
       MG.hideWarmup();
@@ -2843,6 +3103,15 @@
       muted = !muted;
       $("btn-mute").textContent = muted ? "🔇" : "🔊";
     };
+    if ($("btn-rot-cw")) $("btn-rot-cw").onclick = (e) => {
+      e.stopPropagation();
+      setViewRot(viewRot + 1);
+    };
+    if ($("btn-rot-ccw")) $("btn-rot-ccw").onclick = (e) => {
+      e.stopPropagation();
+      setViewRot(viewRot - 1);
+    };
+    syncRotLabel();
     function applyTheme(mode) {
       const dark = mode === "dark";
       document.body.classList.toggle("dark", dark);
@@ -2863,6 +3132,7 @@
       const roomParam = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (roomParam.length === 4) {
         if ($("join-code")) $("join-code").value = roomParam;
+        setInviteHome(roomParam);
         setTimeout(() => joinRoom(roomParam), 200);
       }
     } catch (e) {}

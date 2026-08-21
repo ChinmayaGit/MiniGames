@@ -29,7 +29,9 @@ Same pattern as Uno / Dobble: **no server**. The host browser is the room (`cube
 | Attach sides | **↑ TOP** same suit · **→ SIDE** same rank · **← FACE** same face (J/J, Q/Q…) |
 | Pan board | Drag empty wood |
 | Same-rank dump | After a play, if you still have that **same rank** legal, keep playing; tap **Done** to end your turn |
-| No match | **Draw** — take 1, turn ends (drawn card not playable same turn) |
+| No match | **Draw** — take **1**, turn ends (drawn card not playable same turn) |
+| King penalty | After **K** (stackable +2 each), **Draw** takes the **whole stack** (2, 4, 6…). Button shows **Draw N** |
+| Jack | Next player auto-draws **1**, then still takes their turn |
 | UH OH! | At **2** cards left, tap before going to 1 |
 | Caught | If someone reaches 1 without UH OH!, tap **Caught** → they draw **3** |
 
@@ -70,6 +72,16 @@ First player to play every card in their hand wins.
 2. If not → **draw 1**, then turn ends (drawn card is **not** playable that same turn).  
 3. Next player.
 
+### Draw button (this build)
+
+| Situation | Cards you get |
+| --- | --- |
+| No legal match | **1**, then turn ends |
+| Pending **K** stack | The **full penalty** — each K adds **+2** → 2, 4, 6, 8… (button label **Draw N**) |
+| Play a **K** yourself while a stack is pending | Stack more (+2); don’t take the draws yet |
+| **J** on you | Auto **+1**, then you still play (not via Draw) |
+| **Caught** | **+3** (Caught button, not Draw) |
+
 ## Matching (3D)
 
 Treat each card as a cube with **TOP**, **FACE**, **SIDE**:
@@ -84,7 +96,7 @@ Treat each card as a cube with **TOP**, **FACE**, **SIDE**:
 
 **Zero:** when played, that tip’s **TOP is blocked** (no suit-stack on it). Zero also **reverses** turn order (public sources).
 
-**Adjacency (simplified digital rule):** a play must match the chosen tip; tight two-neighbor “must match both” slots from physical play are approximated by tip-based legal moves so the browser game stays clear.
+**Adjacency / blocked slots:** a play must match the tip. A slot is blocked only if that **exact stack cell** is already filled (same TOP/SIDE/FACE address). Neighbor cubes that only overlap on screen do **not** block the match.
 
 ### Same-rank dump (Done)
 
