@@ -857,7 +857,8 @@
       <div class="help-panel">
         <b>Quick guide</b>
         <ul>
-          <li><b>↑</b> same suit · <b>→</b> same rank · <b>←</b> same face</li>
+          <li><b>↑</b> same suit · <b>→</b> same rank (down-right) · <b>←</b> same face</li>
+          <li>Topping a cube still leaves its side/face open for matches</li>
           <li>Drag a glowing hand cube onto a tip, or tap</li>
           <li>Use <b>↺ ↻</b> to rotate the view if a cube is hidden</li>
           <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
@@ -1236,8 +1237,57 @@
       return false;
     }
 
-    function legalPlays(g, player) {
+    /**
+     * Any cube with an open TOP/SIDE/FACE stays a tip.
+     * Repairs older games where ↑ TOP wiped the whole tip (blocked 3♣ on buried 3♦).
+     */
+    function ensureOpenTips(g) {
+      if (!g || !g.placed) return;
       reflowBoard(g);
+      const byPlaced = new Map();
+      (g.tips || []).forEach((t) => {
+        if (t.placedId) byPlaced.set(t.placedId, t);
+      });
+      const next = [];
+      const seen = new Set();
+      g.placed.forEach((node) => {
+        const blockTop = !!node.coverTop || node.card.rank === 0;
+        const blockSide = !!node.coverSide;
+        const blockFace = !!node.coverFace;
+        if (blockTop && blockSide && blockFace) {
+          const old = byPlaced.get(node.id);
+          if (old) old.active = false;
+          return;
+        }
+        let tip = byPlaced.get(node.id);
+        if (tip) {
+          tip.active = true;
+          tip.blockTop = blockTop;
+          tip.blockSide = blockSide;
+          tip.blockFace = blockFace;
+          tip.px = node.px;
+          tip.py = node.py;
+        } else {
+          tip = makeTip(node.card, {
+            px: node.px,
+            py: node.py,
+            placedId: node.id,
+            blockTop,
+            blockSide,
+            blockFace,
+            chosenSuit: node.card.wild ? (SUITS[0]) : null,
+          });
+        }
+        if (seen.has(node.id)) return;
+        seen.add(node.id);
+        next.push(tip);
+      });
+      // Keep any active tips that aren't tied to placed (shouldn't happen) 
+      g.tips = next;
+    }
+
+    function legalPlays(g, player) {
+      ensureOpenTips(g);
       const out = [];
       for (const card of player.hand) {
         if (g.pendingDraw > 0) {
@@ -1330,12 +1380,15 @@
         g.banner = player.name + " wild → " + SUIT_MARK[chosenSuit || SUITS[0]];
       } else if (play.mode === "top") {
         tip.blockTop = true;
-        tip.active = false;
-        g.tips = g.tips.filter((t) => t.active).concat([makeTip(card, {
+        // Keep tip alive for open SIDE/FACE (e.g. 3♦ still accepts 3♣ → after 0♦ ↑)
+        if (tip.blockTop && tip.blockSide && tip.blockFace) tip.active = false;
+        const nextTips = g.tips.filter((t) => t.active);
+        nextTips.push(makeTip(card, {
           px: node.px,
           py: node.py,
           placedId: node.id,
-        })]);
+        }));
+        g.tips = nextTips;
         g.banner = player.name + " ↑ TOP " + SUIT_MARK[card.suit];
       } else if (play.mode === "side") {
         tip.blockSide = true;
@@ -1713,7 +1766,7 @@
       const root = $("stacc");
       const wrap = $("board-wrap");
       root.replaceChildren();
-      reflowBoard(g);
+      ensureOpenTips(g);
       const metrics = hexMetrics();
       const tipByPlaced = new Map();
       g.tips.forEach((t) => {

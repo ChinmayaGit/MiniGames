@@ -88,9 +88,11 @@ Treat each card as a cube with **TOP**, **FACE**, **SIDE**:
 
 | Match | Attach on | Rule |
 | --- | --- | --- |
-| Same **suit** | **TOP** | Official (PDF) |
-| Same **rank** | **SIDE** | Public rules |
-| Same **face** (both J, or both Q, …) | **FACE** | Public rules |
+| Same **suit** | **TOP** (↑) | Official (PDF) |
+| Same **rank** | **SIDE** (→ / down-right on screen) | Public rules |
+| Same **face** (both J, or both Q, …) | **FACE** (←) | Public rules |
+
+Stacking **↑ TOP** only closes that tip’s top. Its **SIDE / FACE** stay open until used (so after **0♦** on **3♦**, you can still play another **3** → SIDE).
 
 **Wild:** may attach to any open tip, then **rotates** the active build: older tips stay visible but are no longer legal; caller **chooses the suit** for the new tip.
 
