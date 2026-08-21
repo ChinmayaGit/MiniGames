@@ -133,10 +133,150 @@
       font-weight: 600;
     }
 
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .toolbar .label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .view-toggle {
+      display: inline-flex;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0c0a0c;
+    }
+    .view-toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .view-toggle button[aria-pressed="true"] {
+      background: var(--gold);
+      color: #111;
+    }
+    .view-toggle button:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+    .view-ico {
+      width: 14px;
+      height: 14px;
+      display: inline-grid;
+      gap: 2px;
+    }
+    .view-ico.grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .view-ico.grid i {
+      display: block;
+      background: currentColor;
+      border-radius: 1px;
+    }
+    .view-ico.list {
+      grid-template-rows: repeat(3, 1fr);
+      align-content: stretch;
+    }
+    .view-ico.list i {
+      display: block;
+      height: 2px;
+      background: currentColor;
+      border-radius: 1px;
+      align-self: center;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 18px;
+    }
+
+    /* List view — compact rows */
+    .grid.list-view {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .grid.list-view a.tile,
+    .grid.list-view .tile {
+      flex-direction: row;
+      align-items: stretch;
+      min-height: 0;
+      border-radius: 16px;
+      box-shadow: 5px 5px 0 #000;
+    }
+    .grid.list-view a.tile:hover,
+    .grid.list-view a.tile:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 7px 7px 0 #000;
+    }
+    .grid.list-view .art {
+      width: 112px;
+      min-width: 112px;
+      height: auto;
+      align-self: stretch;
+    }
+    .grid.list-view .disc {
+      width: 64px;
+      height: 64px;
+      font-size: 28px;
+      box-shadow: 3px 3px 0 rgba(0, 0, 0, .2);
+    }
+    .grid.list-view .uno-oval {
+      width: 78px;
+      height: 48px;
+      box-shadow: 3px 4px 0 rgba(0, 0, 0, .22);
+    }
+    .grid.list-view .uno-oval span { font-size: 18px; }
+    .grid.list-view .soon-mark {
+      font-size: 11px;
+      padding: 6px 10px;
+      letter-spacing: 0.08em;
+    }
+    .grid.list-view .body {
+      padding: 12px 14px;
+      gap: 6px;
+      min-width: 0;
+      justify-content: center;
+    }
+    .grid.list-view .body h2 { font-size: 22px; }
+    .grid.list-view .body p {
+      font-size: 13px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .grid.list-view .tags { gap: 4px; }
+    .grid.list-view .tag { font-size: 11px; padding: 3px 7px; }
+    .grid.list-view .play {
+      margin-top: 4px;
+      width: auto;
+      align-self: flex-start;
+      padding: 8px 14px;
+      font-size: 13px;
+      box-shadow: 0 3px 0 #9a7a12;
+    }
+    @media (max-width: 520px) {
+      .grid.list-view .art {
+        width: 88px;
+        min-width: 88px;
+      }
+      .grid.list-view .body p { -webkit-line-clamp: 2; }
     }
 
     a.tile,
@@ -387,7 +527,21 @@
       <a href="Cubestacc.html">Cubestacc</a>
     </nav>
 
-    <main class="grid">
+    <div class="toolbar">
+      <span class="label">Games</span>
+      <div class="view-toggle" role="group" aria-label="Catalog layout">
+        <button type="button" id="view-grid" aria-pressed="true" title="Grid view">
+          <span class="view-ico grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          Grid
+        </button>
+        <button type="button" id="view-list" aria-pressed="false" title="List view">
+          <span class="view-ico list" aria-hidden="true"><i></i><i></i><i></i></span>
+          List
+        </button>
+      </div>
+    </div>
+
+    <main class="grid" id="game-catalog">
       <a class="tile" href="Dobble.html">
         <div class="art dobble" aria-hidden="true">
           <div class="disc">⭐</div>
@@ -493,6 +647,24 @@
         var wrap = document.querySelector(".wrap");
         wrap.insertBefore(bar, wrap.firstChild);
       }
+
+      var VIEW_KEY = "minigames-hub-view";
+      var catalog = document.getElementById("game-catalog");
+      var btnGrid = document.getElementById("view-grid");
+      var btnList = document.getElementById("view-list");
+      function setView(mode) {
+        var list = mode === "list";
+        catalog.classList.toggle("list-view", list);
+        btnGrid.setAttribute("aria-pressed", list ? "false" : "true");
+        btnList.setAttribute("aria-pressed", list ? "true" : "false");
+        try { localStorage.setItem(VIEW_KEY, list ? "list" : "grid"); } catch (e) {}
+      }
+      btnGrid.addEventListener("click", function () { setView("grid"); });
+      btnList.addEventListener("click", function () { setView("list"); });
+      try {
+        var saved = localStorage.getItem(VIEW_KEY);
+        if (saved === "list" || saved === "grid") setView(saved);
+      } catch (e) {}
 
       var opening = false;
       var warmup = document.getElementById("warmup");
