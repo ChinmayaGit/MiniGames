@@ -100,20 +100,20 @@
     .row { display: flex; gap: 10px; align-items: end; }
     .row > * { flex: 1; }
 
-    #screen-game { padding: 0; align-items: stretch; overflow: hidden; }
-    .game-shell {
-      flex: 1; min-height: 0; display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
-      gap: 0;
-      padding:
-        calc(6px + var(--safe))
-        max(12px, env(safe-area-inset-right, 0px))
-        0
-        max(12px, env(safe-area-inset-left, 0px));
+    /* ── shared game chrome ── */
+    #screen-game,
+    #screen-game.screen.active {
+      zoom: 1 !important;
+      transform: none !important;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      align-items: stretch;
+      overflow: hidden;
     }
     .topbar {
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      color: #fff; margin-bottom: 4px; min-width: 0;
+      color: #fff; min-width: 0; flex-shrink: 0;
     }
     .topbar-mid { flex: 1; min-width: 0; display: flex; justify-content: center; }
     .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
@@ -149,28 +149,22 @@
     }
     .seat-chip.turn { outline: 2px solid var(--accent); }
     .seat-chip .n { opacity: .75; font-variant-numeric: tabular-nums; }
-    @media (min-width: 720px) {
-      .players-inline { display: flex; }
-      .players-drop { display: none; }
-    }
     .banner {
       text-align: center; font-weight: 700; font-size: 12px; color: #fff;
-      background: #062438aa; border-radius: 10px; padding: 6px 10px; margin-bottom: 6px;
+      background: #062438aa; border-radius: 10px; padding: 6px 10px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex-shrink: 0;
     }
     .board-wrap {
-      min-height: 0; overflow: auto; border-radius: 14px;
-      background:
-        radial-gradient(ellipse at 50% 0%, #3a2418 0%, transparent 50%),
-        repeating-linear-gradient(90deg, #2a1810 0 2px, #1a100c 2px 28px),
-        #1a100c;
-      border: 2px solid #4a3020;
-      position: relative;
+      overflow: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       cursor: grab;
       touch-action: pan-x pan-y;
-      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, #3a2418 0%, transparent 50%),
+        repeating-linear-gradient(90deg, #2a1810 0 2px, #1a100c 2px 28px),
+        #1a100c;
     }
     .board-wrap.panning { cursor: grabbing; user-select: none; }
     .board-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -185,53 +179,57 @@
       display: inline-flex; align-items: center; gap: 4px;
       background: #2a1810; border-radius: 999px; padding: 3px 7px;
     }
-    .stacc {
-      position: relative;
-      min-width: 100%;
-      min-height: 100%;
-      padding: 0;
-    }
-
-    /* Hexagonal isometric cube card (matches physical STACCS silhouette) */
+    .stacc { position: relative; isolation: isolate; }
     .hex {
       --w: 92px;
       --h: 106px;
       position: absolute;
       width: var(--w); height: var(--h);
       border: 0; padding: 0; background: transparent;
-      filter: drop-shadow(3px 5px 0 #00000055);
     }
-    .hex svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .hex svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(3px 5px 0 #00000055); }
     .hex .ink { fill: #111; }
     .hex.red .ink { fill: #c41e3a; }
     .hex.wild .face-fill { fill: #1a8fd0; }
     .hex.wild .side-fill { fill: #1578b0; }
     .hex.wild .top-fill { fill: #2aa3e0; }
     .hex.wild .ink { fill: #fff; }
-    .hex.tip-hot {
-      cursor: pointer;
-      filter: drop-shadow(0 0 0 transparent) drop-shadow(0 0 6px #fbbf24);
-    }
-    .hex.tip-hot.on { filter: drop-shadow(0 0 8px #5eead4); }
+    .hex.tip-hot { cursor: pointer; }
+    .hex.tip-hot svg { filter: drop-shadow(0 0 6px #fbbf24) drop-shadow(3px 5px 0 #00000055); }
+    .hex.tip-hot.on svg { filter: drop-shadow(0 0 8px #5eead4) drop-shadow(3px 5px 0 #00000055); }
     .hex.tip-hot .rim { stroke: #fbbf24; stroke-width: 3; }
     .hex.tip-hot.on .rim { stroke: #5eead4; }
-
-    .hand-bar {
-      background: #120c08f2; border-radius: 16px 16px 0 0;
-      padding: 6px 4px calc(8px + var(--safe-b));
-      margin-top: 6px;
-      max-height: min(42vh, 280px);
-      display: flex; flex-direction: column; min-height: 0;
-      box-shadow: 0 -8px 24px #0006;
-    }
     .hand-actions {
       display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
-      margin-bottom: 4px; padding: 0 2px; -webkit-overflow-scrolling: touch;
+      margin: 0 10px 4px;
+      padding: 0 2px;
+      -webkit-overflow-scrolling: touch;
+      flex-shrink: 0;
     }
     .hand-actions .btn { width: auto; margin: 0; padding: 7px 10px; font-size: 12px; flex: 0 0 auto; }
+    .hand-scroller {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      overscroll-behavior-x: contain;
+      padding: 14px 0 12px;
+    }
+    .hand-scroller::-webkit-scrollbar { height: 6px; }
+    .hand-scroller::-webkit-scrollbar-thumb { background: #3a5f7a; border-radius: 6px; }
     .hand {
-      display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 4px;
-      min-height: 0; flex: 1; -webkit-overflow-scrolling: touch; align-items: flex-end;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 10px;
+      width: max-content;
+      min-width: 100%;
+      box-sizing: border-box;
+      padding: 0 18px;
+      padding-right: max(24px, calc(18px + env(safe-area-inset-right, 0px)));
+      align-items: flex-end;
+      overflow: visible;
     }
     .hcard {
       --w: 72px;
@@ -239,17 +237,175 @@
       flex: 0 0 auto;
       width: var(--w); height: var(--h);
       border: 0; padding: 0; background: transparent; cursor: pointer;
-      filter: drop-shadow(2px 3px 0 #00000066);
+      position: relative;
     }
-    .hcard svg { width: 100%; height: 100%; display: block; }
+    .hcard svg { width: 100%; height: 100%; display: block; filter: drop-shadow(2px 3px 0 #00000066); }
     .hcard .ink { fill: #111; }
     .hcard.red .ink { fill: #c41e3a; }
     .hcard.wild .face-fill { fill: #1a8fd0; }
     .hcard.wild .side-fill { fill: #1578b0; }
     .hcard.wild .top-fill { fill: #2aa3e0; }
     .hcard.wild .ink { fill: #fff; }
-    .hcard.legal { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 12px; transform: translateY(-8px); }
+    .hcard.legal {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 14px;
+      transform: translateY(-6px);
+    }
     .hcard:disabled { opacity: .42; cursor: default; transform: none; outline: none; }
+    body[data-phase="game"] .zoom-bar { display: none !important; }
+
+    /* ════════ DESKTOP UI (≥768px) ════════ */
+    @media (min-width: 768px) {
+      #screen-game.screen.active {
+        height: 100%;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      .game-shell {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: 8px;
+        padding:
+          calc(10px + var(--safe))
+          max(16px, env(safe-area-inset-right, 0px))
+          0
+          max(16px, env(safe-area-inset-left, 0px));
+      }
+      .players-inline { display: flex; }
+      .players-drop { display: none; }
+      .board-frame {
+        min-height: 0;
+        min-width: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 2px solid #4a3020;
+        background: #1a100c;
+        position: relative;
+      }
+      .board-wrap {
+        position: absolute;
+        inset: 0;
+      }
+      .hand-bar {
+        background: #120c08f2;
+        border-radius: 16px 16px 0 0;
+        padding: 8px 0 calc(10px + var(--safe-b));
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        box-shadow: 0 -8px 24px #0006;
+        z-index: 20;
+        isolation: isolate;
+      }
+      .hex { --w: 92px; --h: 106px; }
+      .hcard { --w: 76px; --h: 88px; }
+    }
+
+    /* ════════ MOBILE UI (<768px) ════════ */
+    @media (max-width: 767px) {
+      body[data-phase="game"] {
+        overflow: hidden;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+      }
+      #screen-game.screen.active {
+        display: flex !important;
+        flex-direction: column;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        padding: 0 !important;
+        align-items: stretch !important;
+        justify-content: flex-start;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse 90% 55% at 50% -5%, #1a5a94 0%, transparent 55%),
+          var(--felt);
+      }
+      .game-shell {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        max-height: 100%;
+        margin: 0;
+        padding: 0;
+        gap: 0;
+      }
+      .topbar {
+        padding:
+          max(6px, env(safe-area-inset-top, 0px))
+          8px
+          4px;
+        gap: 6px;
+        background: #062438cc;
+      }
+      .code-pill { font-size: 8px; padding: 6px 7px; }
+      .players-btn { padding: 6px 10px; font-size: 11px; }
+      .topbar-actions .btn { padding: 6px 8px !important; font-size: 12px; }
+      .banner {
+        margin: 0;
+        border-radius: 0;
+        font-size: 11px;
+        padding: 5px 8px;
+        background: #041525dd;
+      }
+      /* Board takes ALL leftover height between header and hand */
+      .board-frame {
+        flex: 1 1 0%;
+        min-height: 0;
+        width: 100%;
+        height: auto;
+        border: 0;
+        border-top: 1px solid #4a3020;
+        border-bottom: 1px solid #4a3020;
+        border-radius: 0;
+        background: #1a100c;
+        position: relative;
+        display: block;
+      }
+      .board-wrap {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .board-legend { padding: 4px; font-size: 9px; }
+      .board-legend .hide-sm { display: none; }
+      .hand-bar {
+        flex: 0 0 auto;
+        width: 100%;
+        background: #120c08;
+        border-radius: 0;
+        padding: 4px 0 max(6px, env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -6px 20px #0008;
+        z-index: 30;
+        isolation: isolate;
+      }
+      .hand-actions { margin: 0 8px 2px; }
+      .hand-actions .btn { padding: 6px 9px; font-size: 11px; }
+      .hand-scroller { padding: 12px 0 10px; }
+      .hand { gap: 8px; padding: 0 12px; padding-right: 16px; }
+      .hex { --w: 78px; --h: 90px; }
+      .hcard { --w: 62px; --h: 72px; }
+    }
 
     .modal {
       position: fixed; inset: 0; background: #041525cc; display: none;
@@ -271,9 +427,9 @@
     .dir-grid button .arrow { font-size: 22px; width: 28px; text-align: center; }
     .hex.ghost {
       opacity: 0.72; cursor: pointer;
-      filter: drop-shadow(0 0 6px #5eead4);
       animation: ghost-pulse 1s ease-in-out infinite alternate;
     }
+    .hex.ghost svg { filter: drop-shadow(0 0 6px #5eead4); }
     @keyframes ghost-pulse { from { opacity: 0.45; } to { opacity: 0.9; } }
     .end-card { text-align: center; width: min(420px, 100%); margin-top: 24px; }
     .end-card h2 { font-size: 32px; margin: 8px 0; color: #fff; }
@@ -287,10 +443,8 @@
       z-index: 30; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
       background: var(--surface); color: var(--ink); cursor: pointer; font-size: 16px;
     }
-    @media (max-width: 520px) {
-      .hex { --w: 76px; --h: 88px; }
-      .hcard { --w: 64px; --h: 74px; }
-      .board-legend .hide-sm { display: none; }
+    @media (max-width: 767px) {
+      body[data-phase="game"] #btn-theme { top: auto; bottom: auto; display: none; }
     }
   </style>
 </head>
@@ -371,14 +525,16 @@
         </div>
       </div>
       <div class="banner" id="banner">Match a tip on the STACC</div>
-      <div class="board-wrap" id="board-wrap">
-        <div class="board-legend">
-          <span>↑ suit</span>
-          <span>→ rank</span>
-          <span>← face</span>
-          <span class="hide-sm">Drag to pan</span>
+      <div class="board-frame">
+        <div class="board-wrap" id="board-wrap">
+          <div class="board-legend">
+            <span>↑ suit</span>
+            <span>→ rank</span>
+            <span>← face</span>
+            <span class="hide-sm">Drag to pan</span>
+          </div>
+          <div class="stacc" id="stacc"></div>
         </div>
-        <div class="stacc" id="stacc"></div>
       </div>
       <div class="hand-bar">
         <div class="hand-actions">
@@ -387,7 +543,9 @@
           <button class="btn ghost" id="btn-draw" type="button">Draw</button>
           <button class="btn teal" id="btn-end-chain" type="button" style="display:none">Done</button>
         </div>
-        <div class="hand" id="hand"></div>
+        <div class="hand-scroller" id="hand-scroller">
+          <div class="hand" id="hand"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -445,22 +603,42 @@
     let botTimer = 0;
     let tipSelect = null;
 
-    const STACK_OFF = {
-      top:  { x: 0, y: -50 },
-      wild: { x: 0, y: -50 },
-      side: { x: 50, y: 27 },
-      face: { x: -50, y: 27 },
+    const STACK_OFF_RATIO = {
+      top:  { x: 0, y: -0.55 },
+      wild: { x: 0, y: -0.55 },
+      side: { x: 0.55, y: 0.3 },
+      face: { x: -0.55, y: 0.3 },
     };
-    let origin = { x: 160, y: 280 };
+    let origin = { x: 0, y: 0 };
+
+    function isMobileUi() {
+      return window.matchMedia("(max-width: 767px)").matches;
+    }
+
+    function syncUiMode() {
+      document.body.setAttribute("data-ui", isMobileUi() ? "mobile" : "desktop");
+    }
 
     function boardOrigin() {
+      return { x: 0, y: 0 };
+    }
+
+    function hexMetrics() {
       const wrap = $("board-wrap");
-      const w = Math.max(280, wrap ? wrap.clientWidth : 360);
-      const h = Math.max(220, wrap ? wrap.clientHeight : 360);
-      return {
-        x: Math.round(w / 2 - 46),
-        y: Math.round(Math.max(160, h - 130)),
-      };
+      const host = wrap || document.body;
+      const el = document.createElement("div");
+      el.className = "hex";
+      el.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;left:0;top:0";
+      host.appendChild(el);
+      const w = el.offsetWidth || (isMobileUi() ? 78 : 92);
+      const h = el.offsetHeight || (isMobileUi() ? 90 : 106);
+      el.remove();
+      return { w, h };
+    }
+
+    function stackOff(mode, metrics) {
+      const r = STACK_OFF_RATIO[mode] || STACK_OFF_RATIO.top;
+      return { x: Math.round(r.x * metrics.w), y: Math.round(r.y * metrics.h) };
     }
 
     const state = {
@@ -653,7 +831,7 @@
     }
 
     function placeOnBoard(g, card, tip, mode) {
-      const off = STACK_OFF[mode] || STACK_OFF.top;
+      const off = stackOff(mode, hexMetrics());
       const px = tip.px + off.x;
       const py = tip.py + off.y;
       const parent = tip.placedId ? findPlaced(g, tip.placedId) : null;
@@ -987,6 +1165,7 @@
       const root = $("stacc");
       const wrap = $("board-wrap");
       root.replaceChildren();
+      const metrics = hexMetrics();
       const tipByPlaced = new Map();
       g.tips.forEach((t) => {
         if (t.active && t.placedId) tipByPlaced.set(t.placedId, t);
@@ -1000,27 +1179,39 @@
       const bump = (x, y) => {
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x + 92);
-        maxY = Math.max(maxY, y + 106);
+        maxX = Math.max(maxX, x + metrics.w);
+        maxY = Math.max(maxY, y + metrics.h);
       };
       g.placed.forEach((n) => bump(n.px, n.py));
       if (pendingCardId && pendingOptions) {
         pendingOptions.forEach((opt) => {
           const tip = g.tips.find((t) => t.id === opt.tipId);
           if (!tip) return;
-          const off = STACK_OFF[opt.mode] || STACK_OFF.top;
+          const off = stackOff(opt.mode, metrics);
           bump(tip.px + off.x, tip.py + off.y);
         });
       }
-        if (!isFinite(minX)) {
-        minX = origin.x; minY = origin.y; maxX = origin.x + 92; maxY = origin.y + 106;
+      if (!isFinite(minX)) {
+        minX = origin.x;
+        minY = origin.y;
+        maxX = origin.x + metrics.w;
+        maxY = origin.y + metrics.h;
       }
-      const padX = 72;
-      const padY = 72;
-      const ox = padX - minX;
-      const oy = padY - minY;
-      root.style.width = Math.max(wrap.clientWidth || 320, maxX - minX + padX * 2) + "px";
-      root.style.height = Math.max(wrap.clientHeight || 240, maxY - minY + padY * 2) + "px";
+      const padX = Math.round(metrics.w * (isMobileUi() ? 0.85 : 1.1));
+      const padY = Math.round(metrics.h * (isMobileUi() ? 0.75 : 0.9));
+      const viewW = Math.max(1, wrap ? wrap.clientWidth : 320);
+      const viewH = Math.max(1, wrap ? wrap.clientHeight : 240);
+      const boxW = Math.max(metrics.w, maxX - minX);
+      const boxH = Math.max(metrics.h, maxY - minY);
+      const contentW = Math.max(viewW, boxW + padX * 2);
+      const contentH = Math.max(viewH, boxH + padY * 2);
+      // Mobile: true center of board. Desktop: horizontal center, near bottom.
+      const ox = Math.round((contentW - boxW) / 2 - minX);
+      const oy = isMobileUi()
+        ? Math.round((contentH - boxH) / 2 - minY)
+        : Math.round(contentH - padY - maxY);
+      root.style.width = contentW + "px";
+      root.style.height = contentH + "px";
 
       g.placed.forEach((node, i) => {
         const tip = tipByPlaced.get(node.id);
@@ -1050,8 +1241,8 @@
         }
         el.style.left = (node.px + ox) + "px";
         el.style.top = (node.py + oy) + "px";
-        // Later plays always paint above earlier ones (covers TOP/SIDE/FACE correctly)
-        el.style.zIndex = String(10 + i + (isHot ? 5 : 0));
+        // Later plays always above earlier — never boost tips above newer cards
+        el.style.zIndex = String(100 + i);
         el.dataset.placed = String(i);
         root.append(el);
       });
@@ -1062,7 +1253,7 @@
         pendingOptions.forEach((opt) => {
           const tip = g.tips.find((t) => t.id === opt.tipId);
           if (!tip || !card) return;
-          const off = STACK_OFF[opt.mode] || STACK_OFF.top;
+          const off = stackOff(opt.mode, metrics);
           const slot = makeHexEl("button", card, null, "hex ghost");
           slot.type = "button";
           slot.style.left = (tip.px + off.x + ox) + "px";
@@ -1075,23 +1266,31 @@
         });
       }
 
-      // Keep the active tip (or newest card) in view; start near bottom-center
+      // First card: center of board (mobile) / bottom-center (desktop). Later: keep tip in view.
       requestAnimationFrame(() => {
         if (!wrap) return;
-        if (g.placed.length <= 1) {
-          wrap.scrollLeft = Math.max(0, (root.scrollWidth - wrap.clientWidth) / 2);
-          wrap.scrollTop = Math.max(0, root.scrollHeight - wrap.clientHeight);
-          return;
-        }
         const focus =
           root.querySelector(".hex.tip-hot.on") ||
           root.querySelector(".hex.tip-hot") ||
-          root.querySelector(".hex.ghost") ||
-          root.lastElementChild;
+          root.querySelector(".hex") ||
+          root.querySelector(".hex.ghost");
         if (!focus) return;
+        const left = parseFloat(focus.style.left) || 0;
+        const top = parseFloat(focus.style.top) || 0;
+        const fw = focus.offsetWidth || metrics.w;
+        const fh = focus.offsetHeight || metrics.h;
+        const vw = wrap.clientWidth;
+        const vh = wrap.clientHeight;
+        if (g.placed.length <= 1) {
+          wrap.scrollLeft = Math.max(0, left + fw / 2 - vw / 2);
+          wrap.scrollTop = isMobileUi()
+            ? Math.max(0, top + fh / 2 - vh / 2)
+            : Math.max(0, top + fh - vh + 24);
+          return;
+        }
         const fr = focus.getBoundingClientRect();
         const wr = wrap.getBoundingClientRect();
-        const margin = 48;
+        const margin = 36;
         let nextLeft = wrap.scrollLeft;
         let nextTop = wrap.scrollTop;
         if (fr.left < wr.left + margin) nextLeft -= wr.left + margin - fr.left;
@@ -1309,12 +1508,30 @@
       const people = [{ id: "host", name }];
       for (let i = 0; i < n; i++) people.push({ id: "bot-" + i, name: BOT_NAMES[i], bot: true });
       $("game-code").textContent = "SOLO";
+      syncUiMode();
+      document.documentElement.style.setProperty("--mg-zoom", "1");
       MG.showScreen("game");
-      requestAnimationFrame(() => {
-        origin = boardOrigin();
-        state.game = createGame(people);
-        renderAll();
-      });
+      // Wait until the board frame has real dimensions before dealing
+      const waitBoard = (tries) => {
+        const wrap = $("board-wrap");
+        const frame = wrap && wrap.parentElement;
+        const ok = wrap && frame &&
+          wrap.clientWidth > 80 &&
+          wrap.clientHeight > 120 &&
+          frame.clientHeight > 120;
+        if (ok || tries <= 0) {
+          origin = boardOrigin();
+          state.game = createGame(people);
+          renderAll();
+          // Second pass after layout settles (mobile address bar / flex)
+          requestAnimationFrame(() => {
+            if (state.game) renderStacc(state.game);
+          });
+          return;
+        }
+        requestAnimationFrame(() => waitBoard(tries - 1));
+      };
+      requestAnimationFrame(() => waitBoard(30));
     }
 
     function goHome() {
@@ -1325,10 +1542,24 @@
       tipSelect = null;
       clearPendingPlay();
       $("suit-pick").classList.remove("show");
+      document.body.style.position = "";
+      document.body.style.inset = "";
+      document.body.style.width = "";
+      document.body.style.height = "";
+      document.body.style.overflow = "";
       MG.showScreen("home");
     }
 
     MG.init({ nameKey: "cubestacc-name", hubHref: "index.html", maxPlayers: 5 });
+    syncUiMode();
+    window.addEventListener("resize", () => {
+      syncUiMode();
+      if (state.game) renderStacc(state.game);
+    });
+    window.addEventListener("orientationchange", () => {
+      syncUiMode();
+      setTimeout(() => { if (state.game) renderStacc(state.game); }, 120);
+    });
     MG.bindHome({
       onCreate() { toast("Online rooms coming soon — try Practice solo"); },
       onJoin() { toast("Online rooms coming soon — try Practice solo"); },
@@ -1389,6 +1620,35 @@
       if (menu) menu.classList.remove("open");
     });
     $("players-menu").onclick = (e) => e.stopPropagation();
+
+    // Re-layout board when the frame finally gets real size (mobile chrome / flex)
+    (function bindBoardResize() {
+      const wrap = $("board-wrap");
+      if (!wrap || typeof ResizeObserver === "undefined") return;
+      let lastW = 0;
+      let lastH = 0;
+      let timer = 0;
+      const ro = new ResizeObserver(() => {
+        const w = wrap.clientWidth;
+        const h = wrap.clientHeight;
+        if (w < 40 || h < 40) return;
+        if (Math.abs(w - lastW) < 2 && Math.abs(h - lastH) < 2) return;
+        lastW = w;
+        lastH = h;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (state.game) renderStacc(state.game);
+        }, 40);
+      });
+      ro.observe(wrap);
+    })();
+
+    // Hand horizontal scroll stays independent of board pan
+    const handScroller = $("hand-scroller");
+    if (handScroller) {
+      handScroller.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+      handScroller.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+    }
 
     // Drag / touch pan the board when stacks grow off-screen
     (function bindBoardPan() {
