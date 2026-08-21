@@ -161,6 +161,12 @@
       border: 1px solid var(--line);
       flex-shrink: 0;
     }
+    .deck-pill {
+      font-size: 11px; font-weight: 700; padding: 6px 9px; border-radius: 999px;
+      background: var(--surface-soft); border: 1px solid var(--line); color: var(--muted);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .deck-pill.low { color: var(--red); border-color: var(--red); }
     .players-inline {
       display: none; gap: 4px; overflow-x: auto; max-width: 100%;
       padding: 2px; -webkit-overflow-scrolling: touch;
@@ -823,6 +829,7 @@
     <div class="game-shell">
       <div class="topbar">
         <div class="code-pill" id="game-code">SOLO</div>
+        <div class="deck-pill" id="deck-pill" title="Cards left in the draw pile">Pile · —</div>
         <div class="topbar-mid">
           <div class="players-inline" id="players-inline"></div>
           <div class="players-drop">
@@ -840,8 +847,8 @@
         <div class="board-wrap" id="board-wrap">
           <div class="board-legend">
             <span>↑ match</span>
-            <span>→ rank</span>
-            <span>← face</span>
+            <span id="legend-side">→ rank</span>
+            <span id="legend-face">← face</span>
             <span class="hide-sm">Drag to pan</span>
             <div class="view-rot" title="Rotate board view to see cubes hiding behind">
               <button type="button" id="btn-rot-ccw" aria-label="Rotate view left">↺</button>
@@ -925,11 +932,14 @@
         <li><b>↑ TOP</b> — same suit · <b>→ SIDE</b> — same rank · <b>← FACE</b> — same face (J/J…)</li>
         <li>Drag a glowing hand cube onto a tip, or tap then pick a side</li>
         <li>Topping a cube still leaves its side/face open</li>
-        <li><b>↺ ↻</b> rotates the view if a cube is hidden</li>
+        <li><b>↺ ↻</b> rotates the <b>camera</b> only (rules stay the same)</li>
+        <li>Pick a <b>Deck theme</b> on home/lobby (Space, Halloween…) — icons change for everyone</li>
+        <li><b>◇</b> is UI colors only; deck icons come from the lobby theme</li>
         <li>Same rank again? Keep dumping, then tap <b>Done</b></li>
         <li><b>Draw</b> = 1 if no match; after <b>K</b>s take the full stack (button shows Draw N)</li>
         <li><b>J</b> → next draws 1 then plays · <b>Caught</b> → +3</li>
         <li>At 2 cards → tap <b>UH OH!</b> before going to 1</li>
+        <li>Watch <b>Pile · N</b> — if the deck runs out, you only get what’s left</li>
       </ul>
       <button class="btn teal" id="btn-help-close" type="button" style="margin-top:14px">Got it</button>
     </div>
@@ -1050,6 +1060,7 @@
     let origin = { x: 0, y: 0 };
     /** Local camera yaw in 90° steps (0–3). Does not change game rules. */
     let viewRot = 0;
+    let metricsCache = null;
 
     function isMobileUi() {
       return window.matchMedia("(max-width: 767px)").matches;
@@ -1063,7 +1074,8 @@
       return { x: 0, y: 0 };
     }
 
-    function hexMetrics() {
+    function hexMetrics(force) {
+      if (!force && metricsCache) return metricsCache;
       const wrap = $("board-wrap");
       const host = wrap || document.body;
       const el = document.createElement("div");
@@ -1073,8 +1085,10 @@
       const w = el.offsetWidth || (isMobileUi() ? 78 : 92);
       const h = el.offsetHeight || (isMobileUi() ? 90 : 106);
       el.remove();
-      return { w, h };
+      metricsCache = { w, h };
+      return metricsCache;
     }
+    function invalidateMetrics() { metricsCache = null; }
 
     function negOff(v) {
       return { x: -v.x, y: -v.y };
@@ -1100,8 +1114,28 @@
       return { x: Math.round(r.x * metrics.w), y: Math.round(r.y * metrics.h) };
     }
 
+    /** Which cube face polygon faces the screen direction of this attach mode. */
+    function visualFaceForMode(mode) {
+      if (mode === "wild") return "wild";
+      if (mode === "top") return "top";
+      const r = stackOffRatio(mode);
+      return r.x >= 0 ? "side" : "face";
+    }
+
+    function modeScreenArrow(mode) {
+      if (mode === "wild") return "★";
+      if (mode === "top") return "↑";
+      const r = stackOffRatio(mode);
+      if (Math.abs(r.x) >= Math.abs(r.y) * 0.55) return r.x >= 0 ? "→" : "←";
+      return r.y >= 0 ? "↘" : "↖";
+    }
+
     function syncRotLabel() {
       if ($("rot-label")) $("rot-label").textContent = ((viewRot & 3) * 90) + "°";
+      const sideEl = $("legend-side");
+      const faceEl = $("legend-face");
+      if (sideEl) sideEl.textContent = modeScreenArrow("side") + " rank";
+      if (faceEl) faceEl.textContent = modeScreenArrow("face") + " face";
     }
 
     function setViewRot(next) {
@@ -1174,7 +1208,9 @@
       const pack = packMeta(id);
       state.deckPack = pack.id;
       document.body.setAttribute("data-deck-pack", pack.id);
-      try { localStorage.setItem(PACK_KEY, pack.id); } catch (e) {}
+      if (!(opts && opts.skipPersist)) {
+        try { localStorage.setItem(PACK_KEY, pack.id); } catch (e) {}
+      }
       syncSuitPickButtons();
       syncPackPickers();
       if (opts && opts.broadcast && state.isHost && !state.solo && !state.game) sendLobby();
@@ -1193,6 +1229,7 @@
         const s = btn.getAttribute("data-suit");
         btn.textContent = suitMark(s);
         btn.title = suitName(s);
+        btn.setAttribute("aria-label", suitName(s));
       });
     }
     function fillPackGrid(el, selected, onPick, locked) {
@@ -1203,6 +1240,8 @@
         b.type = "button";
         b.className = selected === p.id ? "on" : "";
         b.disabled = !!locked;
+        b.setAttribute("aria-pressed", selected === p.id ? "true" : "false");
+        b.setAttribute("aria-label", p.label + " — " + p.blurb);
         b.innerHTML = "<span class='pack-ico'>" + p.preview + "</span><b>" + p.label + "</b>"
           + "<span class='pack-sub'>" + p.blurb + "</span>";
         b.onclick = () => onPick(p.id);
@@ -1405,8 +1444,9 @@
         advanceTurn(g, 1);
         const next = currentPlayer(g);
         if (g.pendingDraw > 0 && g.pendingKind === "J" && next) {
-          drawCards(g, next, g.pendingDraw);
-          g.banner = next.name + " draws " + g.pendingDraw + ", then plays";
+          const want = g.pendingDraw;
+          const got = drawCards(g, next, want);
+          g.banner = formatDrawBanner(next.name, want, got) + ", then plays";
           g.pendingDraw = 0;
           g.pendingKind = null;
         }
@@ -1502,9 +1542,9 @@
      * Any cube with an open TOP/SIDE/FACE stays a tip.
      * Repairs older games where ↑ TOP wiped the whole tip (blocked 3♣ on buried 3♦).
      */
-    function ensureOpenTips(g) {
+    function ensureOpenTips(g, opts) {
       if (!g || !g.placed) return;
-      reflowBoard(g);
+      if (!(opts && opts.skipReflow)) reflowBoard(g);
       const byPlaced = new Map();
       (g.tips || []).forEach((t) => {
         if (t.placedId) byPlaced.set(t.placedId, t);
@@ -1528,6 +1568,7 @@
           tip.blockFace = blockFace;
           tip.px = node.px;
           tip.py = node.py;
+          if (node.card.wild && node.chosenSuit && !tip.chosenSuit) tip.chosenSuit = node.chosenSuit;
         } else {
           tip = makeTip(node.card, {
             px: node.px,
@@ -1536,19 +1577,18 @@
             blockTop,
             blockSide,
             blockFace,
-            chosenSuit: node.card.wild ? (SUITS[0]) : null,
+            chosenSuit: node.chosenSuit || (node.card.wild ? SUITS[0] : null),
           });
         }
         if (seen.has(node.id)) return;
         seen.add(node.id);
         next.push(tip);
       });
-      // Keep any active tips that aren't tied to placed (shouldn't happen) 
       g.tips = next;
     }
 
     function legalPlays(g, player) {
-      ensureOpenTips(g);
+      ensureOpenTips(g, { skipReflow: true });
       const out = [];
       for (const card of player.hand) {
         if (g.pendingDraw > 0) {
@@ -1578,11 +1618,20 @@
     }
 
     function drawCards(g, player, n) {
-      for (let i = 0; i < n; i++) {
+      let got = 0;
+      const want = Math.max(0, n | 0);
+      for (let i = 0; i < want; i++) {
         if (!g.deck.length) break;
         player.hand.push(g.deck.pop());
+        got += 1;
       }
       player.calledUhOh = false;
+      return got;
+    }
+
+    function formatDrawBanner(name, want, got) {
+      if (got < want) return name + " draws " + got + " of " + want + " (deck empty)";
+      return name + " draws " + got;
     }
 
     function findPlaced(g, placedId) {
@@ -1630,15 +1679,16 @@
       const node = placeOnBoard(g, card, tip, play.mode);
 
       if (play.mode === "wild" || card.wild) {
+        node.chosenSuit = chosenSuit || SUITS[0];
         g.tips.forEach((t) => { t.active = false; });
         g.tips = [makeTip(card, {
-          chosenSuit: chosenSuit || SUITS[0],
+          chosenSuit: node.chosenSuit,
           px: node.px,
           py: node.py,
           placedId: node.id,
           blockTop: false,
         })];
-        g.banner = player.name + " wild → " + suitMark(chosenSuit || SUITS[0]);
+        g.banner = player.name + " wild → " + suitMark(node.chosenSuit);
       } else if (play.mode === "top") {
         tip.blockTop = true;
         // Keep tip alive for open SIDE/FACE (e.g. 3♦ still accepts 3♣ → after 0♦ ↑)
@@ -1724,8 +1774,9 @@
       advanceTurn(g, 1 + skip);
       const next = currentPlayer(g);
       if (g.pendingDraw > 0 && g.pendingKind === "J") {
-        drawCards(g, next, g.pendingDraw);
-        g.banner = next.name + " draws " + g.pendingDraw + ", then plays";
+        const want = g.pendingDraw;
+        const got = drawCards(g, next, want);
+        g.banner = formatDrawBanner(next.name, want, got) + ", then plays";
         g.pendingDraw = 0;
         g.pendingKind = null;
       } else if (g.pendingDraw > 0 && g.pendingKind === "K") {
@@ -1740,8 +1791,9 @@
           return c && c.rank === "K";
         });
         if (!canStack) {
-          drawCards(g, player, g.pendingDraw);
-          g.banner = player.name + " draws " + g.pendingDraw;
+          const want = g.pendingDraw;
+          const got = drawCards(g, player, want);
+          g.banner = formatDrawBanner(player.name, want, got);
           g.pendingDraw = 0;
           g.pendingKind = null;
           return "drew-pending";
@@ -1749,8 +1801,8 @@
         return "must-stack-or-draw";
       }
       if (legalPlays(g, player).length) return "must-play";
-      drawCards(g, player, 1);
-      g.banner = player.name + " draws 1";
+      const got = drawCards(g, player, 1);
+      g.banner = formatDrawBanner(player.name, 1, got);
       advanceTurn(g, 1);
       return "drew";
     }
@@ -2109,17 +2161,17 @@
       pendingOptions = options;
       const grid = $("dir-grid");
       grid.replaceChildren();
-      const labels = {
-        top: { arrow: "↑", title: "TOP — same suit" },
-        side: { arrow: "→", title: "SIDE — same rank" },
-        face: { arrow: "←", title: "FACE — same face" },
-        wild: { arrow: "★", title: "WILD — anywhere" },
+      const titles = {
+        top: "TOP — same suit / match",
+        side: "SIDE — same rank",
+        face: "FACE — same face",
+        wild: "WILD — anywhere",
       };
       options.forEach((opt) => {
-        const meta = labels[opt.mode] || { arrow: "·", title: opt.mode };
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.innerHTML = "<span class='arrow'>" + meta.arrow + "</span><span>" + meta.title + "</span>";
+        btn.innerHTML = "<span class='arrow'>" + modeScreenArrow(opt.mode) + "</span><span>"
+          + (titles[opt.mode] || opt.mode) + "</span>";
         btn.onclick = () => commitPlay(opt);
         grid.append(btn);
       });
@@ -2417,7 +2469,7 @@
         if (!tipEl) return;
         opts.forEach((opt) => {
           if (opt.mode === "wild") tipEl.classList.add("glow-wild");
-          else tipEl.classList.add("glow-" + opt.mode);
+          else tipEl.classList.add("glow-" + visualFaceForMode(opt.mode));
         });
       });
 
@@ -2430,17 +2482,17 @@
         const dy = clientY - pt.y;
         const dist = Math.hypot(dx, dy);
         if (dist > snap) return;
-        // Slightly prefer the side matching approach direction
         const tipEl = document.querySelector('.hex[data-tip-id="' + opt.tipId + '"]');
         let bias = 0;
         if (tipEl) {
           const tr = tipEl.getBoundingClientRect();
           const tdx = clientX - (tr.left + tr.width / 2);
           const tdy = clientY - (tr.top + tr.height / 2);
-          if (opt.mode === "top" && tdy < 0) bias = -12;
-          if (opt.mode === "side" && tdx > 0) bias = -12;
-          if (opt.mode === "face" && tdx < 0) bias = -12;
-          if (opt.mode === "wild") bias = -8;
+          const face = visualFaceForMode(opt.mode);
+          if (face === "top" && tdy < 0) bias = -12;
+          if (face === "side" && tdx > 0) bias = -12;
+          if (face === "face" && tdx < 0) bias = -12;
+          if (face === "wild") bias = -8;
         }
         const score = dist + bias;
         if (!best || score < best.score) best = { opt, dist, score, pt };
@@ -2449,7 +2501,7 @@
       if (!best) return;
       drag.hover = best.opt;
       const tipEl = document.querySelector('.hex[data-tip-id="' + best.opt.tipId + '"]');
-      if (tipEl) tipEl.classList.add("drop-active-" + best.opt.mode);
+      if (tipEl) tipEl.classList.add("drop-active-" + visualFaceForMode(best.opt.mode));
 
       const me = g.players.find((p) => p.id === state.myId);
       const card = me && me.hand.find((c) => c.id === drag.cardId);
@@ -2468,7 +2520,13 @@
       root.append(preview);
       drag.preview = preview;
 
-      const labels = { top: "↑ TOP suit", side: "→ SIDE rank", face: "← FACE", wild: "★ WILD" };
+      const arrow = modeScreenArrow(best.opt.mode);
+      const labels = {
+        top: arrow + " TOP match",
+        side: arrow + " SIDE rank",
+        face: arrow + " FACE",
+        wild: "★ WILD",
+      };
       $("banner").textContent = "Drop · " + (labels[best.opt.mode] || best.opt.mode);
     }
 
@@ -2497,7 +2555,8 @@
         }
         document.body.appendChild(ghost);
         drag.ghost = ghost;
-        $("banner").textContent = "Drag to a glowing side · ↑ suit · → rank · ← face";
+        $("banner").textContent = "Drag to a glowing side · " + modeScreenArrow("top") + " match · "
+          + modeScreenArrow("side") + " rank · " + modeScreenArrow("face") + " face";
         try { (drag.sourceEl || document.body).setPointerCapture(e.pointerId); } catch (err) {}
       }
 
@@ -2552,27 +2611,45 @@
         if (!tipEl) return;
         opts.forEach((opt) => {
           if (opt.mode === "wild") tipEl.classList.add("glow-wild");
-          else tipEl.classList.add("glow-" + opt.mode);
+          else tipEl.classList.add("glow-" + visualFaceForMode(opt.mode));
         });
       });
+    }
+
+    function syncDeckPill(g) {
+      const el = $("deck-pill");
+      if (!el || !g) return;
+      const n = (g.deck && g.deck.length) || 0;
+      el.textContent = "Pile · " + n;
+      el.classList.toggle("low", n > 0 && n <= 5);
+      el.title = n === 0
+        ? "Draw pile empty — further draws get fewer cards"
+        : (n + " card" + (n === 1 ? "" : "s") + " left in the draw pile");
     }
 
     function renderHand(g) {
       const me = g.players.find((p) => p.id === state.myId);
       const hand = $("hand");
       hand.replaceChildren();
+      syncDeckPill(g);
       const myTurn = currentPlayer(g).id === state.myId && g.phase === "playing";
       const legal = myTurn ? legalPlays(g, me) : [];
       const legalIds = new Set(legal.map((p) => p.cardId));
       const pendingK = g.pendingDraw > 0 && g.pendingKind === "K";
       const drawBtn = $("btn-draw");
+      const pile = (g.deck && g.deck.length) || 0;
       drawBtn.disabled = !myTurn || state.chainRank != null || (legalIds.size > 0 && !pendingK);
       if (pendingK && myTurn) {
-        drawBtn.textContent = "Draw " + g.pendingDraw;
-        drawBtn.title = "Take the stacked King penalty (" + g.pendingDraw + " cards), or play a King to stack more";
+        const take = Math.min(g.pendingDraw, pile);
+        drawBtn.textContent = take < g.pendingDraw ? ("Draw " + take + "/" + g.pendingDraw) : ("Draw " + g.pendingDraw);
+        drawBtn.title = pile < g.pendingDraw
+          ? "Deck only has " + pile + " — you'll get what remains"
+          : ("Take the stacked King penalty (" + g.pendingDraw + " cards), or play a King to stack more");
       } else {
-        drawBtn.textContent = "Draw";
-        drawBtn.title = "No match? Draw 1 and end your turn";
+        drawBtn.textContent = pile === 0 && !legalIds.size ? "Pass" : "Draw";
+        drawBtn.title = pile === 0
+          ? (legalIds.size ? "Draw pile empty" : "No match and pile empty — tap to pass")
+          : "No match? Draw 1 and end your turn";
       }
       $("btn-uhoh").disabled = !(me && me.hand.length === 2 && !me.calledUhOh);
       $("btn-caught").disabled = !(g.catchTarget && g.catchTarget !== state.myId);
@@ -2747,14 +2824,14 @@
         if (stacked) {
           toast("Play a King to stack, or you can take the draws");
         }
-        drawCards(g, me, n);
-        g.banner = me.name + " draws " + n;
+        const got = drawCards(g, me, n);
+        g.banner = formatDrawBanner(me.name, n, got);
         g.pendingDraw = 0;
         g.pendingKind = null;
-        drawNotice = { playerId: me.id, n, kind: "K" };
+        drawNotice = { playerId: me.id, n: got || n, kind: "K" };
         sfx("draw");
         renderAll();
-        showDrawExplain(n, "K");
+        showDrawExplain(got || n, "K");
         return;
       }
       if (legal.length) {
@@ -2762,8 +2839,20 @@
         sfx("bad");
         return;
       }
-      drawCards(g, me, 1);
-      g.banner = "You draw 1";
+      if (!g.deck.length) {
+        if (!legal.length) {
+          g.banner = me.name + " — pile empty, pass";
+          advanceTurn(g, 1);
+          sfx("draw");
+          renderAll();
+          return;
+        }
+        toast("Draw pile empty");
+        sfx("bad");
+        return;
+      }
+      const got = drawCards(g, me, 1);
+      g.banner = formatDrawBanner("You", 1, got);
       advanceTurn(g, 1);
       sfx("draw");
       renderAll();
@@ -2787,8 +2876,9 @@
           renderAll();
           return;
         }
-        drawCards(g, p, g.pendingDraw);
-        g.banner = p.name + " draws " + g.pendingDraw;
+        const want = g.pendingDraw;
+        const got = drawCards(g, p, want);
+        g.banner = formatDrawBanner(p.name, want, got);
         g.pendingDraw = 0;
         g.pendingKind = null;
         renderAll();
@@ -2797,8 +2887,8 @@
 
       let legal = legalPlays(g, p);
       if (!legal.length) {
-        drawCards(g, p, 1);
-        g.banner = p.name + " draws 1";
+        const got = drawCards(g, p, 1);
+        g.banner = formatDrawBanner(p.name, 1, got);
         advanceTurn(g, 1);
         renderAll();
         return;
@@ -2878,8 +2968,13 @@
       if (state.leaving || state.isHost || !state.room) return;
       if (reconnectTimer) return;
       reconnectAttempt += 1;
+      if (reconnectAttempt > 8) {
+        setReconnectUi(true, "Couldn’t reach the host. Check they still have the room open, or leave the table.");
+        if ($("reconnect-status-text")) $("reconnect-status-text").textContent = MG.wifiHint ? MG.wifiHint() : "Host may be offline.";
+        return;
+      }
       const delay = Math.min(12000, 1500 * reconnectAttempt);
-      setReconnectUi(true, "Retrying in " + Math.round(delay / 1000) + "s…");
+      setReconnectUi(true, "Retrying in " + Math.round(delay / 1000) + "s… (try " + reconnectAttempt + "/8)");
       reconnectTimer = setTimeout(() => {
         reconnectTimer = 0;
         joinRoom(state.room, true);
@@ -2916,6 +3011,7 @@
           coverTop: !!n.coverTop,
           coverSide: !!n.coverSide,
           coverFace: !!n.coverFace,
+          chosenSuit: n.chosenSuit || null,
         })),
         tips: game.tips.filter((t) => t.active).map((t) => ({
           id: t.id,
@@ -3007,7 +3103,7 @@
     }
 
     function renderLobby(view) {
-      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true });
+      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true, skipPersist: true });
       if ($("lobby-code")) $("lobby-code").textContent = view.room || state.room;
       MG.renderPlayerList(view.players || [], state.myId);
       if ($("host-settings")) $("host-settings").style.display = state.isHost ? "block" : "none";
@@ -3044,7 +3140,7 @@
         MG.showScreen("lobby");
         return;
       }
-      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true });
+      if (view.deckPack) setDeckPack(view.deckPack, { skipRender: true, skipPersist: true });
       state.game = gameFromView(view);
       if (!keepUi) {
         tipSelect = null;
@@ -3125,18 +3221,24 @@
       const legal = legalPlays(g, p);
       if (g.pendingDraw > 0 && g.pendingKind === "K") {
         const n = g.pendingDraw;
-        drawCards(g, p, n);
-        g.banner = p.name + " draws " + n;
+        const got = drawCards(g, p, n);
+        g.banner = formatDrawBanner(p.name, n, got);
         g.pendingDraw = 0;
         g.pendingKind = null;
-        drawNotice = { playerId, n, kind: "K" };
+        drawNotice = { playerId, n: got || n, kind: "K" };
         sfx("draw");
         renderAll();
         return;
       }
       if (legal.length) return;
-      drawCards(g, p, 1);
-      g.banner = p.name + " draws 1";
+      if (!g.deck.length) {
+        g.banner = p.name + " — pile empty, pass";
+        advanceTurn(g, 1);
+        renderAll();
+        return;
+      }
+      const got = drawCards(g, p, 1);
+      g.banner = formatDrawBanner(p.name, 1, got);
       advanceTurn(g, 1);
       sfx("draw");
       renderAll();
@@ -3158,11 +3260,13 @@
       if (!g || !g.catchTarget) return;
       const victim = g.players.find((p) => p.id === g.catchTarget);
       if (!victim || victim.id === playerId) return;
-      drawCards(g, victim, 3);
-      g.banner = victim.name + " caught! +3";
+      const got = drawCards(g, victim, 3);
+      g.banner = got < 3
+        ? (victim.name + " caught! +" + got + " (deck empty)")
+        : (victim.name + " caught! +3");
       g.catchTarget = null;
       victim.calledUhOh = false;
-      drawNotice = { playerId: victim.id, n: 3, kind: "caught" };
+      drawNotice = { playerId: victim.id, n: got || 3, kind: "caught" };
       sfx("bad");
       renderAll();
     }
@@ -3611,10 +3715,12 @@
     MG.init({ nameKey: "cubestacc-name", hubHref: "index.html", maxPlayers: MAX_PLAYERS });
     syncUiMode();
     window.addEventListener("resize", () => {
+      invalidateMetrics();
       syncUiMode();
       if (state.game) renderStacc(state.game);
     });
     window.addEventListener("orientationchange", () => {
+      invalidateMetrics();
       syncUiMode();
       setTimeout(() => { if (state.game) renderStacc(state.game); }, 120);
     });
@@ -3653,11 +3759,13 @@
       if (!g.catchTarget) return;
       const victim = g.players.find((p) => p.id === g.catchTarget);
       if (!victim || victim.id === state.myId) return;
-      drawCards(g, victim, 3);
-      g.banner = victim.name + " caught! +3";
+      const got = drawCards(g, victim, 3);
+      g.banner = got < 3
+        ? (victim.name + " caught! +" + got + " (deck empty)")
+        : (victim.name + " caught! +3");
       g.catchTarget = null;
       victim.calledUhOh = false;
-      drawNotice = { playerId: victim.id, n: 3, kind: "caught" };
+      drawNotice = { playerId: victim.id, n: got || 3, kind: "caught" };
       toast("Caught!");
       sfx("bad");
       renderAll();
@@ -3803,11 +3911,32 @@
 
     function openModal(id) {
       const el = $(id);
-      if (el) el.classList.add("show");
+      if (!el) return;
+      el.classList.add("show");
+      const focusBtn = el.querySelector(".btn.teal, .btn.yellow, button:not(.ghost)");
+      if (focusBtn) setTimeout(() => { try { focusBtn.focus(); } catch (e) {} }, 0);
     }
     function closeModal(id) {
       const el = $(id);
       if (el) el.classList.remove("show");
+    }
+    function closeTopModal() {
+      const ids = ["draw-explain", "look-pick", "help-pick", "dir-pick", "suit-pick"];
+      for (const id of ids) {
+        const el = $(id);
+        if (el && el.classList.contains("show")) {
+          if (id === "dir-pick") {
+            clearPendingPlay();
+            if (state.game) renderAll();
+          } else if (id === "suit-pick") {
+            pendingWild = null;
+            clearPendingPlay();
+          }
+          closeModal(id);
+          return true;
+        }
+      }
+      return false;
     }
 
     function applyTheme(mode) {
@@ -3820,7 +3949,8 @@
       const btn = $("btn-theme");
       if (btn) {
         btn.textContent = id === "light" ? "☾" : "☀";
-        btn.title = "Quick light/dark · full looks in ◇";
+        btn.title = "Cycle UI themes · full picker in ◇";
+        btn.setAttribute("aria-label", "Cycle UI themes");
       }
       try { localStorage.setItem(THEME_KEY, id); } catch (e) {}
       syncLookPickers();
@@ -3870,8 +4000,23 @@
     $("btn-look-close").onclick = () => closeModal("look-pick");
     $("btn-theme").onclick = () => {
       const cur = localStorage.getItem(THEME_KEY) || "light";
-      applyTheme(cur === "light" ? "dark" : "light");
+      const idx = Math.max(0, THEMES.findIndex((t) => t.id === cur));
+      applyTheme(THEMES[(idx + 1) % THEMES.length].id);
     };
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (closeTopModal()) {
+        e.preventDefault();
+        return;
+      }
+    });
+    ["help-pick", "look-pick", "draw-explain"].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("click", (e) => {
+        if (e.target === el) closeModal(id);
+      });
+    });
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
     applyEdition(localStorage.getItem(EDITION_KEY) || "classic");
     setDeckPack(localStorage.getItem(PACK_KEY) || "classic", { skipRender: true });

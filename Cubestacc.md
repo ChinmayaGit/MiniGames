@@ -215,8 +215,9 @@ Online guests may receive host `px/py`, but the source of truth for layout is **
 
 ### 5. Interaction helpers
 
-- **Legal glow** — `modesFor` ∩ free cell.  
-- **Drag targeting** — nearest glowing tip face under the pointer.  
-- **Penalty popup** — only when Draw takes a **K** stack (or Caught +3), listing why the count is > 1.
+- **Legal glow** — `modesFor` ∩ free cell; after rotate, glow uses `visualFaceForMode` so the lit polygon matches screen direction.  
+- **Drag targeting** — nearest glowing tip under the pointer (bias follows rotated side/face).  
+- **Penalty popup** — only when Draw takes a **K** stack (or Caught +3), listing why the count is > 1.  
+- **Empty pile** — no discard recycle; banners report `draws X of Y (deck empty)`; top bar shows **Pile · N**.
 
 This is how a tabletop cube pile becomes a readable, playable 2D STACC without a WebGL scene.
