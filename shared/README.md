@@ -1,62 +1,78 @@
-# Shared MiniGames kit
+# Shared MiniGames kit — Architecture
 
-Reusable lobby, invite, join, loading, warning, and leave chrome. A new game file should only hold **theme + rules + board**.
+Reusable lobby / invite / PeerJS chrome so each game HTML stays **theme + rules + board**.  
+Files: `boot.css` · `shell.css` · `kit.js`
 
-## Files
+---
 
-| File | Role |
+## Overview
+
+> “The kit is a **multiplayer shell library** for static sites: room codes, invite URLs, QR, warm-up against CDN cold starts, PeerJS ICE helpers, and consistent leave/join UX. Games plug in callbacks (`onCreate`, `onStart`, …) and keep their own authoritative rules. It’s separation of concerns — **transport & lobby ≠ game logic**.”
+
+---
+
+## What this kit solves
+
+| Pain | Approach |
 | --- | --- |
-| `boot.css` | First-paint “waking up” splash (Netlify / CDN cold start) |
-| `shell.css` | Home / lobby / QR / join status / warmup overlay / toast / Wi‑Fi tip |
-| `kit.js` | Create/join helpers, room codes, invite URL, PeerJS ICE, leave bindings |
+| Every game reimplements lobby | Shared DOM IDs + `MG.bindHome` |
+| Netlify cold start feels broken | `boot.css` + warmup overlay (“don’t tap again”) |
+| PeerJS CDN slow | `waitForPeer` |
+| NAT / same-ISP fails | `wifiHint`, optional TURN via `peerOptions` |
+| Invite links hide Create forever | `stripRoomFromUrl` on Leave |
+| Room ID collisions across games | **Per-game Peer prefix** (`unohost-`, `dobblehost-`, …) |
 
-## New game skeleton
+---
 
-```html
-<html lang="en" class="booting"
-  style="--boot-bg:#111;--boot-accent:#ffcc33;--boot-ink:#fff;--boot-title:'Waking up…'">
-<head>
-  <link rel="stylesheet" href="shared/boot.css" />
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <link rel="stylesheet" href="shared/shell.css" />
-  <style> /* theme + board only */ </style>
-</head>
-<body>
-  <!-- screen-home: name, Create room, join code, Join, optional Solo -->
-  <!-- screen-lobby: lobby-code, Copy link, Leave, lobby-players, Start, qr -->
-  <!-- screen-game: your board -->
-  <!-- screen-end: Play again, Home -->
-  <script src="shared/kit.js"></script>
-  <script>
-    const MG = MiniGames;
-    MG.init({ nameKey: "mygame-name", hubHref: "index.html", maxPlayers: 8 });
-    MG.bindHome({
-      onCreate: createRoom,
-      onJoin: joinRoom,
-      onSolo: startSolo,
-      onLeave: leaveRoom,
-      onHome: goHome,
-      onAgain: playAgain,
-      onStart: startHostGame,
-      inviteUrl: () => MG.inviteUrl(state.room),
-    });
-  </script>
-</body>
+## Architecture
+
+```
+index.html (hub)
+    │
+    ├─ Dobble.html / Uno.html / unoflip.html / Cubestacc.html
+    ├─ docs/          (architecture notes)
+    ├─ assets/icons/  (SVGs)
+    ├─ assets/images/ (reference art)
+    └─ shared/        (boot.css, shell.css, kit.js)
+         │
+         └─ each game owns: Peer prefix, rules engine, board UI
 ```
 
-Keep IDs stable so the kit can find them: `name`, `btn-create`, `join-code`, `btn-join`, `btn-solo`, `join-status`, `home-error`, `lobby-code`, `lobby-players`, `btn-copy`, `btn-lobby-leave`, `btn-start`, `qr`, `btn-home`, `btn-again`.
+**Dependency direction:** games depend on kit; kit never imports a game. New title = copy skeleton + unique prefix + rules.
 
-## Helpers
+---
 
-- `MG.randomCode()` — 4-letter room code
-- `MG.inviteUrl(room)` — `?room=` link for QR / copy
-- `MG.peerOptions(extraIce)` — STUN (+ optional TURN)
-- `MG.showWarmup(title, text)` / `MG.hideWarmup()` — don’t-spam overlay
-- `MG.waitForPeer(ok, fail)` — wait for PeerJS CDN
-- `MG.renderPlayerList(players, myId, statusFn)` — lobby roster
-- `MG.wifiHint()` — same-ISP / different Wi‑Fi copy
-- `MG.stripRoomFromUrl()` — after Leave, show Create again
+## API surface (what to memorize)
 
-Peer ID prefix (`unohost-`, `dobblehost-`) stays **per game** so rooms never clash.
+| Helper | Role |
+| --- | --- |
+| `MG.init({ nameKey, hubHref, maxPlayers })` | Local name persistence, caps |
+| `MG.bindHome({ onCreate, onJoin, onSolo, onStart, … })` | Wire stable button IDs |
+| `MG.randomCode()` | Font-safe 4-char alphabet |
+| `MG.inviteUrl(room)` | `?room=` for QR / copy |
+| `MG.peerOptions(extraIce)` | STUN (+ optional TURN) |
+| `MG.showWarmup` / `hideWarmup` | Cold-start UX |
+| `MG.waitForPeer` | CDN ready gate |
+| `MG.renderPlayerList` | Lobby roster |
+| `MG.wifiHint` / `stripRoomFromUrl` | NAT copy + invite cleanup |
 
-Then add the game to `index.html` and `netlify.toml` aliases.
+---
+
+## Design patterns
+
+1. **Facade** — `MiniGames` hides PeerJS boilerplate  
+2. **Template method** — bindHome expects game callbacks  
+3. **Convention over configuration** — fixed element IDs  
+4. **Prefix multiplexing** — one public PeerServer, many apps  
+
+---
+
+## Design notes
+
+- **Adding a game quickly:** kit skeleton + unique Peer prefix + rules/board.  
+- **No npm monorepo:** static hosting, zero build step, easy to read as source.  
+- **Cold start:** boot splash + warmup so users don’t double-tap Create while PeerJS loads.
+
+## Summary
+
+> The shared kit is the multiplayer shell for this collection; each game is a rules and board plugin.

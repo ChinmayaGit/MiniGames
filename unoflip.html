@@ -886,24 +886,40 @@
     .overlay {
       position: fixed;
       inset: 0;
-      z-index: 12;
+      z-index: 12000;
       background: rgba(0, 0, 0, .55);
       display: none;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
     }
     .overlay.show { display: flex; }
     .overlay .panel {
       width: min(280px, 100%);
       margin: 0;
       text-align: center;
+      max-height: min(85dvh, 640px);
+      overflow: auto;
     }
     #stack-pick .panel { width: min(320px, 100%); }
     #stack-pick .hint { margin-top: 8px; }
-    #away-pick, #reconnect-pick { z-index: 16; }
-    #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
+    #away-pick, #reconnect-pick { z-index: 12010; }
+    #help-pick { z-index: 12020; }
+    #away-pick .panel, #reconnect-pick .panel, #help-pick .panel { width: min(360px, 100%); text-align: left; }
     #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
+    #help-pick .panel h3 { margin: 0 0 8px; text-align: center; }
+    #help-pick .panel ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; }
+    #help-pick .panel li { margin: 4px 0; }
+    @media (max-width: 767px) {
+      .overlay { align-items: flex-end; padding: 0; }
+      .overlay .panel {
+        width: 100%;
+        max-width: none;
+        border-radius: 18px 18px 0 0;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+      }
+    }
     #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
     .swatches {
       display: grid;
@@ -1097,6 +1113,7 @@
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
         <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
+        <button class="icon-btn" id="btn-help" title="How to play" type="button">?</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
     </div>
@@ -1194,6 +1211,20 @@
       <div class="join-bar" id="reconnect-bar" style="display:block;margin-top:14px"><i></i></div>
       <button class="btn ghost" id="btn-reconnect-extend" type="button" style="display:none">Wait 2 more minutes</button>
       <button class="btn" id="btn-reconnect-leave" type="button">Leave table</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="help-pick" role="dialog" aria-modal="true">
+    <div class="panel">
+      <h3>How to play Flip</h3>
+      <ul>
+        <li>Each card has a <b>Light</b> and <b>Dark</b> face. Match color or number on the <b>current</b> side.</li>
+        <li><b>Flip</b> turns every hand, draw pile, and discard to the other side.</li>
+        <li>Light: +1 / Wild +2. Dark: +5 / Wild Draw Color (draw until that color).</li>
+        <li>At 2 cards, tap <b>UNO!</b> before going to 1 — or risk <b>Caught!</b></li>
+        <li>Flip rooms use a different code prefix than classic Uno — open the same Flip page.</li>
+      </ul>
+      <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px">Got it</button>
     </div>
   </div>
 
@@ -1670,7 +1701,16 @@
       return (card && card.type) || (typeof card.value === "number" ? "number" : card.value);
     }
 
-    const FLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" aria-hidden="true"><path fill="currentColor" d="M32.2,7.9v20.2c0,2.1-1.7,3.8-3.8,3.8h-13c-2.1,0-3.8-1.7-3.8-3.8v-3.3l2.8,0.6V28c0,0.6,0.5,1.1,1.1,1.1h12.8c0.6,0,1.1-0.5,1.1-1.1V8.1c0-0.6-0.5-1.1-1.1-1.1H15.5c-0.6,0-1.1,0.5-1.1,1.1v7.5l-2.8-0.2v-2.5c-5.6,2.6-4.3,3.9-1.2,4.6c0.4,0.1,0.8,0.2,1.2,0.2c0.9,0.1,1.9,0.2,2.8,0.3c0.6,0.1,1.2,0.1,1.8,0.1c2,0.1,3.5,0.1,3.5,0.1v-3.1c0-0.5,0.6-0.4,0.8-0.2l5.8,4l2.3,1.6c0.2,0.2,0.2,0.5,0,0.8l-2.3,1.6l-2.8,2l-2.9,2c-0.1,0.1-0.3,0.2-0.4,0.2c-0.1,0-0.4,0-0.4-0.3v-2.5c-1.5-0.3-2.9-0.5-4.2-0.8c-0.4-0.1-0.7-0.2-1.1-0.2c-1-0.2-2-0.5-2.8-0.7c-0.7-0.2-1.3-0.4-1.9-0.6c-14.4-5.1,1.9-11.1,1.9-11.1V7.9c0-2.1,1.7-3.8,3.8-3.8h13C30.5,4.1,32.2,5.8,32.2,7.9z"/></svg>';
+    const FLIP_ICON_URL = "assets/icons/flip.svg";
+    let FLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" aria-hidden="true"><path fill="currentColor" d="M32.2,7.9v20.2c0,2.1-1.7,3.8-3.8,3.8h-13c-2.1,0-3.8-1.7-3.8-3.8v-3.3l2.8,0.6V28c0,0.6,0.5,1.1,1.1,1.1h12.8c0.6,0,1.1-0.5,1.1-1.1V8.1c0-0.6-0.5-1.1-1.1-1.1H15.5c-0.6,0-1.1,0.5-1.1,1.1v7.5l-2.8-0.2v-2.5c-5.6,2.6-4.3,3.9-1.2,4.6c0.4,0.1,0.8,0.2,1.2,0.2c0.9,0.1,1.9,0.2,2.8,0.3c0.6,0.1,1.2,0.1,1.8,0.1c2,0.1,3.5,0.1,3.5,0.1v-3.1c0-0.5,0.6-0.4,0.8-0.2l5.8,4l2.3,1.6c0.2,0.2,0.2,0.5,0,0.8l-2.3,1.6l-2.8,2l-2.9,2c-0.1,0.1-0.3,0.2-0.4,0.2c-0.1,0-0.4,0-0.4-0.3v-2.5c-1.5-0.3-2.9-0.5-4.2-0.8c-0.4-0.1-0.7-0.2-1.1-0.2c-1-0.2-2-0.5-2.8-0.7c-0.7-0.2-1.3-0.4-1.9-0.6c-14.4-5.1,1.9-11.1,1.9-11.1V7.9c0-2.1,1.7-3.8,3.8-3.8h13C30.5,4.1,32.2,5.8,32.2,7.9z"/></svg>';
+    fetch(FLIP_ICON_URL)
+      .then((r) => (r.ok ? r.text() : Promise.reject()))
+      .then((t) => {
+        FLIP_SVG = String(t)
+          .replace(/fill="#010101"/gi, 'fill="currentColor"')
+          .replace(/<svg\b/, '<svg aria-hidden="true"');
+      })
+      .catch(() => {});
 
     function paintMark(el, card) {
       const k = cardKind(card);
@@ -2731,9 +2771,11 @@
       }
       const n = g.pendingDraw || 0;
       if (p && n) {
-        drawCards(g, p, n);
+        const got = drawCards(g, p, n);
         sfx("draw");
-        g.banner = p.name + " draws " + n;
+        g.banner = got.length < n
+          ? (p.name + " draws " + got.length + " of " + n + " (deck empty)")
+          : (p.name + " draws " + got.length);
       }
       g.pendingDraw = 0;
       g.pendingKind = null;
@@ -3215,6 +3257,23 @@
         $("banner").textContent = view.banner || "";
         document.body.setAttribute("data-side", view.side === "dark" ? "dark" : "light");
         $("draw-count").textContent = view.drawCount + " left";
+        $("draw-count").title = (view.drawCount || 0) === 0
+          ? "Draw pile empty"
+          : (view.drawCount + " cards left");
+        {
+          const drawBtn = $("draw-pile");
+          const noLegal = !(view.legal && view.legal.length);
+          const emptyPass = view.you.isTurn && !(view.pendingDraw > 0) && view.pendingKind !== "wildDrawColor"
+            && !view.stackChoice && !view.drawnCardId
+            && (view.drawCount || 0) === 0 && noLegal && !view.choosingColor && !view.paused;
+          if (drawBtn) {
+            drawBtn.title = emptyPass
+              ? "No plays and pile empty — tap to pass"
+              : ((view.drawCount || 0) === 0 ? "Draw pile empty" : "Draw a card");
+            const oval = drawBtn.querySelector(".back-oval");
+            if (oval) oval.textContent = emptyPass ? "PASS" : "FLIP";
+          }
+        }
         $("dir").textContent = view.direction === 1 ? "↻" : "↺";
         $("color-chip").style.background = COLOR_HEX[view.currentColor] || "#1a1a1a";
         const swatchColors = view.side === "dark" ? DARK_COLORS : LIGHT_COLORS;
@@ -3237,15 +3296,26 @@
         $("stack-pick").classList.toggle("show", stackAsk);
         if (stackAsk) {
           const n = view.pendingDraw || 0;
-          $("stack-title").textContent = "Draw " + n + " or use a + card?";
-          $("stack-sub").textContent = view.pendingKind === "wildDrawColor"
-            ? "You can play Wild Draw Color to pass it on."
-            : view.pendingKind === "wildDraw2"
+          const pile = view.drawCount || 0;
+          const wdc = view.pendingKind === "wildDrawColor";
+          if (wdc) {
+            $("stack-title").textContent = "Draw until " + (view.currentColor || "color") + " — or stack?";
+            $("stack-sub").textContent = "You can play Wild Draw Color to pass it on.";
+            $("btn-stack-take").textContent = "Draw until " + (view.currentColor || "color");
+          } else {
+            const take = Math.min(n, pile);
+            $("stack-title").textContent = take < n && n > 0
+              ? ("Deck has " + take + " — take them or stack?")
+              : ("Draw " + n + " or use a + card?");
+            $("stack-sub").textContent = view.pendingKind === "wildDraw2"
               ? "You can play Wild +2 to pass it on. +1 cannot go on +2."
               : view.pendingKind === "draw5"
                 ? "You can play +5 or Wild Draw Color to pass it on."
                 : "You can play +1 or Wild +2 to pass it on.";
-          $("btn-stack-take").textContent = "Pick " + n + " from pile";
+            $("btn-stack-take").textContent = take < n
+              ? ("Pick " + take + "/" + n + " from pile")
+              : ("Pick " + n + " from pile");
+          }
         }
         const awayList = (view.away || []).filter((p) => p.id && p.id !== "host");
         const othersAway = awayList.filter((p) => p.id !== view.you.id);
@@ -4331,7 +4401,20 @@
         e.preventDefault();
         onPlay(state.raisedCardId || Number(cards[0].dataset.cardId));
       }
-      if (e.key === "Escape") clearRaised();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if ($("help-pick") && $("help-pick").classList.contains("show")) {
+          $("help-pick").classList.remove("show");
+          return;
+        }
+        if ($("stack-pick") && $("stack-pick").classList.contains("show")) return;
+        if ($("color-pick") && $("color-pick").classList.contains("show")) return;
+        if ($("away-pick") && $("away-pick").classList.contains("show")) {
+          $("away-pick").classList.remove("show");
+          return;
+        }
+        clearRaised();
+      }
     });
 
     (function homeDecor() {
@@ -4360,6 +4443,13 @@
     $("btn-theme").onclick = () => {
       applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
     };
+    if ($("btn-help")) $("btn-help").onclick = () => $("help-pick") && $("help-pick").classList.add("show");
+    if ($("btn-help-close")) $("btn-help-close").onclick = () => $("help-pick") && $("help-pick").classList.remove("show");
+    if ($("help-pick")) {
+      $("help-pick").addEventListener("click", (e) => {
+        if (e.target === $("help-pick")) $("help-pick").classList.remove("show");
+      });
+    }
 
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
 
@@ -4454,6 +4544,10 @@
       $("join-code").value = roomParam;
       setInviteHome(roomParam);
       $("name").focus();
+      const savedName = localStorage.getItem("unoflip-name") || ($("name") && $("name").value);
+      if (savedName && String(savedName).trim()) {
+        setTimeout(() => joinRoom(roomParam), 300);
+      }
     }
 
     netlog("boot", netInfo(), iceSummary());

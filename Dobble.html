@@ -220,6 +220,28 @@
     }
     .seat.frozen { opacity: 0.5; }
     .seat.win { border-color: var(--teal); }
+    .seat.offline { opacity: 0.45; filter: grayscale(0.4); }
+    .seat.offline .meta span::after { content: " · offline"; }
+    .help-overlay {
+      position: fixed; inset: 0; z-index: 12000; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .help-overlay.show { display: flex; }
+    .help-overlay .sheet {
+      width: min(360px, 100%); max-height: min(85dvh, 640px); overflow: auto;
+      background: var(--card, #fff); color: var(--ink, #111); border-radius: 16px;
+      padding: 16px; text-align: left; border: 2px solid var(--line, #333);
+    }
+    .help-overlay .sheet h3 { margin: 0 0 8px; text-align: center; }
+    .help-overlay .sheet ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; }
+    .help-overlay .sheet li { margin: 4px 0; }
+    @media (max-width: 767px) {
+      .help-overlay { align-items: flex-end; padding: 0; }
+      .help-overlay .sheet {
+        width: 100%; max-width: none; border-radius: 18px 18px 0 0;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+      }
+    }
 
     .play-area {
       flex: 1;
@@ -502,6 +524,7 @@
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
         <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
+        <button class="icon-btn" id="btn-help" title="How to play" type="button">?</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
     </div>
@@ -519,6 +542,28 @@
       </div>
     </div>
     <div class="banner" id="banner">Find the one matching symbol</div>
+  </div>
+
+  <div class="help-overlay" id="help-pick" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h3>How to play</h3>
+      <ul>
+        <li>Any two cards share <b>exactly one</b> symbol — find it and tap it.</li>
+        <li>Correct: your card becomes the new center. Wrong: short freeze.</li>
+        <li>First player to empty their pile wins.</li>
+        <li>Host picks the emoji edition in the lobby.</li>
+        <li>Keep the host tab open. Same Wi‑Fi is most reliable.</li>
+      </ul>
+      <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px;width:100%">Got it</button>
+    </div>
+  </div>
+
+  <div class="help-overlay" id="reconnect-pick" role="dialog" aria-modal="true">
+    <div class="sheet" style="text-align:center">
+      <h3 id="reconnect-title">Rejoining…</h3>
+      <p class="hint" id="reconnect-sub" style="margin-top:8px">Connection dropped. Trying to get you back in.</p>
+      <button class="btn ghost" id="btn-reconnect-leave" type="button" style="margin-top:12px;width:100%">Leave table</button>
+    </div>
   </div>
 
   <div id="screen-end" class="screen">
@@ -799,7 +844,50 @@
       joinTimer: 0,
       connecting: false,
       edition: "classic",
+      leaving: false,
+      reconnecting: false,
+      reconnectTimer: 0,
+      reconnectAttempt: 0,
     };
+
+    function mySeatToken() {
+      try {
+        let t = localStorage.getItem("dobble-seat-token");
+        if (!t) {
+          t = "s" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+          localStorage.setItem("dobble-seat-token", t);
+        }
+        return t;
+      } catch (e) {
+        return "s" + Math.random().toString(36).slice(2, 12);
+      }
+    }
+
+    function setReconnectUi(on, text) {
+      const el = $("reconnect-pick");
+      if (!el) return;
+      el.classList.toggle("show", !!on);
+      state.reconnecting = !!on;
+      if (text && $("reconnect-sub")) $("reconnect-sub").textContent = text;
+    }
+
+    function scheduleGuestReconnect() {
+      if (state.leaving || state.isHost || !state.room || state.solo) return;
+      if (state.reconnectTimer) return;
+      state.reconnectAttempt += 1;
+      if (state.reconnectAttempt > 8) {
+        setReconnectUi(true, MiniGames.wifiHint
+          ? MiniGames.wifiHint()
+          : "Couldn’t reach the host. Leave and try again.");
+        return;
+      }
+      const delay = Math.min(12000, 1500 * state.reconnectAttempt);
+      setReconnectUi(true, "Retrying in " + Math.round(delay / 1000) + "s… (try " + state.reconnectAttempt + "/8)");
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = 0;
+        joinRoom(state.room, true);
+      }, delay);
+    }
 
     const netLogs = [];
     let turnIce = [];
@@ -1072,6 +1160,7 @@
       const list = players.map((p, i) => ({
         id: p.id,
         name: p.name,
+        token: p.token || p.id,
         color: COLORS[i % COLORS.length],
         hand: pile.splice(0, each),
         score: 0,
@@ -1096,15 +1185,22 @@
       return b.filter((x) => set.has(x));
     }
 
+    function playerIdFromPeer(peerId) {
+      const meta = guests.get(peerId);
+      if (meta && meta.playerId) return meta.playerId;
+      return peerId;
+    }
+
     function hostBroadcast() {
       if (state.solo) {
         applyView(playerView(state.game, "host"));
         return;
       }
       applyView(playerView(state.game, "host"));
-      for (const [id, conn] of state.conns) {
+      for (const [peerId, conn] of state.conns) {
         if (conn.open) {
-          try { conn.send({ type: "state", view: playerView(state.game, id) }); }
+          const pid = playerIdFromPeer(peerId);
+          try { conn.send({ type: "state", view: playerView(state.game, pid) }); }
           catch (e) {}
         }
       }
@@ -1125,6 +1221,7 @@
       if (round !== g.round) return;
       const p = g.players.find((x) => x.id === playerId);
       if (!p || !p.hand.length) return;
+      if (p.connected === false) return;
       if (p.frozenUntil > Date.now()) return;
       const match = intersection(p.hand[0], g.center);
       if (match.length !== 1 || match[0] !== symbol) {
@@ -1162,6 +1259,9 @@
 
     function applyView(view) {
       state.view = view;
+      if (view.you && view.you.id) state.myId = view.you.id;
+      if (view.room) state.room = view.room;
+      state.connecting = false;
       if (view.edition) pickEdition(view.edition, true);
       if (view.phase === "lobby") {
         renderLobby(view);
@@ -1205,7 +1305,11 @@
       el.replaceChildren();
       for (const p of view.players) {
         const seat = document.createElement("div");
-        seat.className = "seat" + (p.id === view.you.id ? " you" : "") + (p.frozen ? " frozen" : "");
+        const offline = p.connected === false;
+        seat.className = "seat"
+          + (p.id === view.you.id ? " you" : "")
+          + (p.frozen ? " frozen" : "")
+          + (offline ? " offline" : "");
         const dot = document.createElement("div");
         dot.className = "dot";
         dot.style.background = p.color;
@@ -1328,26 +1432,68 @@
         if (!msg || typeof msg !== "object") return;
         if (msg.type === "join") {
           const name = String(msg.name || "Player").slice(0, 16);
+          const token = String(msg.token || "").slice(0, 80);
+
           if (state.game && state.game.phase === "playing") {
+            let seated = null;
+            if (token) {
+              seated = state.game.players.find((p) => p.id !== "host" && p.token === token);
+            }
+            if (!seated && name) {
+              const cands = state.game.players.filter((p) =>
+                p.id !== "host" && p.connected === false
+                && String(p.name || "").toLowerCase() === name.toLowerCase()
+              );
+              if (cands.length === 1) seated = cands[0];
+            }
+            if (seated) {
+              for (const [peer, meta] of [...guests.entries()]) {
+                if (peer !== conn.peer && (meta.playerId === seated.id || (token && meta.token === token))) {
+                  const old = state.conns.get(peer);
+                  if (old && old !== conn) {
+                    try { old.close(); } catch (e) {}
+                  }
+                  state.conns.delete(peer);
+                  guests.delete(peer);
+                }
+              }
+              guests.set(conn.peer, {
+                name: name || seated.name,
+                token: token || seated.token || seated.id,
+                playerId: seated.id,
+              });
+              seated.connected = true;
+              if (name) seated.name = name;
+              if (token) seated.token = token;
+              state.game.banner = seated.name + " is back";
+              try { conn.send({ type: "state", view: playerView(state.game, seated.id) }); } catch (e) {}
+              hostBroadcast();
+              return;
+            }
             conn.send({ type: "error", message: "Game already started" });
             return;
           }
+
           if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
             conn.send({ type: "error", message: "Room is full (max " + MAX_PLAYERS + ")" });
             return;
           }
-          guests.set(conn.peer, { name });
+          guests.set(conn.peer, { name, token: token || conn.peer, playerId: conn.peer });
           sendLobby();
         }
         if (msg.type === "click") {
-          hostHandleClick(conn.peer, msg.symbol, msg.round);
+          const meta = guests.get(conn.peer);
+          const pid = (meta && meta.playerId) || conn.peer;
+          hostHandleClick(pid, msg.symbol, msg.round);
         }
         if (msg.type === "leave") {
           state.conns.delete(conn.peer);
+          const meta = guests.get(conn.peer);
+          const pid = (meta && meta.playerId) || conn.peer;
           guests.delete(conn.peer);
           try { conn.close(); } catch (e) {}
           if (state.game && state.game.players) {
-            const p = state.game.players.find((x) => x.id === conn.peer);
+            const p = state.game.players.find((x) => x.id === pid);
             if (p) p.connected = false;
             hostBroadcast();
           } else {
@@ -1356,10 +1502,12 @@
         }
       });
       conn.on("close", () => {
+        const meta = guests.get(conn.peer);
+        const pid = (meta && meta.playerId) || conn.peer;
         state.conns.delete(conn.peer);
         guests.delete(conn.peer);
         if (state.game && state.game.players) {
-          const p = state.game.players.find((x) => x.id === conn.peer);
+          const p = state.game.players.find((x) => x.id === pid);
           if (p) p.connected = false;
           hostBroadcast();
         } else {
@@ -1412,18 +1560,23 @@
       });
     }
 
-    function joinRoom(code) {
-      if (state.connecting) return;
-      const name = requireName();
+    function joinRoom(code, reconnect) {
+      if (state.connecting && !reconnect) return;
+      const name = reconnect ? (state.myName || requireName()) : requireName();
       if (!name) return;
-      code = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (code.length !== 4) {
         setJoinStatus("fail", "Enter a 4-character room code.");
         $("join-code").focus();
         return;
       }
       state.connecting = true;
-      showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      state.leaving = false;
+      if (!reconnect) {
+        showWarmup("Finding the room…", "The server can take a few seconds. Wait here — don’t tap again.");
+      } else {
+        setReconnectUi(true, "Finding the room again…");
+      }
       waitForPeer(function () {
         state.isHost = false;
         state.solo = false;
@@ -1431,43 +1584,61 @@
         rememberName(state.myName);
         state.room = code;
         showError("home-error", "");
-        destroyPeer();
-        setJoinStatus("connecting", "Finding room " + code + "…");
+        destroyPeer({ keepView: !!reconnect });
+        setJoinStatus(reconnect ? "" : "connecting", reconnect ? "" : ("Finding room " + code + "…"));
         clearJoinWait();
         state.joinTimer = setTimeout(() => {
+          if (reconnect) {
+            state.connecting = false;
+            scheduleGuestReconnect();
+            return;
+          }
           setJoinStatus("fail", turnIce.length
             ? "Timed out. TURN is saved but ICE did not connect. Tap Debug, Test ICE, and share the log."
             : "Timed out. Check the code and that the host is still in the lobby. Two home Wi‑Fi networks often fail — try mobile data, or tap Debug.");
           $("btn-join").disabled = false;
           destroyPeer();
-        }, 12000);
+        }, reconnect ? 16000 : 12000);
         const peer = new Peer(peerOptions());
         state.peer = peer;
         peer.on("open", () => {
           state.myId = peer.id;
-          setJoinStatus("joining", "Connecting to the host…");
-          showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          if (reconnect) setReconnectUi(true, "Connecting to the host…");
+          else {
+            setJoinStatus("joining", "Connecting to the host…");
+            showWarmup("Connecting to the host…", "Still waking up. Stay on this page.");
+          }
           const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
           state.conns.set("host", conn);
           watchRtc("guest", conn);
           conn.on("open", () => {
-            setJoinStatus("joining", "Joining the lobby…");
-            conn.send({ type: "join", name: state.myName });
+            if (reconnect) setReconnectUi(true, "Rejoining your seat…");
+            else setJoinStatus("joining", "Joining the lobby…");
+            conn.send({ type: "join", name: state.myName, token: mySeatToken() });
           });
           conn.on("data", (msg) => {
             if (msg.type === "state") {
               clearJoinWait();
+              state.reconnectAttempt = 0;
+              setReconnectUi(false);
               setJoinStatus("ok", "You're in!");
               hideWarmup();
               applyView(msg.view);
+              if (reconnect) toast("You're back in");
             }
             if (msg.type === "error") {
               clearJoinWait();
               setJoinStatus("fail", msg.message || "Could not join this room.");
               toast(msg.message);
+              if (reconnect) scheduleGuestReconnect();
             }
           });
           conn.on("close", () => {
+            if (state.leaving) return;
+            if (state.view && (state.view.phase === "playing" || state.view.phase === "lobby")) {
+              scheduleGuestReconnect();
+              return;
+            }
             if (state.view && state.view.phase === "lobby") toast("Disconnected from host");
             else if ($("join-status").classList.contains("joining") || $("join-status").classList.contains("connecting")) {
               clearJoinWait();
@@ -1476,24 +1647,45 @@
           });
           conn.on("error", () => {
             clearJoinWait();
+            if (reconnect) {
+              state.connecting = false;
+              scheduleGuestReconnect();
+              return;
+            }
             setJoinStatus("fail", "Could not reach the host. Check the code and try again.");
           });
         });
         peer.on("error", () => {
           clearJoinWait();
+          if (reconnect) {
+            state.connecting = false;
+            scheduleGuestReconnect();
+            return;
+          }
           setJoinStatus("fail", "Could not join. Check the code and that the host is still in the lobby.");
           showScreen("home");
         });
       }, function () {
         hideWarmup();
+        if (reconnect) {
+          state.connecting = false;
+          scheduleGuestReconnect();
+          return;
+        }
         setJoinStatus("fail", "Could not load multiplayer. Check your internet and refresh.");
       });
     }
 
     function startHostGame() {
       if (!state.isHost) return;
-      const players = [{ id: "host", name: state.myName }];
-      for (const [id, meta] of guests) players.push({ id, name: meta.name });
+      const players = [{ id: "host", name: state.myName, token: mySeatToken() }];
+      for (const [id, meta] of guests) {
+        players.push({
+          id: (meta && meta.playerId) || id,
+          name: meta.name,
+          token: (meta && meta.token) || id,
+        });
+      }
       const cardsEach = $("cards-each").value;
       state.game = createGame(players, cardsEach);
       hostBroadcast();
@@ -1524,9 +1716,13 @@
       hostBroadcast();
     }
 
-    function destroyPeer() {
+    function destroyPeer(opts) {
       stopTimer();
       clearJoinWait();
+      if (state.reconnectTimer) {
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer = 0;
+      }
       state.conns.forEach((c) => { try { c.close(); } catch (e) {} });
       state.conns.clear();
       guests.clear();
@@ -1534,19 +1730,26 @@
         try { state.peer.destroy(); } catch (e) {}
         state.peer = null;
       }
-      state.game = null;
-      state.view = null;
+      if (!(opts && opts.keepView)) {
+        state.game = null;
+        state.view = null;
+      }
+      state.connecting = false;
     }
 
     function goHome() {
+      state.leaving = true;
+      setReconnectUi(false);
       destroyPeer();
       state.isHost = false;
       state.solo = false;
+      state.reconnectAttempt = 0;
       MiniGames.stripRoomFromUrl();
       setJoinStatus("", "");
       $("btn-join").disabled = false;
       hideWarmup();
       showScreen("home");
+      state.leaving = false;
       try {
         const saved = localStorage.getItem("dobble-edition");
         if (saved) pickEdition(saved, true);
@@ -1554,6 +1757,7 @@
     }
 
     function leaveRoom() {
+      state.leaving = true;
       if (!state.solo && !state.isHost) {
         const hostConn = state.conns.get("host");
         if (hostConn && hostConn.open) {
@@ -1609,7 +1813,40 @@
     $("btn-theme").onclick = () => {
       applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
     };
+    if ($("btn-help")) $("btn-help").onclick = () => $("help-pick").classList.add("show");
+    if ($("btn-help-close")) $("btn-help-close").onclick = () => $("help-pick").classList.remove("show");
+    if ($("help-pick")) {
+      $("help-pick").addEventListener("click", (e) => {
+        if (e.target === $("help-pick")) $("help-pick").classList.remove("show");
+      });
+    }
+    if ($("btn-reconnect-leave")) {
+      $("btn-reconnect-leave").onclick = () => {
+        state.leaving = true;
+        setReconnectUi(false);
+        leaveRoom();
+      };
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if ($("help-pick") && $("help-pick").classList.contains("show")) {
+        $("help-pick").classList.remove("show");
+        e.preventDefault();
+      }
+    });
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
+
+    try {
+      const params = new URLSearchParams(location.search);
+      const roomParam = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (roomParam.length === 4) {
+        if ($("join-code")) $("join-code").value = roomParam;
+        const named = ($("name") && $("name").value) || localStorage.getItem("dobble-name");
+        if (named && String(named).trim()) {
+          setTimeout(() => joinRoom(roomParam), 250);
+        }
+      }
+    } catch (e) {}
 
     (function homeDecor() {
       const wrap = $("home-deco");

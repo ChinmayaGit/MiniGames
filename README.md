@@ -1,167 +1,121 @@
-# Minigames
+# Minigames — Architecture overview
 
-**Play online:** [https://myminigames.netlify.app/](https://myminigames.netlify.app/)
+**Play:** [https://myminigames.netlify.app/](https://myminigames.netlify.app/)
 
-A growing collection of small browser games. Each game is a single HTML file — open it and play. No install, no account.
+A collection of **single-file browser games** with **real-time multiplayer** and **no game server**. Static host (Netlify) + PeerJS WebRTC. Shared lobby chrome in [`shared/`](shared/README.md).
 
-The hub is [index.html](index.html): a grid of every title. Open that first, or jump straight to a game below.
-
-## Games
-
-| Game | Status | File |
-| --- | --- | --- |
-| **Hub** | Playable | [index.html](index.html) |
-| **Dobble** | Playable | [Dobble.html](Dobble.html) |
-| **Uno** | Playable | [Uno.html](Uno.html) |
-| **Uno Flip** | Playable | [unoflip.html](unoflip.html) |
-| **Cubestacc** | Playable | [Cubestacc.html](Cubestacc.html) |
-| More minigames | Coming soon | — |
-
-How rooms, networking, and the rules engines work: [Dobble.md](Dobble.md) · [Uno.md](Uno.md) · [Cubestacc.md](Cubestacc.md). Shared lobby, invite, join, loading, and leave chrome lives in [shared/](shared/README.md) so a new game only needs its board and rules.
+This README is the **project overview**; each game’s MD covers architecture and algorithms in more depth.
 
 ---
 
-## How to play Dobble
+## Overview
 
-Any two cards share **exactly one** symbol. Find it and tap it before everyone else. First player to empty their pile wins.
-
-### Setup
-
-1. Open [Dobble.html](Dobble.html) in a browser.
-2. Type your name.
-3. Choose one:
-   - **Create room** — you are the host. Share the 4-letter code, the invite link, or the QR code.
-   - **Join friends** — type the host’s code (or open a link that already has `?room=ABCD`).
-   - **Practice solo** — play alone against the clock, no lobby.
-
-Everyone must open the **same** `Dobble.html` page. Friends on the same Wi‑Fi or on a different network can join the same lobby.
-
-### In the lobby
-
-- Wait until everyone has connected.
-- The host picks how many cards each player gets (quick / normal / long / entire deck).
-- Host taps **Start game**. Keep the host tab open for the whole match.
-
-### During a round
-
-You see two cards: **yours** (top of your pile) and the **center**.
-
-1. Scan both cards for the one matching emoji.
-2. Tap that symbol on either card.
-3. If you are right, your card becomes the new center and you have one fewer card.
-4. If you miss, you freeze for a moment while others keep playing.
-
-### Winning
-
-The first player with **no cards left** wins. Scores and cards remaining show at the top. After the match, the host can play again with the same lobby or everyone can go home.
-
-### Tips
-
-- Same Wi‑Fi is the most reliable for joining.
-- The host must stay on the page. If the host closes the tab, the room ends.
-- You cannot join a game that has already started. Wait for the next round.
+> This repo is a static minigame platform where each title is one HTML file. Multiplayer is **host-authoritative P2P** — the host browser is the room. A shared kit handles lobby, invites, and ICE; each game owns a rules engine. Standouts: Dobble’s **finite geometry deck**, Uno’s **stack FSM + reconnect hardening**, and Cubestacc’s **3D-rules / 2D-view split** without WebGL.
 
 ---
 
-## How to play Uno
+## Games (technical map)
 
-Match the discard’s **color** or **number**. First player to empty their hand wins.
-
-### Setup
-
-1. Open [Uno.html](Uno.html) in a browser.
-2. Type your name.
-3. Choose one:
-   - **Create room** — you are the host. Share the 4-letter code, the invite link, or the QR code.
-   - **Join friends** — type the host’s code (or open a link that already has `?room=ABCD`).
-   - **Practice solo** — play against 1–3 bots, no lobby.
-
-Everyone must open the **same** `Uno.html` page. Friends on the same Wi‑Fi or on a different network can join the same lobby.
-
-### In the lobby
-
-- Wait until at least two people have connected.
-- Host taps **Start game**. Keep the host tab open for the whole match.
-
-### During a turn
-
-You see the discard, the current color, and **your** hand.
-
-1. Tap a highlighted card that matches color or number (or a Wild).
-2. If you cannot play, tap the draw pile. You may play the drawn card if it fits, or tap **Keep**.
-3. Skip, Reverse, Draw Two, Wild, and Wild +4 do what they say on the card.
-4. When you have two cards, tap **UNO!** before going down to one — or you draw 2.
-
-### Winning
-
-The first player with **no cards left** wins. After the match, the host can play again with the same lobby or everyone can go home.
-
-### Tips
-
-- Same Wi‑Fi is the most reliable for joining.
-- The host must stay on the page. If the host closes the tab, the room ends.
-- You cannot join a game that has already started. Wait for the next round.
-- Wild Draw Four is only legal if you have no card of the current color.
+| Game | File | Technical highlight | Deep notes |
+| --- | --- | --- | --- |
+| **Hub** | [index.html](index.html) | Product surface / discovery | — |
+| **Dobble** | [Dobble.html](Dobble.html) | Projective plane order 7; unique intersection | [Dobble.md](docs/Dobble.md) |
+| **Uno** | [Uno.html](Uno.html) | Draw-stack FSM, UNO catch window, NAT/reconnect | [Uno.md](docs/Uno.md) |
+| **Uno Flip** | [unoflip.html](unoflip.html) | Dual-face cards + O(1) global flip | [UnoFlip.md](docs/UnoFlip.md) |
+| **Cubestacc** | [Cubestacc.html](Cubestacc.html) | Sparse 3D cells + painter’s sort + camera yaw | [Cubestacc.md](docs/Cubestacc.md) |
 
 ---
 
-## How to play Uno Flip
+## Cross-cutting architecture
 
-Same lobby, UNO call, Caught window, stacking, and voice as Uno. Open [unoflip.html](unoflip.html).
+```
+                    Netlify (static HTTPS)
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+           Dobble         Uno/Flip     Cubestacc
+              └─────────────┬─────────────┘
+                            │ shared/kit.js
+                            │ PeerJS signaling + STUN/(TURN)
+                            ▼
+                   Host tab ◄──data channel──► Guests
+                   (authoritative state)
+```
 
-The deck is **112 double-sided cards**. Each physical card has a Light face and a Dark face. Playing Flip turns every hand, the draw pile, and the discard to the other side.
+**Shared decisions**
 
-**Light** (red / yellow / green / blue): numbers **1–9** twice per color (no 0s), plus Skip, Reverse, Draw One (+1), Flip, Wild, and Wild Draw Two (+2).
+1. **Host-authoritative** — guests send intents; host validates; `playerView` per seat  
+2. **Peer ID = `prefix + roomCode`** — many rooms, one public PeerServer  
+3. **Private hands** — never broadcast full state  
+4. **Invite UX** — code / `?room=` / QR; Leave strips query so Create returns  
+5. **Solo path** — same rules, no PeerJS  
 
-**Dark** (pink / teal / orange / purple): numbers **1–9** twice per color, plus Skip Everyone, Reverse, Draw Five (+5), Flip, Wild, and Wild Draw Color.
-
-- Skip Everyone means you play again. Wild Draw Color: the next player draws until they get the chosen color.
-- +1 stacks with +1 or Wild +2. +5 stacks with +5 or Wild Draw Color.
-
-Everyone must open the **same** `unoflip.html` page (Uno rooms do not mix with Flip rooms).
-
----
-
-## How to play Cubestacc
-
-Open [Cubestacc.html](Cubestacc.html). **Create room** / **Join** for friends (same PeerJS pattern as Uno), or **Practice solo** vs bots.
-
-Match **suit** (TOP), **rank** (SIDE), or **face** (FACE) onto the shared cube STACC. First empty hand wins. At two cards, tap **UH OH!** before going to one — or get Caught for +3.
-
-Specials: J +1 · Q skip · K +2 (stackable) · A extra turn · 0 reverse + block top · Wild picks suit. Full notes: [Cubestacc.md](Cubestacc.md). Inspired by STACCS; not affiliated with STICCY.
-
----
-
-## Coming soon
-
-More one-file minigames will land in this folder. Each will get its own `.html` page and a short how-to, same pattern as Dobble and Uno.
-
-Ideas on the list (not built yet):
-
-- Party / reaction games
-- Short cooperative puzzles
-
-Watch this README for new titles.
+**Rationale:** Multiplayer was treated as a product constraint (static hosting), so rules engines stay host-safe and easy to reason about.
 
 ---
 
-## Run locally
+## What each game highlights
+
+| If you care about… | Start here… |
+| --- | --- |
+| Algorithms / CS | Dobble geometry; Cubestacc cells + paint score |
+| System design | Host authority, projection, reconnect, NAT |
+| Frontend polish | SVG cubes, editions, optimistic Uno UI |
+| Product sense | Wi‑Fi tips, warmup, Debug ICE, seat rejoin |
+| Code organization | `shared/` kit vs per-game rules |
+
+---
+
+## How to play (player-facing, short)
+
+### Dobble
+
+Any two cards share **exactly one** symbol — tap it. First empty pile wins. Host picks edition + cards each. Details: [Dobble.md](docs/Dobble.md).
+
+### Uno
+
+Match **color** or **number**. Stack +2/+4 (house rules). Call **UNO!** at 2 cards or risk **Caught!**. Details: [Uno.md](docs/Uno.md).
+
+### Uno Flip
+
+Double-sided deck; **Flip** turns the whole table Light↔Dark. Details: [UnoFlip.md](docs/UnoFlip.md).
+
+### Cubestacc
+
+Match suit↑ / rank→ / face← on a shared cube STACC. Deck themes in lobby. Details: [Cubestacc.md](docs/Cubestacc.md).
+
+---
+
+## Repo layout
+
+```
+MiniGames/
+  index.html          # hub
+  *.html              # games (root URLs for Netlify)
+  docs/               # architecture notes
+  assets/icons/       # SVGs (e.g. flip.svg)
+  assets/images/      # reference images
+  shared/             # lobby kit (css/js)
+```
+
+## Run & deploy
 
 ```bash
 npx serve .
 ```
 
-Then open `http://localhost:3000/` for the game grid, or `Dobble.html` / `Uno.html` directly.
+Open `http://localhost:3000/`. Deploy the **whole folder** to Netlify (`index.html`, game HTML, `docs/`, `assets/`, and `shared/`).
 
-## Deploy on Netlify
+HTTPS matters for WebRTC. Same Wi‑Fi is the most reliable join path; same-ISP different homes often need mobile data or TURN.
 
-Upload **this whole folder**, not a single game file. Netlify needs `index.html`, the game HTML files, and the `shared/` folder together.
+---
 
-1. Push this repo and connect it in Netlify, **or** drag the MiniGames folder onto [app.netlify.com/drop](https://app.netlify.com/drop).
-2. Set **publish directory** to the site root (`.` / leave blank). Do not point it at one game file.
-3. After deploy:
-   - `https://your-site.netlify.app/` → game hub (`index.html`)
-   - `/Uno.html` or `/uno` → Uno
-   - `/Dobble.html` or `/dobble` → Dobble
+## Coming soon
 
-If `/` still opens Uno, the site is serving an old drop of `Uno.html` as the index. Trigger a new deploy of the full folder so `index.html` is the homepage.
+More one-file titles (party / co-op). Each gets `.html` + architecture MD + hub tile.
+
+---
+
+## Summary
+
+> “A static P2P minigame lab: shared multiplayer shell, per-game rules engines, and a few algorithms (geometry, effect FSMs, isometric occupancy) that are worth reading in the per-game docs.”

@@ -776,24 +776,40 @@
     .overlay {
       position: fixed;
       inset: 0;
-      z-index: 12;
+      z-index: 12000;
       background: rgba(0, 0, 0, .55);
       display: none;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
     }
     .overlay.show { display: flex; }
     .overlay .panel {
       width: min(280px, 100%);
       margin: 0;
       text-align: center;
+      max-height: min(85dvh, 640px);
+      overflow: auto;
     }
     #stack-pick .panel { width: min(320px, 100%); }
     #stack-pick .hint { margin-top: 8px; }
-    #away-pick, #reconnect-pick { z-index: 16; }
-    #away-pick .panel, #reconnect-pick .panel { width: min(340px, 100%); }
+    #away-pick, #reconnect-pick { z-index: 12010; }
+    #help-pick { z-index: 12020; }
+    #away-pick .panel, #reconnect-pick .panel, #help-pick .panel { width: min(360px, 100%); text-align: left; }
     #away-pick .hint, #reconnect-pick .hint { margin-top: 8px; }
+    #help-pick .panel h3 { margin: 0 0 8px; text-align: center; }
+    #help-pick .panel ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; }
+    #help-pick .panel li { margin: 4px 0; }
+    @media (max-width: 767px) {
+      .overlay { align-items: flex-end; padding: 0; }
+      .overlay .panel {
+        width: 100%;
+        max-width: none;
+        border-radius: 18px 18px 0 0;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+      }
+    }
     #away-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
     .swatches {
       display: grid;
@@ -983,6 +999,7 @@
       <div class="topbar-actions">
         <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
         <button class="icon-btn" id="btn-mute" title="Mute sounds">🔊</button>
+        <button class="icon-btn" id="btn-help" title="How to play" type="button">?</button>
         <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
       </div>
     </div>
@@ -1080,6 +1097,20 @@
       <div class="join-bar" id="reconnect-bar" style="display:block;margin-top:14px"><i></i></div>
       <button class="btn ghost" id="btn-reconnect-extend" type="button" style="display:none">Wait 2 more minutes</button>
       <button class="btn" id="btn-reconnect-leave" type="button">Leave table</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="help-pick" role="dialog" aria-modal="true">
+    <div class="panel">
+      <h3>How to play</h3>
+      <ul>
+        <li>Match the discard’s <b>color</b> or <b>number</b> (or play a Wild).</li>
+        <li>No play? Tap the draw pile. You may play the drawn card or tap <b>Keep</b>.</li>
+        <li><b>+2 / +4</b> can stack (not +2 on +4). Take the full amount or pass it on.</li>
+        <li>At 2 cards, tap <b>UNO!</b> before going to 1 — or risk <b>Caught!</b></li>
+        <li>Keep the host tab open. Same Wi‑Fi is the most reliable join path.</li>
+      </ul>
+      <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px">Got it</button>
     </div>
   </div>
 
@@ -2412,9 +2443,11 @@
       const p = g.players[g.turn];
       const n = g.pendingDraw || 0;
       if (p && n) {
-        drawCards(g, p, n);
+        const got = drawCards(g, p, n);
         sfx("draw");
-        g.banner = p.name + " draws " + n;
+        g.banner = got.length < n
+          ? (p.name + " draws " + got.length + " of " + n + " (deck empty)")
+          : (p.name + " draws " + got.length);
       }
       g.pendingDraw = 0;
       g.pendingKind = null;
@@ -2850,6 +2883,22 @@
           : "";
         $("banner").textContent = view.banner || "";
         $("draw-count").textContent = view.drawCount + " left";
+        $("draw-count").title = (view.drawCount || 0) === 0
+          ? "Draw pile empty"
+          : (view.drawCount + " cards left");
+        {
+          const drawBtn = $("draw-pile");
+          const noLegal = !(view.legal && view.legal.length);
+          const emptyPass = view.you.isTurn && !(view.pendingDraw > 0) && !view.stackChoice && !view.drawnCardId
+            && (view.drawCount || 0) === 0 && noLegal && !view.choosingColor && !view.paused;
+          if (drawBtn) {
+            drawBtn.title = emptyPass
+              ? "No plays and pile empty — tap to pass"
+              : ((view.drawCount || 0) === 0 ? "Draw pile empty" : "Draw a card");
+            const oval = drawBtn.querySelector(".back-oval");
+            if (oval) oval.textContent = emptyPass ? "PASS" : "UNO";
+          }
+        }
         $("dir").textContent = view.direction === 1 ? "↻" : "↺";
         $("color-chip").style.background = {
           red: "#c41e3a", yellow: "#ffd100", green: "#2e8b3a", blue: "#1b5eaa",
@@ -2866,11 +2915,17 @@
         $("stack-pick").classList.toggle("show", stackAsk);
         if (stackAsk) {
           const n = view.pendingDraw || 0;
-          $("stack-title").textContent = "Draw " + n + " or use a + card?";
+          const pile = view.drawCount || 0;
+          const take = Math.min(n, pile);
+          $("stack-title").textContent = take < n && n > 0
+            ? ("Deck has " + take + " — take them or stack?")
+            : ("Draw " + n + " or use a + card?");
           $("stack-sub").textContent = view.pendingKind === "wild4"
             ? "You can play +4 to pass it on. +2 cannot go on +4."
             : "You can play +2 or +4 to pass it on.";
-          $("btn-stack-take").textContent = "Pick " + n + " from pile";
+          $("btn-stack-take").textContent = take < n
+            ? ("Pick " + take + "/" + n + " from pile")
+            : ("Pick " + n + " from pile");
         }
         const awayList = (view.away || []).filter((p) => p.id && p.id !== "host");
         const othersAway = awayList.filter((p) => p.id !== view.you.id);
@@ -3955,7 +4010,20 @@
         e.preventDefault();
         onPlay(state.raisedCardId || Number(cards[0].dataset.cardId));
       }
-      if (e.key === "Escape") clearRaised();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if ($("help-pick") && $("help-pick").classList.contains("show")) {
+          $("help-pick").classList.remove("show");
+          return;
+        }
+        if ($("stack-pick") && $("stack-pick").classList.contains("show")) return;
+        if ($("color-pick") && $("color-pick").classList.contains("show")) return;
+        if ($("away-pick") && $("away-pick").classList.contains("show")) {
+          $("away-pick").classList.remove("show");
+          return;
+        }
+        clearRaised();
+      }
     });
 
     (function homeDecor() {
@@ -3984,6 +4052,13 @@
     $("btn-theme").onclick = () => {
       applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
     };
+    if ($("btn-help")) $("btn-help").onclick = () => $("help-pick") && $("help-pick").classList.add("show");
+    if ($("btn-help-close")) $("btn-help-close").onclick = () => $("help-pick") && $("help-pick").classList.remove("show");
+    if ($("help-pick")) {
+      $("help-pick").addEventListener("click", (e) => {
+        if (e.target === $("help-pick")) $("help-pick").classList.remove("show");
+      });
+    }
 
     applyTheme(localStorage.getItem(THEME_KEY) || "light");
 
@@ -4078,6 +4153,9 @@
       $("join-code").value = roomParam;
       setInviteHome(roomParam);
       $("name").focus();
+      if (saved && String(saved).trim()) {
+        setTimeout(() => joinRoom(roomParam), 300);
+      }
     }
 
     netlog("boot", netInfo(), iceSummary());

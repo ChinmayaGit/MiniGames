@@ -47,3 +47,8 @@
   from = "/cubestacc.html"
   to = "/Cubestacc.html"
   status = 200
+
+[[redirects]]
+  from = "/docs"
+  to = "/docs/README.md"
+  status = 200
