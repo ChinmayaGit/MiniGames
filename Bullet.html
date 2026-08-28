@@ -130,6 +130,8 @@
     .hand-corner {
       grid-column: 1; grid-row: 2; align-self: end;
       min-width: 0; max-width: 100%; overflow: visible;
+      max-height: 100%; display: flex; flex-direction: column;
+      position: relative; z-index: 30;
     }
     .health-loader-row {
       display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
@@ -344,48 +346,92 @@
     .hand-area {
       background: rgba(0,0,0,.28); border-radius: 12px; border: 1px solid var(--line);
       padding: 6px 6px 5px; width: 100%; max-width: 100%; min-width: 0;
-      display: flex; flex-direction: column; gap: 2px;
+      display: flex; flex-direction: column; gap: 4px;
+      flex: 1; min-height: 0; max-height: 100%;
+      position: relative; z-index: 30;
+      pointer-events: auto;
+    }
+    .hand-deck-scroll {
+      flex: 1; min-height: 0; max-height: min(220px, 42vh);
+      overflow-y: auto; overflow-x: hidden;
+      display: flex; flex-direction: column; gap: 6px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--gold) rgba(0,0,0,.25);
+      padding-right: 2px;
+      touch-action: pan-y;
+    }
+    .hand-deck-scroll::-webkit-scrollbar { width: 5px; }
+    .hand-deck-scroll::-webkit-scrollbar-track {
+      background: rgba(0,0,0,.25); border-radius: 999px;
+    }
+    .hand-deck-scroll::-webkit-scrollbar-thumb {
+      background: var(--gold); border-radius: 999px;
+    }
+    .deck-section {
+      flex-shrink: 0; min-width: 0;
     }
     .hand-label {
-      font-size: 10px; color: var(--gold); font-weight: 700; flex-shrink: 0;
-      line-height: 1.25;
+      font-size: 9px; color: var(--gold); font-weight: 800; flex-shrink: 0;
+      line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase;
+      margin-bottom: 3px; opacity: 0.9;
     }
-    .hand-scroll {
-      width: 100%; max-width: 100%; min-width: 0;
-      padding-top: 2px;
-    }
-    .hand {
+    .hand-label.use-label { color: var(--teal); }
+    .hand-row {
       display: flex; flex-wrap: nowrap; gap: 5px;
       overflow-x: auto; overflow-y: hidden;
       width: 100%; max-width: 100%; min-width: 0;
-      padding: 4px 2px 6px;
+      padding: 2px 2px 4px;
       scroll-padding-inline: 4px;
       justify-content: flex-start;
       -webkit-overflow-scrolling: touch;
-      touch-action: pan-x;
+      touch-action: auto;
       overscroll-behavior-x: contain;
       scrollbar-width: thin;
       scrollbar-color: var(--gold) rgba(0,0,0,.25);
     }
-    .hand::-webkit-scrollbar { height: 5px; }
-    .hand::-webkit-scrollbar-track {
-      background: rgba(0,0,0,.25); border-radius: 999px; margin: 0 2px;
+    .hand-row::-webkit-scrollbar { height: 4px; }
+    .hand-row::-webkit-scrollbar-track {
+      background: rgba(0,0,0,.2); border-radius: 999px; margin: 0 2px;
     }
-    .hand::-webkit-scrollbar-thumb {
+    .hand-row::-webkit-scrollbar-thumb {
       background: var(--gold); border-radius: 999px;
+    }
+    .hand-row.empty {
+      min-height: 28px; align-items: center; justify-content: flex-start;
+      padding-left: 6px; color: var(--muted); font-size: 9px; font-weight: 600;
     }
     .hand-divider {
       height: 2px; background: var(--gold); border-radius: 999px;
       margin: 2px 4px 4px; opacity: 0.9; flex-shrink: 0;
     }
     .bullet-card, .util-card {
-      flex: 0 0 auto; width: 48px; min-height: 58px; border-radius: 8px;
+      flex: 0 0 auto; width: 52px; min-height: 64px; border-radius: 8px;
       border: 2px solid transparent;
-      background: transparent;
+      background: rgba(255,255,255,.06);
       color: var(--ink); display: flex; flex-direction: column;
-      align-items: center; justify-content: flex-start; padding: 2px 2px 3px; cursor: pointer;
-      transition: transform .15s, border-color .15s, box-shadow .15s; user-select: none;
+      align-items: center; justify-content: flex-start; padding: 3px 2px 4px; cursor: pointer;
+      transition: transform .15s, border-color .15s, box-shadow .15s, background .15s;
+      user-select: none; -webkit-user-select: none;
       position: relative; overflow: visible;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(255, 204, 51, 0.35);
+      pointer-events: auto;
+    }
+    .bullet-card:active, .util-card:active {
+      transform: scale(0.94);
+      background: rgba(255, 204, 51, 0.15);
+    }
+    .bullet-card.card-inactive, .util-card.card-inactive {
+      opacity: 0.5; cursor: not-allowed; pointer-events: none;
+    }
+    .bullet-card.card-wait-energy {
+      opacity: 0.75;
+      border-color: rgba(255, 204, 51, 0.35);
+    }
+    .action-hint-inline {
+      font-size: 9px; color: var(--muted); font-weight: 600; margin-right: 4px;
     }
     .bullet-card.selected, .util-card.selected {
       border-color: var(--gold); transform: translateY(-3px);
@@ -407,9 +453,23 @@
       overflow: hidden; text-overflow: ellipsis;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     }
-    .util-card { border-color: transparent; }
+    .util-card { border-color: transparent; position: relative; }
     .util-card.selected { border-color: var(--teal); background: rgba(46, 230, 166, 0.08); }
-
+    .util-card::after {
+      content: "USE"; position: absolute; top: 1px; right: 1px;
+      font-size: 6px; font-weight: 800; letter-spacing: 0.04em;
+      padding: 1px 4px; border-radius: 4px;
+      background: var(--teal); color: #0c0a0c;
+    }
+    .util-card.boost-card::after { content: none; }
+    .boost-cost {
+      font-size: 8px; font-weight: 800; color: var(--gold);
+      margin-top: 1px; line-height: 1;
+    }
+    .util-card.boost-unaffordable { opacity: 0.55; }
+    .bullet-row-label-sub {
+      font-size: 8px; color: var(--muted); font-weight: 600; margin-left: 4px;
+    }
     .projectile.elem-plasma img { filter: drop-shadow(0 0 10px #7c5cff) drop-shadow(0 0 6px #5ec4ff); }
     .damage-pop.elem-plasma { color: #c4a0ff; }
     .loadout-chip.elem-fire .portrait { border-color: #ff6b3588; }
@@ -459,10 +519,33 @@
     .loadout-chip .meta-text { min-width: 0; }
     .loadout-chip b { display: block; font-size: 13px; }
     .action-bar {
-      display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-start;
+      display: flex; flex-direction: column; gap: 6px;
       flex-shrink: 0; padding-top: 0;
     }
+    .action-steps {
+      font-size: 10px; font-weight: 700; color: var(--gold); line-height: 1.3;
+      min-height: 1.3em;
+    }
+    .action-steps.wait { color: var(--muted); }
+    .action-steps.ready { color: var(--teal); }
+    .action-row {
+      display: flex; gap: 4px; flex-wrap: wrap; align-items: center;
+    }
+    .action-row-label {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted);
+      width: 100%; margin-bottom: -2px;
+    }
     .hand-area .btn.sm { font-size: 11px; padding: 7px 8px; }
+    .hand-area .btn.fire-ready {
+      background: var(--red); color: #fff; border-color: var(--red);
+      box-shadow: 0 3px 0 #a01830; font-weight: 800;
+      animation: fire-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes fire-pulse {
+      0%, 100% { box-shadow: 0 3px 0 #a01830, 0 0 0 0 #ff3d6e44; }
+      50% { box-shadow: 0 3px 0 #a01830, 0 0 12px 2px #ff3d6e66; }
+    }
 
     /* Recharge timing */
     .recharge-modal {
@@ -655,11 +738,12 @@
         grid-template-rows: auto minmax(0, 1fr);
       }
       .enemy-corner { grid-column: 1; grid-row: 1; max-width: 100%; }
-      .hand-corner { grid-column: 1; grid-row: 2; max-width: 100%; }
+      .hand-corner { grid-column: 1; grid-row: 2; max-width: 100%; min-height: 0; }
+      .hand-deck-scroll { max-height: min(180px, 38vh); }
       .me-corner { grid-column: 2; grid-row: 2; align-self: end; width: min(260px, 100%); }
       .cylinder-wrap { width: min(96px, 22vw); }
       .chamber { width: 28px; height: 28px; }
-      .bullet-card, .util-card { width: 44px; min-height: 54px; }
+      .bullet-card, .util-card { width: 48px; min-height: 60px; }
       .bullet-card .hand-img, .bullet-card > .bullet-icon, .util-card .util-ico { width: 34px; height: 34px; }
     }
 
@@ -682,7 +766,7 @@
     <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="brand">
       <h1>BULLET</h1>
-      <p>Load bullets. Fire when energy is ready. Prepare your blaster before you attack.</p>
+      <p>Realtime duel — tap bullets & boosts anytime. Pick 3 elements at start.</p>
     </div>
     <div class="panel">
       <label for="name">Your name</label>
@@ -782,11 +866,18 @@
         </div>
         <div class="hand-corner">
           <div class="hand-area" id="hand-area">
-            <div class="hand-label" id="hand-label">Hand</div>
-            <div class="hand-scroll">
-              <div class="hand" id="hand"></div>
+            <div class="hand-deck-scroll" id="hand-deck-scroll">
+              <div class="deck-section">
+                <div class="hand-label use-label">Use · tap once</div>
+                <div class="hand-row hand-use" id="hand-use"></div>
+              </div>
+              <div class="deck-section">
+                <div class="hand-label" id="hand-label">Bullets · tap to shoot ⚡1<span class="bullet-row-label-sub"> (5)</span></div>
+                <div class="hand-row hand-bullets" id="hand-bullets"></div>
+              </div>
             </div>
             <div class="hand-divider" aria-hidden="true"></div>
+            <div class="action-steps" id="action-steps"></div>
             <div class="action-bar" id="action-bar"></div>
           </div>
         </div>
@@ -835,11 +926,11 @@
     <div class="sheet">
       <h3>How to play</h3>
       <ul>
-        <li><b>Loop:</b> Draw → Load bullets → Attack when you have energy → Opponent.</li>
-        <li>Energy recharges <b>1 cell every 5 seconds</b> — watch the bar above (Clash Royale style).</li>
-        <li><b>Single</b> (⚡1): hammer bullet. <b>Power</b> (⚡2): powered bullet. <b>Fusion</b> (⚡3): two compatible elements.</li>
-        <li>Load up to <b>5 bullets</b> into the circular cylinder. Hammer (top) fires first, then it rotates.</li>
-        <li>Start with a <b>3-bullet loadout</b> — check the fusion guide first so 2 of your elements can Twin Fusion.</li>
+        <li><b>Bullets (5):</b> Your 3 loadout elements, random repeat — tap to shoot (⚡1).</li>
+        <li><b>USE boosts:</b> Power Up ⚡1 · Twin Fusion ⚡2 · Tri Fusion ⚡3 · Defence ⚡1 · Blind ⚡2 · Speed Boost ⚡1.</li>
+        <li>Blind / Speed Boost: enemy has 50% miss chance for a few seconds.</li>
+        <li>No turns — fire anytime. Low damage = longer duels. ⚡ refills every 5s.</li>
+        <li>Energy (⚡) fills 1 cell every 5s — need ⚡ to fire.</li>
       </ul>
       <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px;width:100%">Got it</button>
     </div>
@@ -898,9 +989,12 @@
     const MAX_PLAYERS = 4;
     const ENERGY_MAX = 5;
     const ENERGY_CELL_MS = 5000;
+    const BULLET_ROW_SIZE = 5;
     const SLOT_MAX = 5;
     const HAND_MAX = 8;
-    const FX_MS = 900;
+    const FX_MS = 450;
+    const ACTION_LOCK_MS = 380;
+    const EVADE_CHANCE = 0.5;
     const COLORS = ["#ff3d6e", "#7c5cff", "#2ee6a6", "#ffcc33"];
 
     const ELEM_ICON = {
@@ -957,7 +1051,16 @@
       return card.name || card.elem || "";
     }
 
+    function isBulletCard(c) {
+      return c && c.kind !== "util" && (c.kind === "bullet" || !!c.elem);
+    }
+
     function handCardHtml(card) {
+      if (card.kind === "boost") {
+        return '<span class="util-ico">' + (card.icon || "✦") + '</span>'
+          + '<span class="card-desc">' + card.name + "</span>"
+          + '<span class="boost-cost">⚡' + card.cost + "</span>";
+      }
       if (card.kind === "util") {
         return '<span class="util-ico">' + (card.icon || "✦") + '</span>'
           + '<span class="card-desc">' + cardDesc(card) + "</span>";
@@ -971,30 +1074,40 @@
     }
 
     const BULLET_CATALOG = [
-      { id: "infurnus", name: "Ember Round", icon: "🔥", elem: "fire", role: "attack", dmg: 40, speed: "fast", effect: "burn", rarity: "common" },
-      { id: "aquabeek", name: "Aqua Shot", icon: "💧", elem: "water", role: "support", dmg: 30, speed: "med", effect: "heal", rarity: "common" },
-      { id: "armashelt", name: "Bolt Shell", icon: "⚡", elem: "energy", role: "speed", dmg: 28, speed: "fast", effect: "boost", rarity: "common" },
-      { id: "frostcrawler", name: "Frost Cap", icon: "❄️", elem: "ice", role: "control", dmg: 26, speed: "slow", effect: "freeze", rarity: "rare" },
-      { id: "tankshell", name: "Stone Round", icon: "🪨", elem: "earth", role: "tank", dmg: 22, speed: "slow", effect: "shield", rarity: "common" },
-      { id: "venomfang", name: "Acid Round", icon: "☠️", elem: "toxin", role: "control", dmg: 24, speed: "med", effect: "poison", rarity: "rare" },
-      { id: "blastor", name: "Surge Bolt", icon: "⚡", elem: "energy", art: "surge", role: "attack", dmg: 36, speed: "med", effect: null, rarity: "rare" },
-      { id: "verdant", name: "Verdant Shot", icon: "🌿", elem: "nature", role: "support", dmg: 10, speed: "med", effect: "heal", rarity: "common" },
-      { id: "trickster", name: "Gale Round", icon: "🌀", elem: "chaos", role: "trick", dmg: 18, speed: "fast", effect: "steal", rarity: "epic" },
-      { id: "plasma", name: "Plasma Bolt", icon: "⚡", elem: "energy", art: "plasma", role: "attack", dmg: 34, speed: "fast", effect: "burn", rarity: "epic" },
+      { id: "infurnus", name: "Ember Round", icon: "🔥", elem: "fire", role: "attack", dmg: 11, speed: "fast", effect: "burn", rarity: "common" },
+      { id: "aquabeek", name: "Aqua Shot", icon: "💧", elem: "water", role: "support", dmg: 9, speed: "med", effect: "heal", rarity: "common" },
+      { id: "armashelt", name: "Bolt Shell", icon: "⚡", elem: "energy", role: "speed", dmg: 8, speed: "fast", effect: "boost", rarity: "common" },
+      { id: "frostcrawler", name: "Frost Cap", icon: "❄️", elem: "ice", role: "control", dmg: 8, speed: "slow", effect: "freeze", rarity: "rare" },
+      { id: "tankshell", name: "Stone Round", icon: "🪨", elem: "earth", role: "tank", dmg: 7, speed: "slow", effect: "shield", rarity: "common" },
+      { id: "venomfang", name: "Acid Round", icon: "☠️", elem: "toxin", role: "control", dmg: 7, speed: "med", effect: "poison", rarity: "rare" },
+      { id: "blastor", name: "Surge Bolt", icon: "⚡", elem: "energy", art: "surge", role: "attack", dmg: 10, speed: "med", effect: null, rarity: "rare" },
+      { id: "verdant", name: "Verdant Shot", icon: "🌿", elem: "nature", role: "support", dmg: 5, speed: "med", effect: "heal", rarity: "common" },
+      { id: "trickster", name: "Gale Round", icon: "🌀", elem: "chaos", role: "trick", dmg: 6, speed: "fast", effect: "steal", rarity: "epic" },
+      { id: "plasma", name: "Plasma Bolt", icon: "⚡", elem: "energy", art: "plasma", role: "attack", dmg: 10, speed: "fast", effect: "burn", rarity: "epic" },
     ];
 
     const FUSIONS = {
-      "fire+energy": { name: "Plasma Fusion", icon: "🔆", dmg: 80, effect: "burn", elem: "plasma", art: "plasma" },
-      "energy+fire": { name: "Plasma Fusion", icon: "🔆", dmg: 80, effect: "burn", elem: "plasma", art: "plasma" },
-      "water+ice": { name: "Frozen Blast", icon: "🧊", dmg: 60, effect: "freeze", elem: "ice" },
-      "ice+water": { name: "Frozen Blast", icon: "🧊", dmg: 60, effect: "freeze", elem: "ice" },
-      "fire+earth": { name: "Magma Shell", icon: "🪨", dmg: 70, effect: "burn", elem: "fire" },
-      "earth+fire": { name: "Magma Shell", icon: "🪨", dmg: 70, effect: "burn", elem: "fire" },
-      "energy+ice": { name: "Static Freeze", icon: "⚡", dmg: 65, effect: "stun", elem: "energy" },
-      "ice+energy": { name: "Static Freeze", icon: "⚡", dmg: 65, effect: "stun", elem: "energy" },
-      "water+earth": { name: "Mud Barrage", icon: "🌊", dmg: 55, effect: "shield", elem: "water" },
-      "earth+water": { name: "Mud Barrage", icon: "🌊", dmg: 55, effect: "shield", elem: "water" },
+      "fire+energy": { name: "Plasma Fusion", icon: "🔆", dmg: 22, effect: "burn", elem: "plasma", art: "plasma" },
+      "energy+fire": { name: "Plasma Fusion", icon: "🔆", dmg: 22, effect: "burn", elem: "plasma", art: "plasma" },
+      "water+ice": { name: "Frozen Blast", icon: "🧊", dmg: 18, effect: "freeze", elem: "ice" },
+      "ice+water": { name: "Frozen Blast", icon: "🧊", dmg: 18, effect: "freeze", elem: "ice" },
+      "fire+earth": { name: "Magma Shell", icon: "🪨", dmg: 20, effect: "burn", elem: "fire" },
+      "earth+fire": { name: "Magma Shell", icon: "🪨", dmg: 20, effect: "burn", elem: "fire" },
+      "energy+ice": { name: "Static Freeze", icon: "⚡", dmg: 18, effect: "stun", elem: "energy" },
+      "ice+energy": { name: "Static Freeze", icon: "⚡", dmg: 18, effect: "stun", elem: "energy" },
+      "water+earth": { name: "Mud Barrage", icon: "🌊", dmg: 16, effect: "shield", elem: "water" },
+      "earth+water": { name: "Mud Barrage", icon: "🌊", dmg: 16, effect: "shield", elem: "water" },
     };
+
+    const TRI_FUSION_DMG = 28;
+    const BOOST_CATALOG = [
+      { type: "powerUp", name: "Power Up", icon: "⬆", cost: 1, desc: "Next shot +50% dmg" },
+      { type: "twinFusion", name: "Twin Fusion", icon: "🔀", cost: 2, desc: "Fusion blast · 2 elem" },
+      { type: "triFusion", name: "Tri Fusion", icon: "💥", cost: 3, desc: "Mega fusion · 3 elem" },
+      { type: "defence", name: "Defence", icon: "🛡", cost: 1, desc: "+10 shield" },
+      { type: "blind", name: "Blind", icon: "🌫", cost: 2, desc: "Enemy 50% miss · 10s" },
+      { type: "speedBoost", name: "Speed Boost", icon: "💨", cost: 1, desc: "Enemy 50% miss · 6s" },
+    ];
 
     function uniqueFusionRecipes() {
       const seen = new Set();
@@ -1048,20 +1161,26 @@
       }
     }
 
-    const UTIL_TYPES = {
-      powerCore: { name: "Power Core", icon: "🔋", kind: "power" },
-      draw2: { name: "Draw+", icon: "🃏", kind: "draw" },
-      shieldChip: { name: "Shield Chip", icon: "🛡", kind: "shield" },
-    };
+    const UTIL_TYPES = {};
 
     let uidSeq = 1;
     function makeBullet(defId) {
       const def = BULLET_CATALOG.find((s) => s.id === defId) || BULLET_CATALOG[0];
       return { uid: "b" + (uidSeq++), kind: "bullet", ...def };
     }
-    function makeUtil(typeId) {
-      const def = UTIL_TYPES[typeId];
-      return { uid: "u" + (uidSeq++), type: typeId, kind: "util", ...def };
+    function randomLoadoutBullet(loadoutIds) {
+      const id = loadoutIds[Math.floor(Math.random() * loadoutIds.length)];
+      return makeBullet(id);
+    }
+    function buildBulletRow(loadoutIds) {
+      const row = [];
+      for (let i = 0; i < BULLET_ROW_SIZE; i++) row.push(randomLoadoutBullet(loadoutIds));
+      return row;
+    }
+    function loadoutElemsFromIds(loadoutIds) {
+      const ids = (loadoutIds || []).slice(0, 3);
+      while (ids.length < 3) ids.push(BULLET_CATALOG[ids.length % BULLET_CATALOG.length].id);
+      return ids;
     }
     function shuffle(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -1071,15 +1190,7 @@
       return arr;
     }
     function buildSharedDeck() {
-      const pile = [];
-      for (const s of BULLET_CATALOG) {
-        const n = s.rarity === "epic" ? 1 : s.rarity === "rare" ? 2 : 3;
-        for (let i = 0; i < n; i++) pile.push(makeBullet(s.id));
-      }
-      for (let i = 0; i < 6; i++) pile.push(makeUtil("powerCore"));
-      for (let i = 0; i < 4; i++) pile.push(makeUtil("draw2"));
-      for (let i = 0; i < 3; i++) pile.push(makeUtil("shieldChip"));
-      return shuffle(pile);
+      return [];
     }
 
     const state = {
@@ -1092,6 +1203,7 @@
       recharge: { active: false, started: 0, duration: 1350 },
       energyTimer: 0,
       energyRaf: 0,
+      botTimer: 0,
     };
     const guests = new Map();
 
@@ -1128,42 +1240,43 @@
     }
 
     function createPlayer(p, maxHp, loadoutIds) {
-      const loadout = (loadoutIds || []).slice(0, 3).map((id) => makeBullet(id));
-      while (loadout.length < 3) loadout.push(makeBullet(BULLET_CATALOG[loadout.length % BULLET_CATALOG.length].id));
+      const ids = loadoutElemsFromIds(loadoutIds);
       return {
         id: p.id, name: p.name, token: p.token || p.id, color: p.color || COLORS[0],
         hp: maxHp, maxHp,
-        energy: 1, overcharged: false, overheated: false,
+        energy: 2, overcharged: false, overheated: false,
         regenStartedAt: Date.now(),
         energyProgress: 0,
+        loadoutIds: ids,
+        bulletRow: buildBulletRow(ids),
         slots: [null, null, null, null, null],
-        hand: loadout.slice(),
-        loadout: loadout.map((s) => s.id),
+        hand: [],
+        loadout: ids.slice(),
         burn: 0, freeze: 0, stun: 0, poison: 0, shield: 0,
         damageBonus: 0,
-        rechargedThisTurn: false,
+        nextShotMult: 1,
+        evadeUntil: 0,
+        actionLock: false,
         connected: p.connected !== false,
         isBot: !!p.isBot,
       };
     }
 
     function createGame(players, maxHp, loadouts) {
-      const deck = buildSharedDeck();
       const list = players.map((p, i) => {
         const ids = (loadouts && loadouts[p.id]) || defaultLoadout(i);
-        const pl = createPlayer({ ...p, color: p.color || COLORS[i % COLORS.length] }, maxHp, ids);
-        // deal 2 extra from shared deck
-        for (let k = 0; k < 2 && deck.length; k++) pl.hand.push(deck.pop());
-        return pl;
+        return createPlayer({ ...p, color: p.color || COLORS[i % COLORS.length] }, maxHp, ids);
       });
+      const target = list.length === 2 ? list.find((x) => x.id !== list[0].id) : null;
       return {
         phase: "playing",
-        subPhase: "draw",
-        turn: list[0].id,
-        maxHp, deck, discard: [],
-        targetId: list.length === 2 ? list[1].id : null,
-        banner: list[0].name + "'s turn — prepare your blaster",
-        log: "Duel start. Energy refills 1 cell / 5s — watch the bar.",
+        mode: "realtime",
+        subPhase: "live",
+        turn: null,
+        maxHp, deck: [], discard: [],
+        targetId: target ? target.id : null,
+        banner: "Free fire — tap bullets & boosts anytime!",
+        log: "Realtime duel · low damage · ⚡ refills every 5s.",
         startedAt: Date.now(), winnerId: null, players: list,
         pendingFx: null, animLock: false,
         discoveredFusions: {},
@@ -1216,56 +1329,147 @@
       return drew;
     }
 
+    function playerCanAct(g, p) {
+      return g && g.phase === "playing" && p && p.hp > 0 && !p.actionLock;
+    }
+
+    function resolveTarget(g, playerId) {
+      let target = playerById(g, g.targetId);
+      if (!target || target.hp <= 0 || target.id === playerId) {
+        const others = g.players.filter((x) => x.id !== playerId && x.hp > 0);
+        if (others.length === 1) target = others[0];
+        else target = null;
+      }
+      return target;
+    }
+
+    function attackEvaded(target) {
+      return target && target.evadeUntil > Date.now() && Math.random() < EVADE_CHANCE;
+    }
+
+    function applyEvadeDebuff(target, ms) {
+      target.evadeUntil = Math.max(target.evadeUntil || 0, Date.now() + ms);
+    }
+
+    function loadoutBulletDefs(p) {
+      return p.loadoutIds.map((id) => BULLET_CATALOG.find((b) => b.id === id)).filter(Boolean);
+    }
+
+    function twinFusionShot(p) {
+      const defs = loadoutBulletDefs(p);
+      if (defs.length < 2) return { name: "Twin Blast", dmg: 14, elem: defs[0]?.elem || "fire", mode: "twin" };
+      const a = defs[Math.floor(Math.random() * defs.length)];
+      let b = defs[Math.floor(Math.random() * defs.length)];
+      if (defs.length > 1) while (b.id === a.id) b = defs[Math.floor(Math.random() * defs.length)];
+      const fakeA = makeBullet(a.id);
+      const fakeB = makeBullet(b.id);
+      const fuse = getFusion(fakeA, fakeB);
+      if (fuse) {
+        return {
+          name: fuse.name, icon: fuse.icon, elem: fuse.elem || a.elem, art: fuse.art,
+          dmg: fuse.dmg, effect: fuse.effect, mode: "twin", elems: [a.elem, b.elem],
+        };
+      }
+      return {
+        name: a.name + "+" + b.name, elem: a.elem, art: a.art,
+        dmg: Math.round((a.dmg + b.dmg) * 0.85), effect: a.effect, mode: "twin", elems: [a.elem, b.elem],
+      };
+    }
+
+    function triFusionShot(p) {
+      const defs = loadoutBulletDefs(p);
+      if (defs.length < 3) return { name: "Tri Blast", dmg: TRI_FUSION_DMG, elem: "energy", mode: "tri" };
+      const [a, b, c] = defs;
+      const f1 = getFusion(makeBullet(a.id), makeBullet(b.id));
+      const base = f1 ? f1.dmg : Math.round((a.dmg + b.dmg + c.dmg) * 0.7);
+      return {
+        name: "Tri Fusion", icon: "💥", elem: f1?.elem || a.elem, art: f1?.art,
+        dmg: Math.max(TRI_FUSION_DMG, base + c.dmg), effect: f1?.effect || "burn",
+        mode: "tri", elems: [a.elem, b.elem, c.elem],
+      };
+    }
+
+    function applyShotEffects(g, shooter, target, shot, dealt) {
+      if (shot.effect === "burn") target.burn += 1;
+      if (shot.effect === "freeze") target.freeze += 1;
+      if (shot.effect === "stun") target.stun += 1;
+      if (shot.effect === "poison") target.poison += 1;
+      if (shot.effect === "heal") shooter.hp = Math.min(shooter.maxHp, shooter.hp + 5);
+      if (shot.effect === "shield") shooter.shield += 6;
+    }
+
+    function lockPlayerAction(p, g) {
+      p.actionLock = true;
+      setTimeout(() => {
+        if (!state.game || state.game !== g) return;
+        p.actionLock = false;
+        hostBroadcast();
+      }, ACTION_LOCK_MS);
+    }
+
+    function executeShot(g, shooterId, target, shot, opts) {
+      opts = opts || {};
+      const shooter = playerById(g, shooterId);
+      if (!shooter || !target || !shot) return;
+      if (attackEvaded(target)) {
+        g.log = target.name + " evaded " + shooter.name + "'s " + shot.name + "!";
+        g.banner = "Miss!";
+        hostBroadcast();
+        return;
+      }
+      let dmg = shot.dmg || 8;
+      if (shooter.nextShotMult && shooter.nextShotMult > 1) {
+        dmg = Math.round(dmg * shooter.nextShotMult);
+        shooter.nextShotMult = 1;
+      }
+      if (shooter.damageBonus) dmg = Math.round(dmg * (1 + shooter.damageBonus));
+      const dealt = applyDamage(g, target, dmg);
+      applyShotEffects(g, shooter, target, shot, dealt);
+      g.log = shooter.name + " hits " + target.name + " with " + shot.name + " for " + dealt + "!";
+      g.banner = shot.name + "!";
+      const fxElem = shot.art === "plasma" ? "plasma" : (shot.elem || "fire");
+      g.pendingFx = {
+        id: newFxId(), type: "fire",
+        shooterId, targetId: target.id,
+        elem: fxElem, elems: shot.elems,
+        bulletSrc: bulletSrc(shot),
+        damage: dealt, mode: shot.mode || "single",
+        spin: !opts.noSpin,
+      };
+      checkWinner(g);
+      hostBroadcast();
+      lockPlayerAction(shooter, g);
+    }
+
     function applyStatusTicks(g, p) {
       if (p.burn > 0) {
-        p.hp = Math.max(0, p.hp - Math.min(8, p.burn * 4));
+        p.hp = Math.max(0, p.hp - Math.min(3, p.burn * 2));
         p.burn = Math.max(0, p.burn - 1);
       }
       if (p.poison > 0) {
-        p.hp = Math.max(0, p.hp - Math.min(6, p.poison * 3));
+        p.hp = Math.max(0, p.hp - Math.min(2, p.poison * 2));
         p.poison = Math.max(0, p.poison - 1);
       }
       if (p.freeze > 0) p.freeze = Math.max(0, p.freeze - 1);
       if (p.stun > 0) p.stun = Math.max(0, p.stun - 1);
     }
 
-    function startTurn(g) {
-      const p = playerById(g, g.turn);
-      if (!p || p.hp <= 0) return;
-      applyStatusTicks(g, p);
-      if (p.hp <= 0) { endTurn(g); return; }
-      p.rechargedThisTurn = true;
-      p.damageBonus = 0;
-      if (p.energy < ENERGY_MAX && !p.regenStartedAt) p.regenStartedAt = Date.now();
-      if (p.overheated) {
-        p.overheated = false;
-        g.subPhase = "locked";
-        g.banner = p.name + " overheated — skipping attack!";
-        g.log = p.name + "'s blaster cools down. Turn wasted.";
-        setTimeout(() => { if (state.game === g) endTurn(g); }, 700);
-        hostBroadcast();
-        return;
-      }
-      if (p.stun > 0) {
-        g.subPhase = "locked";
-        g.banner = p.name + " is stunned!";
-        g.log = p.name + " skips this turn.";
-        setTimeout(() => { if (state.game === g) endTurn(g); }, 700);
-        hostBroadcast();
-        return;
-      }
-      if (p.freeze > 0) {
-        g.log = p.name + " is frozen — half actions.";
-      }
-      const drew = drawCards(g, p, p.freeze > 0 ? 1 : 2);
-      g.subPhase = "armed";
-      g.banner = p.name + "'s turn — load & fire (⚡ fills every 5s)";
-      g.log = p.name + " draws " + drew + ".";
-      if (alivePlayers(g).length === 2) {
-        const other = g.players.find((x) => x.id !== p.id && x.hp > 0);
-        g.targetId = other ? other.id : null;
+    function tickAllStatus(g) {
+      for (const p of g.players) {
+        if (p.hp > 0) applyStatusTicks(g, p);
       }
     }
+
+    function initRealtimeGame(g) {
+      tickAllStatus(g);
+      for (const p of g.players) {
+        if (p.hp > 0 && p.energy < ENERGY_MAX && !p.regenStartedAt) p.regenStartedAt = Date.now();
+      }
+      g.subPhase = "live";
+      g.banner = "Free fire — tap bullets & boosts anytime!";
+    }
+
+    function startTurn(g) { initRealtimeGame(g); }
 
     function applyDamage(g, target, amount) {
       if (amount <= 0) return 0;
@@ -1285,54 +1489,82 @@
     function fusionKey(a, b) { return a.elem + "+" + b.elem; }
     function getFusion(a, b) { return FUSIONS[fusionKey(a, b)] || null; }
 
-    function hostLoad(playerId, uids) {
+    function hostFireBullet(playerId, uid) {
       const g = state.game;
-      if (!g || g.phase !== "playing" || g.turn !== playerId || g.animLock) return;
-      if (g.subPhase !== "prep" && g.subPhase !== "armed") return;
+      if (!g || g.phase !== "playing") return;
       const p = playerById(g, playerId);
-      if (!p) return;
-      const ids = Array.isArray(uids) ? uids.slice(0, SLOT_MAX) : [];
-      // clear current slots back to hand first if reloading
-      for (let i = 0; i < p.slots.length; i++) {
-        if (p.slots[i]) { p.hand.push(p.slots[i]); p.slots[i] = null; }
+      if (!playerCanAct(g, p)) return;
+      if (p.energy < 1) {
+        toast("Need ⚡1 — bar refills every 5s");
+        return;
       }
-      while (p.slots.length < SLOT_MAX) p.slots.push(null);
-      p.slots = p.slots.slice(0, SLOT_MAX);
-      let slot = 0;
-      for (const uid of ids) {
-        if (slot >= SLOT_MAX) break;
-        const idx = p.hand.findIndex((c) => c.uid === uid && c.kind === "bullet");
-        if (idx < 0) continue;
-        p.slots[slot++] = p.hand.splice(idx, 1)[0];
-      }
-      g.log = p.name + " loaded " + slot + " bullet" + (slot === 1 ? "" : "s") + ".";
-      g.subPhase = "prep";
-      hostBroadcast();
+      const idx = (p.bulletRow || []).findIndex((c) => c.uid === uid);
+      if (idx < 0) return;
+      const target = resolveTarget(g, playerId);
+      if (!target) { toast("Pick a target"); return; }
+      const bullet = p.bulletRow[idx];
+      spendEnergy(p, 1);
+      const shot = {
+        name: bullet.name, icon: bullet.icon, elem: bullet.elem, art: bullet.art,
+        dmg: bullet.dmg, effect: bullet.effect, mode: "single",
+      };
+      p.bulletRow[idx] = randomLoadoutBullet(p.loadoutIds);
+      p.slots[0] = bullet;
+      executeShot(g, playerId, target, shot);
     }
 
-    function hostUseUtil(playerId, uid) {
+    function hostUseBoost(playerId, boostType) {
       const g = state.game;
-      if (!g || g.turn !== playerId || g.animLock) return;
-      if (g.subPhase !== "prep" && g.subPhase !== "armed") return;
+      if (!g || g.phase !== "playing") return;
       const p = playerById(g, playerId);
-      const idx = p.hand.findIndex((c) => c.uid === uid && c.kind === "util");
-      if (idx < 0) return;
-      const card = p.hand.splice(idx, 1)[0];
-      if (card.type === "powerCore") {
-        // attach to first loaded bullet as powered flag
-        const slot = p.slots.find((s) => s);
-        if (!slot) { p.hand.push(card); toast("Load a bullet first"); return; }
-        slot.powered = true;
-        g.log = p.name + " powered up " + slot.name + "!";
-        g.discard.push(card);
-      } else if (card.type === "draw2") {
-        const d = drawCards(g, p, 2);
-        g.log = p.name + " draws " + d + " from Draw+.";
-        g.discard.push(card);
-      } else if (card.type === "shieldChip") {
-        p.shield += 15;
-        g.log = p.name + " gains 15 shield.";
-        g.discard.push(card);
+      if (!playerCanAct(g, p)) return;
+      const def = BOOST_CATALOG.find((b) => b.type === boostType);
+      if (!def) return;
+      if (p.energy < def.cost) {
+        toast("Need ⚡" + def.cost);
+        return;
+      }
+      const target = resolveTarget(g, playerId);
+      spendEnergy(p, def.cost);
+
+      if (def.type === "powerUp") {
+        p.nextShotMult = 1.5;
+        g.log = p.name + " powered up — next shot +50%!";
+        toast("Next shot +50% damage!");
+        hostBroadcast();
+        return;
+      }
+      if (def.type === "defence") {
+        p.shield += 10;
+        g.log = p.name + " gained 10 shield.";
+        toast("Defence +10 shield");
+        hostBroadcast();
+        return;
+      }
+      if (def.type === "blind") {
+        if (!target) { p.energy += def.cost; toast("No target"); return; }
+        applyEvadeDebuff(target, 10000);
+        g.log = p.name + " blinded " + target.name + " — 50% miss for 10s!";
+        toast(target.name + " may miss 50% of shots!");
+        hostBroadcast();
+        return;
+      }
+      if (def.type === "speedBoost") {
+        if (!target) { p.energy += def.cost; toast("No target"); return; }
+        applyEvadeDebuff(target, 6000);
+        g.log = p.name + " speed-boosted — " + target.name + " 50% miss 6s!";
+        toast(target.name + " may miss 50% of shots!");
+        hostBroadcast();
+        return;
+      }
+      if (!target) { p.energy += def.cost; toast("Pick a target"); return; }
+      if (def.type === "twinFusion") {
+        executeShot(g, playerId, target, twinFusionShot(p));
+        return;
+      }
+      if (def.type === "triFusion") {
+        executeShot(g, playerId, target, triFusionShot(p));
+        return;
       }
       hostBroadcast();
     }
@@ -1365,6 +1597,11 @@
       if (!g || g.phase !== "playing") return;
       const now = Date.now();
       let gained = false;
+      if (!g._lastStatusTick || now - g._lastStatusTick > 4000) {
+        g._lastStatusTick = now;
+        tickAllStatus(g);
+        gained = true;
+      }
       for (const p of g.players) {
         if (p.hp <= 0) continue;
         if (syncPlayerEnergy(p, now)) gained = true;
@@ -1421,125 +1658,85 @@
 
     function hostAttack(playerId, mode) {
       const g = state.game;
-      if (!g || g.turn !== playerId || g.animLock) return;
-      if (g.subPhase !== "armed" && g.subPhase !== "prep") return;
+      if (!g || g.phase !== "playing") return;
       const p = playerById(g, playerId);
-      if (!p) return;
+      if (!playerCanAct(g, p)) return;
       const cost = attackCost(mode);
-      if (p.energy < cost) {
-        g.banner = "Need ⚡" + cost + " — wait for the bar";
-        hostBroadcast();
-        return;
-      }
-
-      let target = playerById(g, g.targetId);
-      if (!target || target.hp <= 0) {
-        const others = g.players.filter((x) => x.id !== playerId && x.hp > 0);
-        if (others.length === 1) target = others[0];
-        else { g.banner = "Pick a target"; hostBroadcast(); return; }
-      }
-
+      if (p.energy < cost) return;
+      const target = resolveTarget(g, playerId);
+      if (!target) return;
       const s0 = p.slots[0];
       const s1 = p.slots[1];
-      let shot = null;
-
-      if (mode === "single") {
-        if (!s0) { g.banner = "Load a bullet into the hammer first"; hostBroadcast(); return; }
-        shot = { name: s0.name, icon: s0.icon, elem: s0.elem, art: s0.art, dmg: s0.dmg, effect: s0.effect, mode: "single" };
-        g.discard.push(s0);
+      if (mode === "single" && s0) {
+        spendEnergy(p, 1);
+        const shot = {
+          name: s0.name, icon: s0.icon, elem: s0.elem, art: s0.art,
+          dmg: Math.round(s0.dmg * (p.nextShotMult || 1)), effect: s0.effect, mode: "single",
+        };
+        p.nextShotMult = 1;
         p.slots = rotateSlots(p.slots);
-      } else if (mode === "power") {
-        const powered = p.slots.find((s) => s && s.powered) || s0;
-        if (!powered) { g.banner = "Need a powered bullet (Power Core)"; hostBroadcast(); return; }
-        if (!powered.powered) { g.banner = "Use a Power Core on a bullet first"; hostBroadcast(); return; }
-        shot = {
-          name: powered.name + " ★", icon: powered.icon, elem: powered.elem, art: powered.art,
-          dmg: Math.round(powered.dmg * 2), effect: powered.effect || "knockback", mode: "power",
-        };
-        const si = p.slots.indexOf(powered);
-        g.discard.push(powered);
-        p.slots[si] = null;
-        p.slots = p.slots.filter(Boolean);
-        while (p.slots.length < SLOT_MAX) p.slots.push(null);
-      } else if (mode === "fusion") {
-        if (!s0 || !s1) { g.banner = "Load 2 bullets in hammer + next chamber"; hostBroadcast(); return; }
+        executeShot(g, playerId, target, shot);
+      } else if (mode === "fusion" && s0 && s1) {
+        spendEnergy(p, 3);
         const fuse = getFusion(s0, s1);
-        if (!fuse) {
-          g.banner = "Those elements don't fuse";
-          hostBroadcast();
-          return;
-        }
-        g.discoveredFusions[fusionKey(s0, s1)] = fuse.name;
-        shot = {
+        if (!fuse) return;
+        executeShot(g, playerId, target, {
           name: fuse.name, icon: fuse.icon, elem: fuse.elem || s0.elem, art: fuse.art,
-          elems: [s0.elem, s1.elem], dmg: fuse.dmg, effect: fuse.effect, mode: "fusion", discovered: true,
-        };
-        g.discard.push(s0, s1);
+          dmg: fuse.dmg, effect: fuse.effect, mode: "fusion", elems: [s0.elem, s1.elem],
+        });
         p.slots[0] = null;
         p.slots[1] = null;
-        p.slots = p.slots.filter(Boolean);
-        while (p.slots.length < SLOT_MAX) p.slots.push(null);
-        g.log = "💥 NEW FUSION: " + fuse.name + "!";
-      } else return;
-
-      spendEnergy(p, cost);
-      let dmg = shot.dmg;
-      if (p.damageBonus) dmg = Math.round(dmg * (1 + p.damageBonus));
-      if (p.overcharged) {
-        dmg = Math.round(dmg * 1.5);
-        shot.name += " OVERCHARGED";
-        p.overcharged = false;
       }
-      // speed role: chance to keep energy
-      if (s0 && s0.role === "speed" && Math.random() < 0.25) {
-        p.energy = Math.min(ENERGY_MAX, p.energy + 1);
-      }
-
-      g.animLock = true;
-      const dealt = applyDamage(g, target, dmg);
-      if (shot.effect === "burn") target.burn += 2;
-      if (shot.effect === "freeze") target.freeze += 1;
-      if (shot.effect === "stun") target.stun += 1;
-      if (shot.effect === "poison") target.poison += 2;
-      if (shot.effect === "heal") p.hp = Math.min(p.maxHp, p.hp + 12);
-      if (shot.effect === "shield") p.shield += 12;
-      if (shot.effect === "steal" && target.hand && target.hand.length) {
-        const stolen = target.hand.pop();
-        if (stolen) p.hand.push(stolen);
-      }
-
-      g.log = (g.log && shot.discovered ? g.log + " " : "")
-        + p.name + " fires " + shot.name + " at " + target.name + " for " + dealt + "!";
-      g.banner = shot.name + "!";
-      const fxElem = shot.art === "plasma" ? "plasma" : (shot.elem || "fire");
-      g.pendingFx = {
-        id: newFxId(), type: "fire",
-        shooterId: playerId, targetId: target.id,
-        elem: fxElem, elems: shot.elems,
-        bulletSrc: bulletSrc(shot),
-        damage: dealt, mode: shot.mode,
-        spin: true,
-      };
-      g.subPhase = "resolve";
-      checkWinner(g);
-      hostBroadcast();
-      setTimeout(() => {
-        if (!state.game) return;
-        state.game.animLock = false;
-        state.game.pendingFx = null;
-        if (state.game.phase === "playing") endTurn(state.game);
-        else hostBroadcast();
-      }, FX_MS);
     }
 
     function endTurn(g) {
       checkWinner(g);
-      if (g.phase !== "playing") { hostBroadcast(); return; }
-      g.turn = nextTurnId(g);
-      startTurn(g);
       hostBroadcast();
-      if (state.solo) setTimeout(botTurn, 700);
     }
+
+    function stopBotLoop() {
+      clearInterval(state.botTimer);
+      state.botTimer = 0;
+    }
+
+    function startBotLoop() {
+      stopBotLoop();
+      state.botTimer = setInterval(botRealtimeTick, 1800);
+    }
+
+    function botRealtimeTick() {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const bot = g.players.find((p) => p.isBot && p.hp > 0);
+      if (!bot || !playerCanAct(g, bot)) return;
+      const human = g.players.find((p) => !p.isBot && p.hp > 0);
+      if (human) g.targetId = human.id;
+      syncPlayerEnergy(bot);
+
+      const roll = Math.random();
+      if (roll < 0.12 && bot.energy >= 2) {
+        hostUseBoost(bot.id, "blind");
+        return;
+      }
+      if (roll < 0.22 && bot.energy >= 1) {
+        hostUseBoost(bot.id, "defence");
+        return;
+      }
+      if (roll < 0.32 && bot.energy >= 2) {
+        hostUseBoost(bot.id, "twinFusion");
+        return;
+      }
+      if (roll < 0.38 && bot.energy >= 1) {
+        hostUseBoost(bot.id, "powerUp");
+        return;
+      }
+      if (bot.energy >= 1 && bot.bulletRow && bot.bulletRow.length) {
+        const b = bot.bulletRow[Math.floor(Math.random() * bot.bulletRow.length)];
+        if (b) hostFireBullet(bot.id, b.uid);
+      }
+    }
+
+    function botTurn() { botRealtimeTick(); }
 
     function checkWinner(g) {
       const alive = alivePlayers(g);
@@ -1548,44 +1745,8 @@
         g.winnerId = alive[0] ? alive[0].id : null;
         g.banner = alive[0] ? alive[0].name + " wins!" : "Draw";
         stopEnergyLoop();
+        stopBotLoop();
       }
-    }
-
-    function botTurn() {
-      const g = state.game;
-      if (!g || g.phase !== "playing") return;
-      const bot = g.players.find((p) => p.isBot && p.id === g.turn);
-      if (!bot || bot.hp <= 0) return;
-      if (g.subPhase === "locked") return;
-
-      const human = g.players.find((p) => !p.isBot && p.hp > 0);
-      if (human) g.targetId = human.id;
-
-      const bullets = bot.hand.filter((c) => c.kind === "bullet").sort((a, b) => b.dmg - a.dmg);
-      if (bot.slots.filter(Boolean).length === 0 && bullets.length) {
-        hostLoad(bot.id, bullets.slice(0, 2).map((c) => c.uid));
-      }
-
-      const core = bot.hand.find((c) => c.type === "powerCore");
-      if (core && bot.slots[0] && bot.energy >= 2) hostUseUtil(bot.id, core.uid);
-
-      syncPlayerEnergy(bot);
-      if (!bot.slots.some(Boolean)) {
-        endTurn(g);
-        return;
-      }
-      let mode = "single";
-      if (bot.slots[0] && bot.slots[1] && getFusion(bot.slots[0], bot.slots[1]) && bot.energy >= 3) mode = "fusion";
-      else if (bot.slots.some((s) => s && s.powered) && bot.energy >= 2) mode = "power";
-      const cost = attackCost(mode);
-      if (bot.energy < cost) {
-        setTimeout(botTurn, 400);
-        return;
-      }
-      setTimeout(() => {
-        if (!state.game || state.game.turn !== bot.id) return;
-        hostAttack(bot.id, mode);
-      }, 500);
     }
 
     function cardSnap(c) {
@@ -1599,30 +1760,36 @@
 
     function playerView(game, id) {
       const me = playerById(game, id);
-      const isMyTurn = game.turn === id;
+      const alive = me && me.hp > 0;
       return {
         phase: game.phase, subPhase: game.subPhase, turn: game.turn,
         room: state.room, targetId: game.targetId,
         banner: game.banner, log: game.log, startedAt: game.startedAt,
         winnerId: game.winnerId, maxHp: game.maxHp,
         pendingFx: game.pendingFx, animLock: game.animLock,
+        boosts: BOOST_CATALOG,
         you: {
           id, hp: me ? me.hp : 0, maxHp: me ? me.maxHp : game.maxHp,
           energy: me ? me.energy : 0, overcharged: me ? me.overcharged : false,
           overheated: me ? me.overheated : false,
           energyProgress: me ? me.energyProgress : 0,
           energyRegenAt: me ? me.regenStartedAt : 0,
-          hand: me ? me.hand.map(cardSnap) : [],
+          bulletRow: me ? me.bulletRow.map(cardSnap) : [],
+          hand: me ? me.bulletRow.map(cardSnap) : [],
           slots: me ? me.slots.map(cardSnap) : Array(SLOT_MAX).fill(null),
+          loadoutIds: me ? me.loadoutIds : [],
+          evadeUntil: me ? me.evadeUntil : 0,
           burn: me ? me.burn : 0, freeze: me ? me.freeze : 0, stun: me ? me.stun : 0,
           poison: me ? me.poison : 0, shield: me ? me.shield : 0,
-          isMyTurn, canAct: isMyTurn && game.phase === "playing" && !game.animLock && game.subPhase !== "locked",
+          nextShotMult: me ? me.nextShotMult : 1,
+          isMyTurn: alive, canAct: alive && game.phase === "playing" && me && !me.actionLock,
         },
         players: game.players.map((p) => ({
           id: p.id, name: p.name, color: p.color, hp: p.hp, maxHp: p.maxHp,
           energy: p.energy, shield: p.shield, burn: p.burn, freeze: p.freeze,
-          stun: p.stun, poison: p.poison, handCount: p.hand.length,
+          stun: p.stun, poison: p.poison, handCount: (p.bulletRow || []).length,
           slotCount: p.slots.filter(Boolean).length,
+          evadeUntil: p.evadeUntil || 0,
           connected: p.connected, isBot: p.isBot, overcharged: p.overcharged,
         })),
       };
@@ -1755,19 +1922,21 @@
 
     function renderGame(view) {
       const you = view.you;
-      const myTurn = you.canAct;
+      const canAct = you.canAct;
+      const alive = you.hp > 0;
       const banner = $("turn-banner");
       banner.textContent = view.banner || "";
-      banner.classList.toggle("my-turn", myTurn);
+      banner.classList.toggle("my-turn", alive && view.phase === "playing");
       $("log-strip").textContent = view.log || "";
 
       renderEnergy(you.energy, you.overcharged, you.energyProgress || 0);
       const spin = !!(view.pendingFx && view.pendingFx.spin && view.pendingFx.shooterId === you.id);
-      renderSlots(you.slots, spin);
+      const bulletRow = you.bulletRow || you.hand || [];
+      renderSlots(bulletRow.slice(0, SLOT_MAX), spin);
 
       const mePlayer = view.players.find((p) => p.id === you.id);
       const meSeat = $("me-seat");
-      meSeat.className = "me-seat" + (you.id === view.turn ? " turn" : "");
+      meSeat.className = "me-seat" + (alive ? " turn" : "");
       meSeat.dataset.id = you.id;
       meSeat.replaceChildren();
       if (mePlayer) {
@@ -1787,6 +1956,7 @@
         const chips = document.createElement("div");
         chips.className = "status-chips";
         if (you.shield) chips.innerHTML += '<span class="chip shield">🛡' + you.shield + "</span>";
+        if (you.evadeUntil > Date.now()) chips.innerHTML += '<span class="chip shield">💨 evade</span>';
         if (you.burn) chips.innerHTML += '<span class="chip burn">🔥' + you.burn + "</span>";
         if (you.freeze) chips.innerHTML += '<span class="chip freeze">❄️' + you.freeze + "</span>";
         if (you.stun) chips.innerHTML += '<span class="chip stun">💫</span>';
@@ -1801,9 +1971,8 @@
         if (p.id === you.id) continue;
         const seat = document.createElement("div");
         seat.className = "opp-seat"
-          + (p.id === view.turn ? " turn" : "")
           + (p.connected === false ? " offline" : "")
-          + (myTurn && p.hp > 0 ? " targetable" : "")
+          + (alive && p.hp > 0 ? " targetable" : "")
           + (view.targetId === p.id ? " selected" : "");
         seat.dataset.id = p.id;
         const dot = document.createElement("div");
@@ -1822,82 +1991,94 @@
         const chips = document.createElement("div");
         chips.className = "status-chips";
         if (p.shield) chips.innerHTML += '<span class="chip shield">🛡' + p.shield + "</span>";
+        if (p.evadeUntil > Date.now()) chips.innerHTML += '<span class="chip shield">💨</span>';
         if (p.burn) chips.innerHTML += '<span class="chip burn">🔥</span>';
         if (p.freeze) chips.innerHTML += '<span class="chip freeze">❄️</span>';
         if (p.overcharged) chips.innerHTML += '<span class="chip stun">OVER</span>';
         meta.append(bar, chips);
         seat.append(dot, meta);
-        if (myTurn && p.hp > 0) seat.onclick = () => sendAction({ type: "target", targetId: p.id });
+        if (alive && p.hp > 0) seat.onclick = () => sendAction({ type: "target", targetId: p.id });
         oppEl.append(seat);
       }
 
-      const handEl = $("hand");
-      handEl.replaceChildren();
-      const sel = state.localSelected;
-      if (!myTurn) sel.clear();
-      for (const card of you.hand) {
+      const useEl = $("hand-use");
+      const bulletEl = $("hand-bullets");
+      useEl.replaceChildren();
+      bulletEl.replaceChildren();
+      useEl.classList.remove("empty");
+      bulletEl.classList.remove("empty");
+      const hasEnergy = you.energy >= 1;
+
+      function bindCardTap(btn, fn) {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          fn();
+        };
+      }
+
+      for (const boost of (view.boosts || BOOST_CATALOG)) {
         const btn = document.createElement("button");
         btn.type = "button";
-        const isBullet = card.kind === "bullet";
-        btn.className = (isBullet ? "bullet-card" : "util-card") + (sel.has(card.uid) ? " selected" : "")
-          + (isBullet && card.elem ? " elem-" + card.elem : "");
+        const afford = you.energy >= boost.cost;
+        btn.className = "util-card boost-card"
+          + (!alive ? " card-inactive" : "")
+          + (!afford && alive ? " boost-unaffordable" : "");
+        btn.innerHTML = handCardHtml({ kind: "boost", ...boost });
+        btn.title = boost.name + " — " + boost.desc + " (⚡" + boost.cost + ")";
+        bindCardTap(btn, () => {
+          if (!alive) { toast("You're out"); return; }
+          if (!canAct) { toast("Brief cooldown…"); return; }
+          if (!afford) { toast("Need ⚡" + boost.cost); return; }
+          sendAction({ type: "boost", boostType: boost.type });
+        });
+        useEl.append(btn);
+      }
+
+      for (const card of bulletRow) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bullet-card"
+          + (card.elem ? " elem-" + card.elem : "")
+          + (!alive ? " card-inactive" : "")
+          + (alive && !hasEnergy ? " card-wait-energy" : "");
         btn.innerHTML = handCardHtml(card);
-        btn.disabled = !myTurn;
-        btn.onclick = () => {
-          if (!myTurn) return;
-          if (!isBullet) {
-            sendAction({ type: "util", uid: card.uid });
-            return;
-          }
-          if (sel.has(card.uid)) sel.delete(card.uid);
-          else {
-            if (sel.size >= SLOT_MAX) {
-              const first = sel.values().next().value;
-              sel.delete(first);
-            }
-            sel.add(card.uid);
-          }
-          renderGame(view);
-        };
-        handEl.append(btn);
+        btn.title = card.name + " — tap to shoot (⚡1, ~" + card.dmg + " dmg)";
+        bindCardTap(btn, () => {
+          if (!alive) return;
+          if (!canAct) { toast("Brief cooldown…"); return; }
+          if (!hasEnergy) { toast("Need ⚡1 — bar refills every 5s"); return; }
+          sendAction({ type: "fireBullet", uid: card.uid });
+        });
+        bulletEl.append(btn);
+      }
+
+      if (!bulletRow.length) {
+        bulletEl.classList.add("empty");
+        bulletEl.textContent = "No bullets";
       }
 
       const bar = $("action-bar");
       bar.replaceChildren();
-      if (!myTurn) {
-        const wait = document.createElement("button");
-        wait.className = "btn ghost sm";
-        wait.disabled = true;
-        wait.textContent = "Wait for turn…";
-        bar.append(wait);
-      } else {
-        const loadBtn = document.createElement("button");
-        loadBtn.className = "btn gold sm";
-        loadBtn.textContent = "Load (" + sel.size + ")";
-        loadBtn.disabled = sel.size === 0;
-        loadBtn.onclick = () => { sendAction({ type: "load", uids: [...sel] }); sel.clear(); };
-        const single = document.createElement("button");
-        single.className = "btn sm";
-        single.textContent = "Single ⚡1";
-        single.disabled = you.energy < 1 || !you.slots.some(Boolean);
-        single.onclick = () => sendAction({ type: "attack", mode: "single" });
-        const power = document.createElement("button");
-        power.className = "btn sm";
-        power.textContent = "Power ⚡2";
-        power.disabled = you.energy < 2 || !you.slots.some((s) => s && s.powered);
-        power.onclick = () => sendAction({ type: "attack", mode: "power" });
-        const fuse = document.createElement("button");
-        fuse.className = "btn sm";
-        fuse.textContent = "Fusion ⚡3";
-        const canFuse = you.slots[0] && you.slots[1] && you.energy >= 3;
-        fuse.disabled = !canFuse;
-        fuse.onclick = () => sendAction({ type: "attack", mode: "fusion" });
-        bar.append(loadBtn, single, power, fuse);
+      const stepsEl = $("action-steps");
+      if (!alive) {
+        if (stepsEl) { stepsEl.textContent = "Eliminated — spectating…"; stepsEl.className = "action-steps wait"; }
+      } else if (stepsEl) {
+        if (you.nextShotMult > 1) {
+          stepsEl.textContent = "Power Up active — next bullet hits harder!";
+          stepsEl.className = "action-steps ready";
+        } else if (!hasEnergy) {
+          stepsEl.textContent = "⚡ charging… tap bullets or boosts when ready";
+          stepsEl.className = "action-steps wait";
+        } else {
+          stepsEl.textContent = "Free fire — tap bullets (⚡1) or boosts anytime!";
+          stepsEl.className = "action-steps ready";
+        }
       }
 
-      $("hand-label").textContent = myTurn
-        ? "Load bullets · fire when ⚡ is ready (fills every 5s)"
-        : "Your hand · " + you.hand.length + " · pick up to 5 to load";
+      $("hand-label").innerHTML = alive
+        ? "Bullets · tap to shoot ⚡1 <span class=\"bullet-row-label-sub\">(" + bulletRow.length + ")</span>"
+        : "Bullets (" + bulletRow.length + ")";
 
       if (view.pendingFx && view.pendingFx.type === "fire") {
         requestAnimationFrame(() => playFireFx(view.pendingFx, view));
@@ -2076,14 +2257,13 @@
 
     function hostHandleAction(playerId, msg) {
       if (!msg || !state.game) return;
-      if (msg.type === "load") hostLoad(playerId, msg.uids);
-      else if (msg.type === "util") hostUseUtil(playerId, msg.uid);
+      if (msg.type === "fireBullet") hostFireBullet(playerId, msg.uid);
+      else if (msg.type === "boost") hostUseBoost(playerId, msg.boostType);
       else if (msg.type === "recharge") hostBeginRecharge(playerId);
       else if (msg.type === "rechargeResult") hostRechargeResult(playerId, msg.quality);
       else if (msg.type === "attack") hostAttack(playerId, msg.mode);
       else if (msg.type === "target") {
         const g = state.game;
-        if (g.turn !== playerId) return;
         const t = playerById(g, msg.targetId);
         if (t && t.hp > 0 && t.id !== playerId) { g.targetId = t.id; hostBroadcast(); }
       }
@@ -2358,8 +2538,9 @@
       players.forEach((p, idx) => { if (!loadouts[p.id]) loadouts[p.id] = defaultLoadout(idx); });
       uidSeq = 1;
       state.game = createGame(players, maxHp, loadouts);
-      startTurn(state.game);
+      initRealtimeGame(state.game);
       startEnergyLoop();
+      if (state.solo) startBotLoop();
       hostBroadcast();
     }
 
@@ -2374,15 +2555,15 @@
           { id: "host", name, connected: true },
           { id: "bot", name: "Bandit", isBot: true, color: COLORS[1], connected: true },
         ], 100, { host: ids, bot: defaultLoadout(1) });
-        startTurn(state.game);
+        initRealtimeGame(state.game);
         startEnergyLoop();
+        startBotLoop();
         hostBroadcast();
-        setTimeout(botTurn, 800);
       });
     }
 
     function goHome() {
-      state.leaving = true; destroyPeer(); closeRechargeUI(); stopEnergyLoop();
+      state.leaving = true; destroyPeer(); closeRechargeUI(); stopEnergyLoop(); stopBotLoop();
       state.game = null; state.solo = false; state.isHost = false;
       state.localSelected.clear(); setReconnectUi(false); stopTimer();
       guests.clear(); showScreen("home"); MG.stripRoomFromUrl(); state.leaving = false;
