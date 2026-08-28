@@ -24,6 +24,10 @@
       --teal: #2ee6a6;
       --purple: #7c5cff;
       --safe: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --touch-min: 44px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -50,11 +54,18 @@
     .screen {
       display: none; position: relative; z-index: 1;
       min-height: 100dvh;
-      padding: calc(12px + var(--safe)) 12px 20px;
+      padding:
+        calc(10px + var(--safe))
+        max(12px, var(--safe-right))
+        max(16px, var(--safe-bottom))
+        max(12px, var(--safe-left));
     }
     .screen.active { display: flex; flex-direction: column; align-items: center; }
-    #screen-lobby.screen.active, #screen-home.screen.active, #screen-end.screen.active {
+    #screen-lobby.screen.active, #screen-home.screen.active, #screen-end.screen.active,
+    #screen-loadout.screen.active {
       overflow-x: hidden; overflow-y: auto; max-height: 100dvh; -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
     }
 
     .brand { text-align: center; margin-bottom: 8px; }
@@ -93,14 +104,17 @@
     .error.show { display: block; }
 
     .icon-btn {
-      width: 42px; height: 42px; border: 0; border-radius: 999px;
+      width: var(--touch-min); height: var(--touch-min); border: 0; border-radius: 999px;
       background: #fff; color: #111; font-size: 18px; box-shadow: 0 3px 0 rgba(0,0,0,.18);
+      touch-action: manipulation;
     }
 
     /* —— Board —— */
     #screen-game.screen.active {
-      padding-bottom: max(8px, env(safe-area-inset-bottom));
-      align-items: stretch; overflow: hidden; max-height: 100dvh;
+      padding-bottom: max(6px, var(--safe-bottom));
+      padding-left: max(8px, var(--safe-left));
+      padding-right: max(8px, var(--safe-right));
+      align-items: stretch; overflow: hidden; max-height: 100dvh; height: 100dvh;
     }
     .game-wrap {
       flex: 1; width: min(1100px, 100%); margin: 0 auto;
@@ -139,7 +153,7 @@
     .me-corner {
       grid-column: 2; grid-row: 2; align-self: end; justify-self: end;
       display: flex; flex-direction: column; align-items: flex-end; gap: 0;
-      width: min(280px, 100%); min-width: 0;
+      width: min(300px, 100%); min-width: 0;
     }
     .me-corner .loader-slot {
       flex-shrink: 0; display: flex; align-items: center; padding-bottom: 0;
@@ -154,6 +168,10 @@
       font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--gold); opacity: 0.85; margin-bottom: 4px;
     }
+    .opponents {
+      display: flex; flex-direction: column; gap: 6px;
+      width: 100%; min-width: 0;
+    }
 
     .opp-seat, .me-seat {
       background: var(--card); border: 2px solid var(--line);
@@ -163,7 +181,7 @@
       width: 100%; box-sizing: border-box;
     }
     .me-seat { border-color: var(--gold); }
-    .opp-seat.targetable { cursor: pointer; }
+    .opp-seat.targetable { cursor: pointer; touch-action: manipulation; }
     .opp-seat.targetable:hover { border-color: var(--gold); }
     .opp-seat.selected { border-color: var(--red); box-shadow: 0 0 0 2px var(--red); }
     .opp-seat.turn, .me-seat.turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
@@ -253,16 +271,16 @@
     }
     .cylinder-wrap {
       position: relative;
-      width: min(108px, 24vw);
+      width: min(161px, 36vw);
       aspect-ratio: 1;
       flex-shrink: 0;
     }
     .cylinder {
       position: absolute; inset: 0;
       border-radius: 50%;
-      border: 8px solid var(--gold);
+      border: 12px solid var(--gold);
       background: radial-gradient(circle at 50% 45%, #5c4030, #1a1028);
-      box-shadow: inset 0 0 28px #000, 0 6px 0 #000;
+      box-shadow: inset 0 0 36px #000, 0 7px 0 #000;
     }
     .cylinder-drum {
       position: absolute; inset: 8%;
@@ -274,8 +292,8 @@
       to { transform: rotate(72deg); }
     }
     .muzzle {
-      position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
-      width: 28px; height: 28px; border-radius: 50%; pointer-events: none; z-index: 5;
+      position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+      width: 42px; height: 42px; border-radius: 50%; pointer-events: none; z-index: 5;
       opacity: 0;
     }
     .muzzle.flash {
@@ -287,12 +305,12 @@
       100% { opacity: 0; box-shadow: 0 0 0 0 transparent; background: transparent; transform: translateX(-50%) scale(1.6); }
     }
     .hammer-label {
-      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-      background: var(--red); color: #fff; font-size: 10px; font-weight: 700;
-      padding: 2px 8px; border-radius: 999px; white-space: nowrap; z-index: 6;
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px; white-space: nowrap; z-index: 6;
     }
     .chamber {
-      position: absolute; width: 34px; height: 34px;
+      position: absolute; width: 38px; height: 38px;
       transform: translate(-50%, -50%);
       border-radius: 50%;
       border: 2px dashed rgba(92, 64, 48, 0.65);
@@ -322,8 +340,8 @@
       filter: drop-shadow(0 1px 4px rgba(0,0,0,.55));
     }
     .chamber.powered .chamber-icon::after {
-      content: "★"; position: absolute; top: -5px; right: -5px;
-      font-size: 9px; color: var(--teal); text-shadow: 0 0 4px #2ee6a6;
+      content: "★"; position: absolute; top: -6px; right: -6px;
+      font-size: 11px; color: var(--teal); text-shadow: 0 0 4px #2ee6a6;
     }
     .chamber.load-pop { animation: chamber-load .42s cubic-bezier(.2, 1.1, .3, 1); }
     @keyframes chamber-load {
@@ -508,6 +526,8 @@
       border: 2px solid var(--line); border-radius: 12px; padding: 8px;
       background: #fff; cursor: pointer; text-align: left; font-size: 12px;
       display: flex; gap: 10px; align-items: center;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(255, 204, 51, 0.25);
     }
     body.dark .loadout-chip { background: #1a1428; }
     .loadout-chip.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
@@ -536,11 +556,18 @@
       text-transform: uppercase; color: var(--muted);
       width: 100%; margin-bottom: -2px;
     }
-    .hand-area .btn.sm { font-size: 11px; padding: 7px 8px; }
+    .hand-area .btn.sm {
+      font-size: 11px; padding: 7px 8px;
+      min-height: var(--touch-min);
+    }
     .hand-area .btn.fire-ready {
       background: var(--red); color: #fff; border-color: var(--red);
       box-shadow: 0 3px 0 #a01830; font-weight: 800;
       animation: fire-pulse 1.2s ease-in-out infinite;
+    }
+    .hand-area .btn.fire-main {
+      flex: 1; min-width: 88px; font-size: 13px; font-weight: 800;
+      padding: 10px 12px;
     }
     @keyframes fire-pulse {
       0%, 100% { box-shadow: 0 3px 0 #a01830, 0 0 0 0 #ff3d6e44; }
@@ -665,9 +692,30 @@
     }
     .help-overlay .sheet h3 { margin: 0 0 8px; text-align: center; font-family: Orbitron, sans-serif; }
     .help-overlay .sheet ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; }
+    .help-overlay .fusion-guide {
+      margin-top: 14px; text-align: left;
+    }
+    .help-overlay .fusion-guide-list {
+      max-height: min(200px, 32vh);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      padding-right: 2px;
+    }
 
     .loadout-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+      max-height: none;
+    }
+    #screen-loadout .panel {
+      margin-bottom: 12px;
+    }
+    #screen-loadout .fusion-guide-list {
+      max-height: min(220px, 32vh);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      padding-right: 2px;
     }
     .fusion-guide {
       margin: 0 0 12px;
@@ -714,6 +762,14 @@
       border-color: var(--gold);
       background: color-mix(in srgb, var(--gold) 14%, transparent);
     }
+    .fusion-section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 8px 0 2px;
+    }
     .fusion-row .pair {
       display: inline-flex;
       align-items: center;
@@ -732,19 +788,226 @@
     }
     .fusion-live.empty { color: var(--muted); font-weight: 600; }
 
+    /* —— Mobile / touch —— */
     @media (max-width: 640px) {
-      .battlefield {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto minmax(0, 1fr);
+      .brand p { font-size: 14px; }
+      .panel { padding: 16px; border-radius: 14px; }
+      .btn { min-height: var(--touch-min); font-size: 16px; padding: 12px 14px; }
+      .loadout-grid { grid-template-columns: 1fr; }
+
+      #screen-game .topbar {
+        width: 100%; flex-wrap: nowrap; gap: 6px; margin-bottom: 4px;
       }
-      .enemy-corner { grid-column: 1; grid-row: 1; max-width: 100%; }
-      .hand-corner { grid-column: 1; grid-row: 2; max-width: 100%; min-height: 0; }
-      .hand-deck-scroll { max-height: min(180px, 38vh); }
-      .me-corner { grid-column: 2; grid-row: 2; align-self: end; width: min(260px, 100%); }
-      .cylinder-wrap { width: min(96px, 22vw); }
+      #screen-game .code-pill {
+        font-size: 11px; padding: 6px 8px; letter-spacing: 0.12em;
+        flex-shrink: 0;
+      }
+      #screen-game #timer {
+        font-size: 14px; flex: 1; text-align: center; min-width: 0;
+      }
+      #screen-game .topbar-actions { gap: 6px; flex-shrink: 0; }
+      #screen-game #btn-game-leave {
+        padding: 8px 12px !important; font-size: 12px;
+      }
+
+      .game-wrap { gap: 4px; padding: 0; }
+      .turn-banner {
+        font-size: 11px; padding: 6px 10px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .log-strip {
+        font-size: 11px; min-height: 14px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        padding: 0 4px;
+      }
+
+      /* Enemy top · spacer · blaster then deck packed at bottom */
+      .battlefield {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        gap: 0;
+        align-content: end;
+      }
+      .enemy-corner {
+        grid-column: 1; grid-row: 1;
+        max-width: 100%; width: 100%;
+        overflow: visible;
+        margin-bottom: 16px;
+        align-self: start;
+      }
+      .me-corner {
+        grid-column: 1; grid-row: 3;
+        width: 100%; max-width: 100%;
+        justify-self: stretch; align-self: end;
+        align-items: stretch;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-top: none;
+      }
+      .hand-corner {
+        grid-column: 1; grid-row: 4;
+        max-width: 100%; width: 100%;
+        min-height: 0;
+        align-self: end;
+        padding-top: 10px;
+        padding-bottom: max(4px, var(--safe-bottom));
+        border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+      }
+      .me-corner .blaster-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        gap: 6px 10px;
+        align-items: end;
+      }
+      .me-corner .health-loader-row { display: contents; }
+      .me-corner .me-seat {
+        grid-column: 1; grid-row: 1;
+        align-self: stretch; width: 100%;
+      }
+      .me-corner .loader-slot {
+        grid-column: 2; grid-row: 1 / span 2;
+        justify-self: end; align-self: center;
+      }
+      .me-corner .energy-meter {
+        display: flex;
+        grid-column: 1; grid-row: 2;
+        width: 100%;
+      }
+      .cylinder-wrap {
+        width: min(132px, 34vw);
+        margin-left: 0;
+      }
+      .cylinder { border-width: 10px; }
+      .chamber { width: 34px; height: 34px; }
+      .hammer-label { font-size: 10px; padding: 2px 8px; top: -10px; }
+      .muzzle { width: 36px; height: 36px; }
+
+      .hand-area {
+        min-height: 0;
+        flex: 0 0 auto;
+        padding: 5px 5px 0;
+      }
+      .hand-deck-scroll {
+        max-height: min(200px, 34vh);
+        flex: 0 0 auto;
+        min-height: 0;
+      }
+      .hand-row { gap: 6px; scroll-snap-type: x proximity; }
+      .bullet-card, .util-card {
+        width: 50px; min-height: 62px;
+        scroll-snap-align: start;
+      }
+      .bullet-card .hand-img,
+      .bullet-card > .bullet-icon,
+      .util-card .util-ico { width: 36px; height: 36px; }
+      .card-desc { font-size: 7px; }
+
+      .action-steps { font-size: 9px; }
+      .action-row { gap: 6px; align-items: stretch; }
+      .action-row-label { font-size: 8px; margin-bottom: 0; }
+      .hand-area .btn.fire-main {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px;
+        padding: 12px 14px;
+        margin-top: 0;
+      }
+      .hand-area .action-row:first-of-type {
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hand-area .action-row:first-of-type .action-row-label {
+        width: auto; flex: 1; min-width: 0; margin-bottom: 0;
+      }
+      .hand-area .action-row:first-of-type .btn.sm {
+        flex-shrink: 0;
+        min-width: 72px;
+      }
+
+      .help-overlay { padding: max(10px, var(--safe)) max(10px, var(--safe-right)); }
+      .help-overlay .sheet {
+        width: 100%; max-height: min(92dvh, 720px);
+        padding: 14px;
+        border-radius: 14px;
+      }
+      .help-overlay .fusion-guide-list { max-height: min(180px, 28vh); }
+      .fusion-row { font-size: 11px; padding: 6px; gap: 4px; }
+      .fusion-row.tri .pair { flex-wrap: wrap; }
+
+      .recharge-modal { padding: max(12px, var(--safe)); }
+      .recharge-sheet { width: 100%; }
+    }
+
+    @media (max-width: 640px) and (orientation: landscape) {
+      .battlefield {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        gap: 0;
+        align-content: end;
+      }
+      .enemy-corner {
+        grid-column: 1; grid-row: 1;
+        margin-bottom: 12px;
+        align-self: start;
+      }
+      .me-corner {
+        grid-column: 1; grid-row: 3;
+        width: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-top: none;
+        align-self: end;
+      }
+      .hand-corner {
+        grid-column: 1; grid-row: 4;
+        padding-top: 8px;
+        padding-bottom: max(4px, var(--safe-bottom));
+        margin-top: 0;
+        border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+        align-self: end;
+      }
+      .me-corner .blaster-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        gap: 6px 10px;
+        align-items: end;
+      }
+      .me-corner .health-loader-row { display: contents; }
+      .me-corner .me-seat { grid-column: 1; grid-row: 1; width: 100%; }
+      .me-corner .loader-slot {
+        grid-column: 2; grid-row: 1 / span 2;
+        justify-self: end; align-self: center;
+      }
+      .me-corner .energy-meter {
+        display: flex;
+        grid-column: 1; grid-row: 2;
+        width: 100%;
+      }
+      .hand-deck-scroll { min-height: 72px; max-height: min(130px, 42vh); }
+      .cylinder-wrap { width: min(118px, 28vw); }
+      .turn-banner, .log-strip { display: none; }
+    }
+
+    @media (max-width: 380px) {
+      .bullet-card, .util-card { width: 46px; min-height: 58px; }
+      .bullet-card .hand-img,
+      .bullet-card > .bullet-icon,
+      .util-card .util-ico { width: 32px; height: 32px; }
+      .cylinder-wrap { width: min(118px, 34vw); }
       .chamber { width: 28px; height: 28px; }
-      .bullet-card, .util-card { width: 48px; min-height: 60px; }
-      .bullet-card .hand-img, .bullet-card > .bullet-icon, .util-card .util-ico { width: 34px; height: 34px; }
+    }
+
+    @media (max-height: 640px) and (orientation: portrait) {
+      .turn-banner { padding: 5px 8px; font-size: 10px; }
+      .hand-deck-scroll { min-height: 76px; }
+      .brand h1 { font-size: clamp(28px, 7vw, 40px); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -835,7 +1098,7 @@
     <div class="panel" style="width:min(480px,100%)">
       <div class="fusion-guide" id="fusion-guide">
         <h3>FUSION GUIDE</h3>
-        <p class="fg-hint">Twin Fusion needs <b>2</b> matching elements loaded in the hammer + next chamber (⚡3).</p>
+        <p class="fg-hint">Order never matters — fire+energy = energy+fire. <b>Twin Fusion</b> (⚡2) · <b>Tri Fusion</b> (⚡3) use your loadout.</p>
         <div class="fusion-guide-list" id="fusion-guide-list"></div>
         <div class="fusion-live empty" id="fusion-live">Select 2–3 bullets to see which fusions you unlock.</div>
       </div>
@@ -872,7 +1135,7 @@
                 <div class="hand-row hand-use" id="hand-use"></div>
               </div>
               <div class="deck-section">
-                <div class="hand-label" id="hand-label">Bullets · tap to shoot ⚡1<span class="bullet-row-label-sub"> (5)</span></div>
+                <div class="hand-label" id="hand-label">Bullets · tap to load<span class="bullet-row-label-sub"> (5)</span></div>
                 <div class="hand-row hand-bullets" id="hand-bullets"></div>
               </div>
             </div>
@@ -926,12 +1189,19 @@
     <div class="sheet">
       <h3>How to play</h3>
       <ul>
-        <li><b>Bullets (5):</b> Your 3 loadout elements, random repeat — tap to shoot (⚡1).</li>
+        <li><b>Bullets (5):</b> Tap to load into HAMMER (your 3 elements, random repeat).</li>
+        <li><b>FIRE ⚡1:</b> Shoot the bullet in HAMMER at the enemy.</li>
         <li><b>USE boosts:</b> Power Up ⚡1 · Twin Fusion ⚡2 · Tri Fusion ⚡3 · Defence ⚡1 · Blind ⚡2 · Speed Boost ⚡1.</li>
         <li>Blind / Speed Boost: enemy has 50% miss chance for a few seconds.</li>
         <li>No turns — fire anytime. Low damage = longer duels. ⚡ refills every 5s.</li>
         <li>Energy (⚡) fills 1 cell every 5s — need ⚡ to fire.</li>
       </ul>
+      <div class="fusion-guide" id="help-fusion-guide">
+        <h3>FUSION GUIDE</h3>
+        <p class="fg-hint">Element combos — any order works. <b>Twin Fusion</b> (⚡2) · <b>Tri Fusion</b> (⚡3) from your loadout.</p>
+        <div class="fusion-guide-list" id="help-fusion-guide-list"></div>
+        <div class="fusion-live empty" id="help-fusion-live">Your loadout fusions highlight in gold when in a match.</div>
+      </div>
       <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px;width:100%">Got it</button>
     </div>
   </div>
@@ -1087,16 +1357,23 @@
     ];
 
     const FUSIONS = {
-      "fire+energy": { name: "Plasma Fusion", icon: "🔆", dmg: 22, effect: "burn", elem: "plasma", art: "plasma" },
       "energy+fire": { name: "Plasma Fusion", icon: "🔆", dmg: 22, effect: "burn", elem: "plasma", art: "plasma" },
-      "water+ice": { name: "Frozen Blast", icon: "🧊", dmg: 18, effect: "freeze", elem: "ice" },
       "ice+water": { name: "Frozen Blast", icon: "🧊", dmg: 18, effect: "freeze", elem: "ice" },
-      "fire+earth": { name: "Magma Shell", icon: "🪨", dmg: 20, effect: "burn", elem: "fire" },
       "earth+fire": { name: "Magma Shell", icon: "🪨", dmg: 20, effect: "burn", elem: "fire" },
       "energy+ice": { name: "Static Freeze", icon: "⚡", dmg: 18, effect: "stun", elem: "energy" },
-      "ice+energy": { name: "Static Freeze", icon: "⚡", dmg: 18, effect: "stun", elem: "energy" },
-      "water+earth": { name: "Mud Barrage", icon: "🌊", dmg: 16, effect: "shield", elem: "water" },
       "earth+water": { name: "Mud Barrage", icon: "🌊", dmg: 16, effect: "shield", elem: "water" },
+    };
+
+    const TRI_FUSIONS = {
+      "energy+fire+ice": { name: "Storm Breaker", icon: "⛈", dmg: 32, effect: "stun", elem: "energy", art: "surge" },
+      "energy+fire+water": { name: "Plasma Surge", icon: "🔆", dmg: 34, effect: "burn", elem: "plasma", art: "plasma" },
+      "earth+fire+water": { name: "Volcanic Tide", icon: "🌋", dmg: 30, effect: "burn", elem: "fire" },
+      "earth+energy+fire": { name: "Magma Core", icon: "🪨", dmg: 32, effect: "burn", elem: "fire" },
+      "earth+fire+ice": { name: "Ash Blizzard", icon: "🌫", dmg: 28, effect: "freeze", elem: "ice" },
+      "earth+water+ice": { name: "Permafrost", icon: "🧊", dmg: 28, effect: "freeze", elem: "ice" },
+      "energy+ice+water": { name: "Absolute Zero", icon: "❄", dmg: 30, effect: "freeze", elem: "ice" },
+      "earth+energy+ice": { name: "Static Quake", icon: "⚡", dmg: 28, effect: "stun", elem: "energy" },
+      "earth+energy+water": { name: "Hydro Shock", icon: "🌊", dmg: 28, effect: "stun", elem: "water" },
     };
 
     const TRI_FUSION_DMG = 28;
@@ -1110,32 +1387,63 @@
     ];
 
     function uniqueFusionRecipes() {
-      const seen = new Set();
-      const list = [];
-      for (const key of Object.keys(FUSIONS)) {
+      return Object.keys(FUSIONS).map((key) => {
         const [a, b] = key.split("+");
-        const norm = [a, b].sort().join("+");
-        if (seen.has(norm)) continue;
-        seen.add(norm);
         const f = FUSIONS[key];
-        list.push({ a, b, name: f.name, icon: f.icon, dmg: f.dmg, effect: f.effect, elem: f.elem || a, art: f.art });
-      }
-      return list;
+        return { a, b, name: f.name, icon: f.icon, dmg: f.dmg, effect: f.effect, elem: f.elem || a, art: f.art };
+      }).sort((x, y) => x.name.localeCompare(y.name));
     }
 
-    function renderFusionGuide(selectedElems) {
-      const list = $("fusion-guide-list");
-      const live = $("fusion-live");
-      if (!list || !live) return;
+    function uniqueTriFusionRecipes() {
+      return Object.keys(TRI_FUSIONS).map((key) => {
+        const elems = key.split("+");
+        const f = TRI_FUSIONS[key];
+        return { elems, name: f.name, icon: f.icon, dmg: f.dmg, effect: f.effect, elem: f.elem || elems[0], art: f.art };
+      }).sort((x, y) => x.name.localeCompare(y.name));
+    }
+
+    function triRecipeMatchesLoadout(elems, recipeElems) {
+      return recipeElems.every((e) => elems.includes(e));
+    }
+
+    function fusionPairKey(e1, e2) {
+      return [e1, e2].sort().join("+");
+    }
+
+    function triFusionKey(elems) {
+      return [...new Set(elems)].sort().join("+");
+    }
+
+    function getTriFusion(elems) {
+      const uniq = [...new Set(elems)];
+      if (uniq.length < 3) return null;
+      return TRI_FUSIONS[triFusionKey(uniq)] || null;
+    }
+
+    function renderFusionGuide(selectedElems, opts) {
+      opts = opts || {};
+      const list = $(opts.listId || "fusion-guide-list");
+      const live = $(opts.liveId || "fusion-live");
+      if (!list) return;
       const elems = selectedElems || [];
-      const recipes = uniqueFusionRecipes();
+      const twinRecipes = uniqueFusionRecipes();
+      const triRecipes = uniqueTriFusionRecipes();
       list.replaceChildren();
-      const matched = [];
-      for (const r of recipes) {
+      const twinMatched = [];
+      const triMatched = elems.length >= 3
+        ? triRecipes.filter((r) => triRecipeMatchesLoadout(elems, r.elems))
+        : [];
+
+      const twinLabel = document.createElement("div");
+      twinLabel.className = "fusion-section-label";
+      twinLabel.textContent = "Twin · 2 elements (any order)";
+      list.appendChild(twinLabel);
+
+      for (const r of twinRecipes) {
         const hasA = elems.includes(r.a);
         const hasB = elems.includes(r.b);
         const hit = hasA && hasB;
-        if (hit) matched.push(r);
+        if (hit) twinMatched.push(r);
         const row = document.createElement("div");
         row.className = "fusion-row" + (hit ? " match" : "");
         row.innerHTML = '<span class="pair">'
@@ -1146,19 +1454,74 @@
           + bulletImgHtml({ elem: r.elem, art: r.art }, "fg-icon") + " " + r.name + " (" + r.dmg + ")</span>";
         list.appendChild(row);
       }
+
+      const triLabel = document.createElement("div");
+      triLabel.className = "fusion-section-label";
+      triLabel.textContent = "Tri · 3 elements (any order)";
+      list.appendChild(triLabel);
+
+      for (const r of triRecipes) {
+        const hit = triRecipeMatchesLoadout(elems, r.elems);
+        const row = document.createElement("div");
+        row.className = "fusion-row tri" + (hit ? " match" : "");
+        row.innerHTML = '<span class="pair">'
+          + r.elems.map((e) => bulletImgHtml(e, "fg-icon") + " " + e).join(" + ")
+          + '</span><span class="arrow">→</span><span class="result">'
+          + bulletImgHtml({ elem: r.elem, art: r.art }, "fg-icon") + " " + r.name + " (" + r.dmg + ")</span>";
+        list.appendChild(row);
+      }
+
+      const fusionSummary = () => {
+        const parts = [];
+        if (twinMatched.length) parts.push("Twin: " + twinMatched.map((r) => r.name).join(" · "));
+        if (triMatched.length) parts.push("Tri: " + triMatched.map((r) => r.name).join(" · "));
+        return parts.join(" | ");
+      };
+
+      if (!live) return;
+      if (opts.helpMode) {
+        if (elems.length >= 2 && (twinMatched.length || triMatched.length)) {
+          live.className = "fusion-live";
+          live.textContent = "Your loadout — " + fusionSummary();
+        } else if (elems.length >= 2) {
+          live.className = "fusion-live empty";
+          live.textContent = "No exact twin/tri recipe — boosts still deal fallback damage.";
+        } else {
+          live.className = "fusion-live empty";
+          live.textContent = "Order never matters — fire+energy = energy+fire. Gold = your loadout.";
+        }
+        return;
+      }
       if (elems.length < 2) {
         live.className = "fusion-live empty";
         live.textContent = "Select 2–3 bullets to see which fusions you unlock.";
-      } else if (!matched.length) {
+      } else if (!twinMatched.length && !triMatched.length) {
         live.className = "fusion-live empty";
         live.textContent = elems.length === 2
-          ? "Those 2 elements don’t fuse — pick a 3rd that pairs with one of them."
-          : "None of your 3 elements fuse together. Check the guide above.";
+          ? "Those 2 elements don't fuse — pick a 3rd that completes a twin or tri recipe."
+          : "No twin/tri recipe for this trio — Tri Fusion still hits with fallback damage.";
       } else {
         live.className = "fusion-live";
-        live.textContent = (elems.length === 2 ? "With these 2: " : "With your 3: ")
-          + matched.map((r) => r.name).join(" · ");
+        live.textContent = (elems.length === 2 ? "With these 2: " : "With your 3: ") + fusionSummary();
       }
+    }
+
+    function loadoutElemsFromView() {
+      const ids = state.view && state.view.you && state.view.you.loadoutIds;
+      if (!ids || !ids.length) return [];
+      return ids.map((id) => {
+        const b = BULLET_CATALOG.find((x) => x.id === id);
+        return b ? b.elem : null;
+      }).filter(Boolean);
+    }
+
+    function openHelp() {
+      renderFusionGuide(loadoutElemsFromView(), {
+        listId: "help-fusion-guide-list",
+        liveId: "help-fusion-live",
+        helpMode: true,
+      });
+      $("help-pick").classList.add("show");
     }
 
     const UTIL_TYPES = {};
@@ -1308,6 +1671,10 @@
       return next;
     }
 
+    function emptyHammer(p) {
+      for (let i = 0; i < p.slots.length; i++) p.slots[i] = null;
+    }
+
     function playerById(g, id) { return g.players.find((p) => p.id === id); }
     function alivePlayers(g) { return g.players.filter((p) => p.hp > 0); }
     function nextTurnId(g) {
@@ -1358,18 +1725,19 @@
     function twinFusionShot(p) {
       const defs = loadoutBulletDefs(p);
       if (defs.length < 2) return { name: "Twin Blast", dmg: 14, elem: defs[0]?.elem || "fire", mode: "twin" };
-      const a = defs[Math.floor(Math.random() * defs.length)];
-      let b = defs[Math.floor(Math.random() * defs.length)];
-      if (defs.length > 1) while (b.id === a.id) b = defs[Math.floor(Math.random() * defs.length)];
-      const fakeA = makeBullet(a.id);
-      const fakeB = makeBullet(b.id);
-      const fuse = getFusion(fakeA, fakeB);
-      if (fuse) {
-        return {
-          name: fuse.name, icon: fuse.icon, elem: fuse.elem || a.elem, art: fuse.art,
-          dmg: fuse.dmg, effect: fuse.effect, mode: "twin", elems: [a.elem, b.elem],
-        };
+      for (let i = 0; i < defs.length; i++) {
+        for (let j = i + 1; j < defs.length; j++) {
+          const fuse = getFusion(defs[i], defs[j]);
+          if (fuse) {
+            return {
+              name: fuse.name, icon: fuse.icon, elem: fuse.elem || defs[i].elem, art: fuse.art,
+              dmg: fuse.dmg, effect: fuse.effect, mode: "twin", elems: [defs[i].elem, defs[j].elem],
+            };
+          }
+        }
       }
+      const a = defs[0];
+      const b = defs[1];
       return {
         name: a.name + "+" + b.name, elem: a.elem, art: a.art,
         dmg: Math.round((a.dmg + b.dmg) * 0.85), effect: a.effect, mode: "twin", elems: [a.elem, b.elem],
@@ -1378,14 +1746,35 @@
 
     function triFusionShot(p) {
       const defs = loadoutBulletDefs(p);
+      const elems = defs.map((d) => d.elem);
       if (defs.length < 3) return { name: "Tri Blast", dmg: TRI_FUSION_DMG, elem: "energy", mode: "tri" };
-      const [a, b, c] = defs;
-      const f1 = getFusion(makeBullet(a.id), makeBullet(b.id));
-      const base = f1 ? f1.dmg : Math.round((a.dmg + b.dmg + c.dmg) * 0.7);
+      const tri = getTriFusion(elems);
+      if (tri) {
+        return {
+          name: tri.name, icon: tri.icon, elem: tri.elem || elems[0], art: tri.art,
+          dmg: tri.dmg, effect: tri.effect, mode: "tri", elems: elems,
+        };
+      }
+      let bestTwin = null;
+      let pair = null;
+      for (let i = 0; i < defs.length; i++) {
+        for (let j = i + 1; j < defs.length; j++) {
+          const fuse = getFusion(defs[i], defs[j]);
+          if (fuse && (!bestTwin || fuse.dmg > bestTwin.dmg)) {
+            bestTwin = fuse;
+            pair = [i, j];
+          }
+        }
+      }
+      const third = pair
+        ? defs.find((_, idx) => idx !== pair[0] && idx !== pair[1]) || defs[2]
+        : defs[2];
+      const base = bestTwin ? bestTwin.dmg : Math.round((defs[0].dmg + defs[1].dmg + defs[2].dmg) * 0.7);
       return {
-        name: "Tri Fusion", icon: "💥", elem: f1?.elem || a.elem, art: f1?.art,
-        dmg: Math.max(TRI_FUSION_DMG, base + c.dmg), effect: f1?.effect || "burn",
-        mode: "tri", elems: [a.elem, b.elem, c.elem],
+        name: bestTwin ? bestTwin.name + " +" + third.elem : "Tri Fusion",
+        icon: bestTwin?.icon || "💥", elem: bestTwin?.elem || defs[0].elem, art: bestTwin?.art,
+        dmg: Math.max(TRI_FUSION_DMG, base + (third?.dmg || 0)), effect: bestTwin?.effect || "burn",
+        mode: "tri", elems: elems,
       };
     }
 
@@ -1486,31 +1875,75 @@
       return amount;
     }
 
-    function fusionKey(a, b) { return a.elem + "+" + b.elem; }
+    function fusionKey(a, b) {
+      const e1 = typeof a === "string" ? a : a.elem;
+      const e2 = typeof b === "string" ? b : b.elem;
+      return fusionPairKey(e1, e2);
+    }
     function getFusion(a, b) { return FUSIONS[fusionKey(a, b)] || null; }
 
-    function hostFireBullet(playerId, uid) {
+    function hostLoadBullet(playerId, uid) {
       const g = state.game;
       if (!g || g.phase !== "playing") return;
       const p = playerById(g, playerId);
       if (!playerCanAct(g, p)) return;
+      const idx = (p.bulletRow || []).findIndex((c) => c.uid === uid);
+      if (idx < 0) return;
+      while (p.slots.length < SLOT_MAX) p.slots.push(null);
+      p.slots = p.slots.slice(0, SLOT_MAX);
+      let slot = p.slots.findIndex((s) => !s);
+      if (slot < 0) {
+        toast("HAMMER full — FIRE or tap Clear");
+        return;
+      }
+      const bullet = p.bulletRow[idx];
+      p.bulletRow[idx] = randomLoadoutBullet(p.loadoutIds);
+      p.slots[slot] = bullet;
+      g.log = p.name + " loaded " + bullet.name + (slot === 0 ? " into HAMMER" : " into chamber " + (slot + 1)) + ".";
+      toast("Loaded " + bullet.name + (slot === 0 ? " → HAMMER" : ""));
+      hostBroadcast();
+    }
+
+    function hostFireHammer(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = playerById(g, playerId);
+      if (!playerCanAct(g, p)) return;
+      if (!p.slots[0]) {
+        toast("Load a bullet into HAMMER first — tap one below");
+        return;
+      }
       if (p.energy < 1) {
         toast("Need ⚡1 — bar refills every 5s");
         return;
       }
-      const idx = (p.bulletRow || []).findIndex((c) => c.uid === uid);
-      if (idx < 0) return;
       const target = resolveTarget(g, playerId);
       if (!target) { toast("Pick a target"); return; }
-      const bullet = p.bulletRow[idx];
-      spendEnergy(p, 1);
-      const shot = {
-        name: bullet.name, icon: bullet.icon, elem: bullet.elem, art: bullet.art,
-        dmg: bullet.dmg, effect: bullet.effect, mode: "single",
-      };
-      p.bulletRow[idx] = randomLoadoutBullet(p.loadoutIds);
-      p.slots[0] = bullet;
-      executeShot(g, playerId, target, shot);
+      hostAttack(playerId, "single");
+    }
+
+    function hostClearSlots(playerId) {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const p = playerById(g, playerId);
+      if (!p) return;
+      let n = 0;
+      for (let i = 0; i < p.slots.length; i++) {
+        if (!p.slots[i]) continue;
+        const ri = Math.floor(Math.random() * p.bulletRow.length);
+        p.bulletRow[ri] = p.slots[i];
+        p.slots[i] = null;
+        n++;
+      }
+      if (n) {
+        g.log = p.name + " cleared " + n + " bullet" + (n === 1 ? "" : "s") + " from HAMMER.";
+        toast("Cleared HAMMER");
+        hostBroadcast();
+      }
+    }
+
+    function hostFireBullet(playerId, uid) {
+      hostLoadBullet(playerId, uid);
     }
 
     function hostUseBoost(playerId, boostType) {
@@ -1559,10 +1992,12 @@
       }
       if (!target) { p.energy += def.cost; toast("Pick a target"); return; }
       if (def.type === "twinFusion") {
+        emptyHammer(p);
         executeShot(g, playerId, target, twinFusionShot(p));
         return;
       }
       if (def.type === "triFusion") {
+        emptyHammer(p);
         executeShot(g, playerId, target, triFusionShot(p));
         return;
       }
@@ -1669,11 +2104,13 @@
       const s1 = p.slots[1];
       if (mode === "single" && s0) {
         spendEnergy(p, 1);
+        const mult = p.nextShotMult && p.nextShotMult > 1 ? p.nextShotMult : 1;
         const shot = {
-          name: s0.name, icon: s0.icon, elem: s0.elem, art: s0.art,
-          dmg: Math.round(s0.dmg * (p.nextShotMult || 1)), effect: s0.effect, mode: "single",
+          name: s0.name + (mult > 1 ? " ★" : ""), icon: s0.icon, elem: s0.elem, art: s0.art,
+          dmg: Math.round(s0.dmg * mult), effect: s0.effect, mode: "single",
         };
         p.nextShotMult = 1;
+        p.slots[0] = null;
         p.slots = rotateSlots(p.slots);
         executeShot(g, playerId, target, shot);
       } else if (mode === "fusion" && s0 && s1) {
@@ -1730,9 +2167,11 @@
         hostUseBoost(bot.id, "powerUp");
         return;
       }
-      if (bot.energy >= 1 && bot.bulletRow && bot.bulletRow.length) {
+      if (bot.slots[0] && bot.energy >= 1) {
+        hostFireHammer(bot.id);
+      } else if (bot.bulletRow && bot.bulletRow.length) {
         const b = bot.bulletRow[Math.floor(Math.random() * bot.bulletRow.length)];
-        if (b) hostFireBullet(bot.id, b.uid);
+        if (b) hostLoadBullet(bot.id, b.uid);
       }
     }
 
@@ -1932,7 +2371,7 @@
       renderEnergy(you.energy, you.overcharged, you.energyProgress || 0);
       const spin = !!(view.pendingFx && view.pendingFx.spin && view.pendingFx.shooterId === you.id);
       const bulletRow = you.bulletRow || you.hand || [];
-      renderSlots(bulletRow.slice(0, SLOT_MAX), spin);
+      renderSlots(you.slots || [], spin);
 
       const mePlayer = view.players.find((p) => p.id === you.id);
       const meSeat = $("me-seat");
@@ -2040,15 +2479,13 @@
         btn.type = "button";
         btn.className = "bullet-card"
           + (card.elem ? " elem-" + card.elem : "")
-          + (!alive ? " card-inactive" : "")
-          + (alive && !hasEnergy ? " card-wait-energy" : "");
+          + (!alive ? " card-inactive" : "");
         btn.innerHTML = handCardHtml(card);
-        btn.title = card.name + " — tap to shoot (⚡1, ~" + card.dmg + " dmg)";
+        btn.title = card.name + " — tap to load into HAMMER (~" + card.dmg + " dmg)";
         bindCardTap(btn, () => {
           if (!alive) return;
           if (!canAct) { toast("Brief cooldown…"); return; }
-          if (!hasEnergy) { toast("Need ⚡1 — bar refills every 5s"); return; }
-          sendAction({ type: "fireBullet", uid: card.uid });
+          sendAction({ type: "loadBullet", uid: card.uid });
         });
         bulletEl.append(btn);
       }
@@ -2061,23 +2498,59 @@
       const bar = $("action-bar");
       bar.replaceChildren();
       const stepsEl = $("action-steps");
+      const hammerLoaded = !!(you.slots && you.slots[0]);
+      const loadedCount = (you.slots || []).filter(Boolean).length;
+      const canFire = alive && canAct && hammerLoaded && hasEnergy;
+
       if (!alive) {
         if (stepsEl) { stepsEl.textContent = "Eliminated — spectating…"; stepsEl.className = "action-steps wait"; }
       } else if (stepsEl) {
         if (you.nextShotMult > 1) {
-          stepsEl.textContent = "Power Up active — next bullet hits harder!";
+          stepsEl.textContent = "Power Up active — FIRE for bonus damage!";
           stepsEl.className = "action-steps ready";
+        } else if (!hammerLoaded) {
+          stepsEl.textContent = "Tap a bullet below → loads into HAMMER circle";
+          stepsEl.className = "action-steps";
         } else if (!hasEnergy) {
-          stepsEl.textContent = "⚡ charging… tap bullets or boosts when ready";
+          stepsEl.textContent = "HAMMER loaded — wait for ⚡1, then FIRE";
           stepsEl.className = "action-steps wait";
         } else {
-          stepsEl.textContent = "Free fire — tap bullets (⚡1) or boosts anytime!";
+          stepsEl.textContent = "HAMMER ready — tap FIRE ⚡1 to shoot!";
           stepsEl.className = "action-steps ready";
         }
       }
 
+      if (alive) {
+        const loadRow = document.createElement("div");
+        loadRow.className = "action-row";
+        const loadLab = document.createElement("div");
+        loadLab.className = "action-row-label";
+        loadLab.textContent = "HAMMER · " + loadedCount + "/5 loaded";
+        const clearBtn = document.createElement("button");
+        clearBtn.className = "btn ghost sm";
+        clearBtn.textContent = "Clear";
+        clearBtn.disabled = !loadedCount;
+        clearBtn.onclick = () => sendAction({ type: "clearSlots" });
+        loadRow.append(loadLab, clearBtn);
+
+        const fireRow = document.createElement("div");
+        fireRow.className = "action-row";
+        const fireBtn = document.createElement("button");
+        fireBtn.type = "button";
+        fireBtn.className = "btn sm fire-main" + (canFire ? " fire-ready" : "");
+        fireBtn.textContent = canFire ? "FIRE ⚡1" : "FIRE ⚡1";
+        fireBtn.disabled = !canFire;
+        fireBtn.title = !hammerLoaded ? "Load a bullet into HAMMER first"
+          : !hasEnergy ? "Wait for ⚡ energy"
+          : "Fire HAMMER bullet at enemy";
+        fireBtn.onclick = () => sendAction({ type: "fireHammer" });
+        fireRow.append(fireBtn);
+
+        bar.append(loadRow, fireRow);
+      }
+
       $("hand-label").innerHTML = alive
-        ? "Bullets · tap to shoot ⚡1 <span class=\"bullet-row-label-sub\">(" + bulletRow.length + ")</span>"
+        ? "Bullets · tap to load <span class=\"bullet-row-label-sub\">(" + bulletRow.length + ")</span>"
         : "Bullets (" + bulletRow.length + ")";
 
       if (view.pendingFx && view.pendingFx.type === "fire") {
@@ -2257,10 +2730,11 @@
 
     function hostHandleAction(playerId, msg) {
       if (!msg || !state.game) return;
-      if (msg.type === "fireBullet") hostFireBullet(playerId, msg.uid);
+      if (msg.type === "loadBullet") hostLoadBullet(playerId, msg.uid);
+      else if (msg.type === "fireBullet") hostLoadBullet(playerId, msg.uid);
+      else if (msg.type === "fireHammer") hostFireHammer(playerId);
+      else if (msg.type === "clearSlots") hostClearSlots(playerId);
       else if (msg.type === "boost") hostUseBoost(playerId, msg.boostType);
-      else if (msg.type === "recharge") hostBeginRecharge(playerId);
-      else if (msg.type === "rechargeResult") hostRechargeResult(playerId, msg.quality);
       else if (msg.type === "attack") hostAttack(playerId, msg.mode);
       else if (msg.type === "target") {
         const g = state.game;
@@ -2602,7 +3076,7 @@
       if (fn) fn(ids);
     };
     $("btn-loadout-back").onclick = goHome;
-    $("btn-help").onclick = () => $("help-pick").classList.add("show");
+    $("btn-help").onclick = openHelp;
     $("btn-help-close").onclick = () => $("help-pick").classList.remove("show");
     $("btn-theme").onclick = () => document.body.classList.toggle("dark");
     $("btn-recharge-hit").onclick = hitRecharge;
