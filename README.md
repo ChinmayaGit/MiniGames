@@ -69,25 +69,101 @@ This README is the **project overview**; each game’s MD covers architecture an
 
 ## How to play (player-facing, short)
 
-### Dobble
+### Bullet
 
-Any two cards share **exactly one** symbol — tap it. First empty pile wins. Host picks edition + cards each. Details: [Dobble.md](docs/Dobble.md).
-
-### Uno
-
-Match **color** or **number**. Stack +2/+4 (house rules). Call **UNO!** at 2 cards or risk **Caught!**. Details: [Uno.md](docs/Uno.md).
-
-### Uno Flip
-
-Double-sided deck; **Flip** turns the whole table Light↔Dark. Details: [UnoFlip.md](docs/UnoFlip.md).
+Pick a **3-bullet loadout**. Draw → Load → attack when ⚡ fills (5s/cell) → Single / Power / Twin Fusion. Details: [Bullet.md](docs/Bullet.md). · [Play](Bullet.html)
 
 ### Cubestacc
 
-Match suit↑ / rank→ / face← on a shared cube STACC. Deck themes in lobby. Details: [Cubestacc.md](docs/Cubestacc.md).
+Match suit↑ / rank→ / face← on a shared cube STACC. Deck themes in lobby. Details: [Cubestacc.md](docs/Cubestacc.md). · [Play](Cubestacc.html)
 
-### Bullet
+### Uno Flip
 
-Pick a **3-bullet loadout**. Draw → Load → attack when ⚡ fills (5s/cell) → Single / Power / Twin Fusion. Details: [Bullet.md](docs/Bullet.md).
+Double-sided deck; **Flip** turns the whole table Light↔Dark. Details: [UnoFlip.md](docs/UnoFlip.md). · [Play](unoflip.html)
+
+### Uno
+
+Match **color** or **number**. Stack +2/+4 (house rules). Call **UNO!** at 2 cards or risk **Caught!**. Details: [Uno.md](docs/Uno.md). · [Play](Uno.html)
+
+### Dobble
+
+Any two cards share **exactly one** symbol — tap it. First empty pile wins. Host picks edition + cards each. Details: [Dobble.md](docs/Dobble.md). · [Play](Dobble.html)
+
+---
+
+## Screenshots
+
+### Mobile
+
+**Hub** · [index.html](index.html)
+
+<img src="Pics/Mobile/dasboard1.png" width="180" alt="Hub mobile 1" />
+<img src="Pics/Mobile/dashboard2.png" width="180" alt="Hub mobile 2" />
+
+**Bullet** · [Bullet.html](Bullet.html)
+
+<img src="Pics/Mobile/bullet1.png" width="180" alt="Bullet mobile 1" />
+<img src="Pics/Mobile/bullet2.png" width="180" alt="Bullet mobile 2" />
+<img src="Pics/Mobile/bullet3.png" width="180" alt="Bullet mobile 3" />
+<img src="Pics/Mobile/bullet4.png" width="180" alt="Bullet mobile 4" />
+<img src="Pics/Mobile/bullet5.png" width="180" alt="Bullet mobile 5" />
+
+**Cube** · [Cubestacc.html](Cubestacc.html)
+
+<img src="Pics/Mobile/cube1.png" width="180" alt="Cube mobile 1" />
+<img src="Pics/Mobile/cube2.png" width="180" alt="Cube mobile 2" />
+<img src="Pics/Mobile/cube3.png" width="180" alt="Cube mobile 3" />
+
+**Flip** · [unoflip.html](unoflip.html)
+
+<img src="Pics/Mobile/flip1.png" width="180" alt="Flip mobile 1" />
+<img src="Pics/Mobile/flip2.png" width="180" alt="Flip mobile 2" />
+<img src="Pics/Mobile/flip3.png" width="180" alt="Flip mobile 3" />
+
+**Uno** · [Uno.html](Uno.html)
+
+<img src="Pics/Mobile/uno1.png" width="180" alt="Uno mobile 1" />
+<img src="Pics/Mobile/uno2.png" width="180" alt="Uno mobile 2" />
+
+**Dobble** · [Dobble.html](Dobble.html)
+
+<img src="Pics/Mobile/dobble1.png" width="180" alt="Dobble mobile 1" />
+<img src="Pics/Mobile/dobble2.png" width="180" alt="Dobble mobile 2" />
+
+### Desktop
+
+**Hub** · [index.html](index.html)
+
+<img src="Pics/Desktop/dashboard1.png" width="360" alt="Hub desktop 1" />
+<img src="Pics/Desktop/dashboard2.png" width="360" alt="Hub desktop 2" />
+
+**Bullet** · [Bullet.html](Bullet.html)
+
+<img src="Pics/Desktop/bullet1.png" width="360" alt="Bullet desktop 1" />
+<img src="Pics/Desktop/Bullet2.png" width="360" alt="Bullet desktop 2" />
+<img src="Pics/Desktop/Bullet3.png" width="360" alt="Bullet desktop 3" />
+
+**Cube** · [Cubestacc.html](Cubestacc.html)
+
+<img src="Pics/Desktop/cube1.png" width="360" alt="Cube desktop 1" />
+<img src="Pics/Desktop/Cube2.png" width="360" alt="Cube desktop 2" />
+<img src="Pics/Desktop/Cube3.png" width="360" alt="Cube desktop 3" />
+
+**Flip** · [unoflip.html](unoflip.html)
+
+<img src="Pics/Desktop/flip1.png" width="360" alt="Flip desktop 1" />
+<img src="Pics/Desktop/flip2.png" width="360" alt="Flip desktop 2" />
+<img src="Pics/Desktop/flip3.png" width="360" alt="Flip desktop 3" />
+
+**Uno** · [Uno.html](Uno.html)
+
+<img src="Pics/Desktop/uno1.png" width="360" alt="Uno desktop 1" />
+<img src="Pics/Desktop/uno2.png" width="360" alt="Uno desktop 2" />
+
+**Dobble** · [Dobble.html](Dobble.html)
+
+<img src="Pics/Desktop/dobble1.png" width="360" alt="Dobble desktop 1" />
+<img src="Pics/Desktop/dobbl2.png" width="360" alt="Dobble desktop 2" />
 
 ---
 
@@ -98,6 +174,8 @@ MiniGames/
   index.html          # hub
   *.html              # games (root URLs for Netlify)
   docs/               # architecture notes
+  Pics/Mobile/        # mobile screenshots
+  Pics/Desktop/       # desktop screenshots
   assets/icons/       # SVGs (e.g. flip.svg)
   assets/images/      # reference images
   shared/             # lobby kit (css/js)

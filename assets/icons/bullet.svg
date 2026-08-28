@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+  <defs>
+    <linearGradient id="tip" x1="32" y1="4" x2="32" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5e6c8"/>
+      <stop offset=".55" stop-color="#c9a06a"/>
+      <stop offset="1" stop-color="#8a6230"/>
+    </linearGradient>
+    <linearGradient id="case" x1="18" y1="20" x2="46" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe08a"/>
+      <stop offset=".45" stop-color="#e0a83a"/>
+      <stop offset="1" stop-color="#9a6a12"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="32" y1="52" x2="32" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffd56a"/>
+      <stop offset="1" stop-color="#b87810"/>
+    </linearGradient>
+  </defs>
+  <!-- tip -->
+  <path fill="url(#tip)" d="M32 5c6.2 0 11.2 7.4 12.4 16.2H19.6C20.8 12.4 25.8 5 32 5z"/>
+  <!-- jacket band -->
+  <rect x="19.2" y="20.5" width="25.6" height="4.2" rx="1" fill="#6b4a1e" opacity=".55"/>
+  <!-- casing -->
+  <path fill="url(#case)" d="M19.5 24.2h25v28.2c0 2.2-1.8 3.6-4 3.6H23.5c-2.2 0-4-1.4-4-3.6V24.2z"/>
+  <!-- casing highlight -->
+  <path fill="#fff6d0" opacity=".35" d="M23.2 26.2h4.2v24.8c0 .9-.4 1.5-1.1 1.5h-1c-.8 0-1.2-.6-1.2-1.5V26.2z"/>
+  <!-- extractor groove -->
+  <rect x="20" y="48.8" width="24" height="2.2" rx=".6" fill="#6b4a1e" opacity=".45"/>
+  <!-- primer rim -->
+  <rect x="21" y="55.2" width="22" height="4.6" rx="1.4" fill="url(#rim)"/>
+  <circle cx="32" cy="57.5" r="1.6" fill="#5c3a0e"/>
+</svg>

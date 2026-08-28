@@ -122,6 +122,31 @@
     }
     .jump a:active { transform: translateY(2px); box-shadow: 0 2px 0 #9a7a12; }
 
+    .catalog-section {
+      margin-bottom: 28px;
+    }
+    .catalog-section:last-of-type { margin-bottom: 0; }
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 16px;
+      margin-bottom: 12px;
+    }
+    .section-head h2 {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .section-head p {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
     .meta { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
       border: 2px solid var(--line);
@@ -525,16 +550,16 @@
       </div>
     </header>
 
-    <nav class="jump">
-      <a href="Dobble.html">Dobble</a>
-      <a href="Uno.html">Uno</a>
-      <a href="unoflip.html">Uno Flip</a>
-      <a href="Cubestacc.html">Cubestacc</a>
+    <nav class="jump" aria-label="Quick links">
       <a href="Bullet.html">Bullet</a>
+      <a href="Cubestacc.html">Cube</a>
+      <a href="Dobble.html">Dobble</a>
+      <a href="unoflip.html">Flip</a>
+      <a href="Uno.html">Uno</a>
     </nav>
 
     <div class="toolbar">
-      <span class="label">Games</span>
+      <span class="label">Catalog</span>
       <div class="view-toggle" role="group" aria-label="Catalog layout">
         <button type="button" id="view-grid" aria-pressed="true" title="Grid view">
           <span class="view-ico grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
@@ -547,119 +572,135 @@
       </div>
     </div>
 
-    <main class="grid" id="game-catalog">
-      <a class="tile" href="Dobble.html">
-        <div class="art dobble" aria-hidden="true">
-          <div class="disc">⭐</div>
-        </div>
-        <div class="body">
-          <h2>Dobble</h2>
-          <p>Any two cards share exactly one symbol. Spot it first. Empty your pile to win.</p>
-          <div class="tags">
-            <span class="tag">Multiplayer</span>
-            <span class="tag">Solo</span>
-            <span class="tag">Max 8 players</span>
-            <span class="tag">8 editions</span>
+    <section class="catalog-section" aria-labelledby="main-games-title">
+      <div class="section-head">
+        <h2 id="main-games-title">Main games</h2>
+        <p>Bullet · Cube · Dobble · Flip · Uno</p>
+      </div>
+      <main class="grid" id="game-catalog">
+        <a class="tile" href="Bullet.html">
+          <div class="art bullet" aria-hidden="true">
+            <div class="disc" style="background:transparent;border:none;box-shadow:none;padding:0">
+              <img src="assets/icons/bullet.svg" alt="" width="72" height="72" draggable="false" style="display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45))" />
+            </div>
           </div>
-          <span class="play">Play Dobble</span>
-        </div>
-      </a>
+          <div class="body">
+            <h2>Bullet</h2>
+            <p>Load element bullets into the HAMMER. Fire Single, Twin, or Triple fusions. Boosts, energy regen, duels online or vs bot.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo vs bot</span>
+              <span class="tag">Fusions</span>
+              <span class="tag">Max 2 players</span>
+            </div>
+            <span class="play">Play Bullet</span>
+          </div>
+        </a>
 
-      <a class="tile" href="Uno.html">
-        <div class="art uno" aria-hidden="true">
-          <div class="uno-oval"><span>UNO</span></div>
-        </div>
-        <div class="body">
-          <h2>Uno</h2>
-          <p>Match color or number. Stack +2 and +4, call UNO, play with voice at the table.</p>
-          <div class="tags">
-            <span class="tag">Multiplayer</span>
-            <span class="tag">Solo vs bots</span>
-            <span class="tag">Voice</span>
-            <span class="tag">Max 10 players</span>
+        <a class="tile" href="Cubestacc.html">
+          <div class="art cubestacc" aria-hidden="true">
+            <div class="disc" style="border-radius:14px;font-size:28px;font-weight:800;color:#0b3d6e">▣</div>
           </div>
-          <span class="play">Play Uno</span>
-        </div>
-      </a>
+          <div class="body">
+            <h2>Cube</h2>
+            <p>Match suit, rank, or face on a shared 3D cube stack. UH OH at one card. Online rooms or solo vs bots.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo vs bots</span>
+              <span class="tag">3D stack</span>
+              <span class="tag">Max 5 players</span>
+            </div>
+            <span class="play">Play Cube</span>
+          </div>
+        </a>
 
-      <a class="tile" href="unoflip.html">
-        <div class="art unoflip" aria-hidden="true">
-          <div class="uno-oval"><span>FLIP</span></div>
-        </div>
-        <div class="body">
-          <h2>Uno Flip</h2>
-          <p>Same table as Uno, plus a Flip card. Light and dark sides, +1 / +5, skip everyone.</p>
-          <div class="tags">
-            <span class="tag">Multiplayer</span>
-            <span class="tag">Solo vs bots</span>
-            <span class="tag">Flip</span>
-            <span class="tag">Max 10 players</span>
+        <a class="tile" href="Dobble.html">
+          <div class="art dobble" aria-hidden="true">
+            <div class="disc">⭐</div>
           </div>
-          <span class="play">Play Uno Flip</span>
-        </div>
-      </a>
+          <div class="body">
+            <h2>Dobble</h2>
+            <p>Any two cards share exactly one symbol. Spot it first. Empty your pile to win.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo</span>
+              <span class="tag">Max 8 players</span>
+              <span class="tag">8 editions</span>
+            </div>
+            <span class="play">Play Dobble</span>
+          </div>
+        </a>
 
-      <a class="tile" href="Cubestacc.html">
-        <div class="art cubestacc" aria-hidden="true">
-          <div class="disc" style="border-radius:14px;font-size:28px;font-weight:800;color:#0b3d6e">▣</div>
-        </div>
-        <div class="body">
-          <h2>Cubestacc</h2>
-          <p>Match suit, rank, or face on a shared 3D cube stack. UH OH at one card. Online rooms or solo vs bots.</p>
-          <div class="tags">
-            <span class="tag">Multiplayer</span>
-            <span class="tag">Solo vs bots</span>
-            <span class="tag">3D stack</span>
-            <span class="tag">Max 5 players</span>
+        <a class="tile" href="unoflip.html">
+          <div class="art unoflip" aria-hidden="true">
+            <div class="uno-oval"><span>FLIP</span></div>
           </div>
-          <span class="play">Play Cubestacc</span>
-        </div>
-      </a>
+          <div class="body">
+            <h2>Flip</h2>
+            <p>Same table as Uno, plus a Flip card. Light and dark sides, +1 / +5, skip everyone.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo vs bots</span>
+              <span class="tag">Flip</span>
+              <span class="tag">Max 10 players</span>
+            </div>
+            <span class="play">Play Flip</span>
+          </div>
+        </a>
 
-      <a class="tile" href="Bullet.html">
-        <div class="art bullet" aria-hidden="true">
-          <div class="disc" style="font-size:42px;background:transparent;border:none;box-shadow:none">🔫</div>
-        </div>
-        <div class="body">
-          <h2>Bullet</h2>
-          <p>Load element bullets into a blaster. Energy auto-fills every 5s — fire Single / Power / Fusion shots.</p>
-          <div class="tags">
-            <span class="tag">Multiplayer</span>
-            <span class="tag">Solo vs bot</span>
-            <span class="tag">Recharge</span>
-            <span class="tag">Max 4 players</span>
+        <a class="tile" href="Uno.html">
+          <div class="art uno" aria-hidden="true">
+            <div class="uno-oval"><span>UNO</span></div>
           </div>
-          <span class="play">Play Bullet</span>
-        </div>
-      </a>
+          <div class="body">
+            <h2>Uno</h2>
+            <p>Match color or number. Stack +2 and +4, call UNO, play with voice at the table.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo vs bots</span>
+              <span class="tag">Voice</span>
+              <span class="tag">Max 10 players</span>
+            </div>
+            <span class="play">Play Uno</span>
+          </div>
+        </a>
+      </main>
+    </section>
 
-      <div class="tile soon">
-        <div class="art soon" aria-hidden="true">
-          <span class="soon-mark">Soon</span>
-        </div>
-        <div class="body">
-          <h2>More games</h2>
-          <p>Party and reaction titles will land here the same way: one HTML file, open and play.</p>
-          <div class="tags">
-            <span class="tag">Coming soon</span>
+    <section class="catalog-section" aria-labelledby="soon-games-title">
+      <div class="section-head">
+        <h2 id="soon-games-title">Coming soon</h2>
+        <p>More one-file games</p>
+      </div>
+      <div class="grid" id="soon-catalog">
+        <div class="tile soon">
+          <div class="art soon" aria-hidden="true">
+            <span class="soon-mark">Soon</span>
           </div>
-          <span class="play">Not playable yet</span>
+          <div class="body">
+            <h2>More games</h2>
+            <p>Party and reaction titles will land here the same way: one HTML file, open and play.</p>
+            <div class="tags">
+              <span class="tag">Coming soon</span>
+            </div>
+            <span class="play">Not playable yet</span>
+          </div>
         </div>
       </div>
-    </main>
+    </section>
 
     <footer>
       <span>Host anywhere static. Rooms stay in the browser.</span>
       <span>
+        <a href="docs/Bullet.md">Bullet notes</a>
+        ·
+        <a href="docs/Cubestacc.md">Cube notes</a>
+        ·
         <a href="docs/Dobble.md">Dobble notes</a>
         ·
+        <a href="docs/UnoFlip.md">Flip notes</a>
+        ·
         <a href="docs/Uno.md">Uno notes</a>
-        ·
-        <a href="docs/UnoFlip.md">Uno Flip notes</a>
-        ·
-        <a href="docs/Cubestacc.md">Cubestacc notes</a>
-        ·
-        <a href="docs/Bullet.md">Bullet notes</a>
       </span>
     </footer>
   </div>
@@ -682,6 +723,8 @@
       function setView(mode) {
         var list = mode === "list";
         catalog.classList.toggle("list-view", list);
+        var soon = document.getElementById("soon-catalog");
+        if (soon) soon.classList.toggle("list-view", list);
         btnGrid.setAttribute("aria-pressed", list ? "false" : "true");
         btnList.setAttribute("aria-pressed", list ? "true" : "false");
         try { localStorage.setItem(VIEW_KEY, list ? "list" : "grid"); } catch (e) {}
@@ -708,7 +751,7 @@
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
           e.preventDefault();
           var href = a.getAttribute("href") || "";
-          var name = /Cubestacc/i.test(href) ? "Cubestacc" : /Bullet/i.test(href) ? "Bullet" : /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
+          var name = /Bullet/i.test(href) ? "Bullet" : /Cubestacc/i.test(href) ? "Cube" : /Dobble/i.test(href) ? "Dobble" : /unoflip/i.test(href) ? "Flip" : /Uno/i.test(href) ? "Uno" : "the game";
           openGame(href, name);
         });
       });

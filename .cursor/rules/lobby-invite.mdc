@@ -1,0 +1,51 @@
+---
+description: Shared lobby / invite-link rules for all MiniGames (link & QR join)
+globs: "**/*.{html,js,md}"
+alwaysApply: true
+---
+
+# Lobby & invite join (all games)
+
+Lobby / online join is **the same for every game**. Use `shared/kit.js` — do not reinvent per game.
+
+## Invite link / QR (`?room=ABCD`)
+
+When the URL has a 4-character `room` param (copy link or QR):
+
+- **Hide** Create room (`#btn-create`)
+- **Hide** Solo / bot / practice (`#btn-solo`, `#solo-home-row`, `#home-pack`)
+- **Hide** the manual join-code field (code already comes from the URL)
+- **Show** Join as `Join room ABCD` (`#btn-join`)
+- **Show** Leave this invite (`#btn-invite-leave`)
+- Do **not** show a “create lobby” path on that screen
+
+`MiniGames.init()` already calls `MiniGames.setInviteHome(roomParam)`.  
+Going home / leaving invite: `MiniGames.clearInviteHome()` or `setInviteHome("")` after `stripRoomFromUrl()`.
+
+## Required home IDs
+
+| ID | Role |
+|----|------|
+| `#btn-create` | Create room |
+| `#btn-join` | Join |
+| `#join-code` | Manual code (hidden on invite) |
+| `#btn-solo` | Solo / vs bot (hidden on invite) |
+| `#btn-invite-leave` | Leave invite (auto-injected by kit if missing) |
+| `#home-hint` | Optional hint text (swapped on invite) |
+| `#name` | Player name |
+
+## Do / don’t
+
+```text
+✅ MG.init(...) then MG.bindHome({ onCreate, onJoin, onSolo, onLeave, ... })
+✅ MG.setInviteHome(code) / MG.clearInviteHome()
+✅ Host lobby may show QR + Start; guests do not “create”
+
+❌ Custom invite UI that still shows Create or Solo on ?room=
+❌ Asking the user again to “hide create when joining by link”
+❌ Different lobby invite rules per game
+```
+
+## New games
+
+Copy an existing home/lobby shell, load `shared/kit.js`, call `init` + `bindHome`. Invite hide/show is free.

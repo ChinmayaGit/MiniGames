@@ -1194,15 +1194,10 @@
     function peerOptions() { return MiniGames.peerOptions(turnIce); }
 
     function setInviteHome(code) {
-      const invite = !!(code && String(code).length === 4);
-      $("btn-create").style.display = invite ? "none" : "";
-      $("solo-home-row").style.display = invite ? "none" : "";
-      $("btn-solo").style.display = invite ? "none" : "";
-      $("btn-invite-leave").style.display = invite ? "" : "none";
-      $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join friends";
-      $("home-hint").textContent = invite
-        ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
-        : "Share a 4-letter room code. Friends open this same page and join.";
+      MiniGames.setInviteHome(code, {
+        defaultJoinLabel: "Join friends",
+        defaultHint: "Share a 4-letter room code. Friends open this same page and join.",
+      });
     }
 
     function clearJoinWait() {

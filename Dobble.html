@@ -469,7 +469,7 @@
       </div>
       <button class="btn ghost" id="btn-solo">Practice solo</button>
       <div class="error" id="home-error"></div>
-      <p class="hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
+      <p class="hint" id="home-hint">Share a 4-letter room code. Friends open this same page and join. Hosting works on GitHub Pages, Netlify, or any static HTTPS site.</p>
     </div>
   </div>
 
@@ -1744,8 +1744,7 @@
       state.isHost = false;
       state.solo = false;
       state.reconnectAttempt = 0;
-      MiniGames.stripRoomFromUrl();
-      setJoinStatus("", "");
+      MiniGames.clearInviteHome();
       $("btn-join").disabled = false;
       hideWarmup();
       showScreen("home");
@@ -1840,7 +1839,6 @@
       const params = new URLSearchParams(location.search);
       const roomParam = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       if (roomParam.length === 4) {
-        if ($("join-code")) $("join-code").value = roomParam;
         const named = ($("name") && $("name").value) || localStorage.getItem("dobble-name");
         if (named && String(named).trim()) {
           setTimeout(() => joinRoom(roomParam), 250);

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a1428" />
   <title>Bullet</title>
   <link rel="stylesheet" href="shared/boot.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1428'/><text y='68' x='50' text-anchor='middle' font-size='48'>🔫</text></svg>" />
+  <link rel="icon" href="assets/icons/bullet.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
@@ -69,11 +69,23 @@
     }
 
     .brand { text-align: center; margin-bottom: 8px; }
+    .brand-ico {
+      width: 56px; height: 56px; object-fit: contain; display: block;
+      margin: 0 auto 6px;
+      filter: drop-shadow(0 4px 10px rgba(124, 92, 255, .45));
+    }
     .brand h1 {
       font-family: Orbitron, sans-serif; font-size: clamp(32px, 8vw, 56px);
       color: var(--gold); letter-spacing: 0.06em; text-shadow: 0 0 18px #7c5cff88;
     }
     .brand p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+    .game-bullet-ico {
+      width: 1em; height: 1em; object-fit: contain; display: block;
+      pointer-events: none;
+    }
+    .end-card .game-bullet-ico { width: 64px; height: 64px; margin: 0 auto; }
+    #end-emoji { font-size: 64px; line-height: 1; min-height: 64px; display: grid; place-items: center; }
+    .weak-wheel-center .game-bullet-ico { width: 30px; height: 30px; }
 
     .panel {
       width: min(420px, 100%); background: var(--card);
@@ -168,6 +180,123 @@
       font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--gold); opacity: 0.85; margin-bottom: 4px;
     }
+    .opp-seat {
+      position: relative;
+    }
+    .last-elem-badge {
+      position: absolute;
+      top: -14px;
+      right: 10px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      background: #120a20;
+      display: grid; place-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.45);
+      z-index: 2;
+      overflow: hidden;
+    }
+    .last-elem-badge img {
+      width: 22px; height: 22px; object-fit: contain;
+    }
+    .last-elem-badge .le-emoji { font-size: 16px; line-height: 1; }
+    .last-elem-badge .le-weak {
+      position: absolute; bottom: -2px; right: -2px;
+      font-size: 9px; background: var(--red); color: #fff;
+      border-radius: 999px; padding: 0 3px; font-weight: 800;
+      border: 1px solid #120a20;
+    }
+    .weak-cycle {
+      margin-top: 0;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #0a0810;
+      text-align: center;
+    }
+    .help-rules-title {
+      margin: 14px 0 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-align: left;
+    }
+    .weak-cycle h4 {
+      margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--gold); text-align: left;
+    }
+    .weak-cycle > p { margin: 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.35; text-align: left; }
+    .weak-wheel {
+      position: relative;
+      width: min(280px, 100%);
+      height: min(280px, 72vw);
+      margin: 12px auto 16px;
+      flex-shrink: 0;
+    }
+    .weak-wheel-ring {
+      position: absolute;
+      inset: 22%;
+      border-radius: 50%;
+      border: 2px solid #4a5568;
+      box-shadow: inset 0 0 0 1px #2d3748, 0 0 0 1px #2d3748;
+      pointer-events: none;
+    }
+    .weak-wheel-center {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #5ec4ff, #1b5eaa 55%, #0b3d6e);
+      border: 2px solid #e8f4ff;
+      display: grid; place-items: center;
+      font-size: 26px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.5);
+      z-index: 2;
+      transform: translate(-50%, -50%);
+    }
+    .weak-wheel-node {
+      position: absolute;
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      border: 2px solid rgba(255,255,255,.9);
+      box-shadow: 0 3px 10px rgba(0,0,0,.45);
+      z-index: 3;
+      transform: translate(-50%, -50%);
+    }
+    .weak-wheel-node img {
+      width: 30px; height: 30px; object-fit: contain;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.4));
+      pointer-events: none;
+    }
+    .weak-wheel-node .wc-label {
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px; font-weight: 800;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: #e8e0f0; white-space: nowrap;
+      text-shadow: 0 1px 2px #000;
+      pointer-events: none;
+    }
+    .weak-wheel-arrow {
+      position: absolute;
+      width: 20px; height: 20px;
+      color: var(--gold);
+      font-size: 16px; font-weight: 900;
+      z-index: 1;
+      transform: translate(-50%, -50%);
+      text-shadow: 0 0 4px #000;
+      pointer-events: none;
+      display: grid; place-items: center;
+      line-height: 1;
+    }
+    .weak-cycle-legend {
+      margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.4; text-align: left;
+    }
     .opponents {
       display: flex; flex-direction: column; gap: 6px;
       width: 100%; min-width: 0;
@@ -177,9 +306,11 @@
       background: var(--card); border: 2px solid var(--line);
       border-radius: 12px; padding: 6px 10px;
       display: flex; align-items: center; gap: 8px;
+      position: relative;
       transition: border-color .2s, box-shadow .2s;
       width: 100%; box-sizing: border-box;
     }
+    .opp-seat { padding-top: 12px; }
     .me-seat { border-color: var(--gold); }
     .opp-seat.targetable { cursor: pointer; touch-action: manipulation; }
     .opp-seat.targetable:hover { border-color: var(--gold); }
@@ -1099,6 +1230,7 @@
   <div id="screen-home" class="screen active">
     <p class="all-games"><a href="index.html">← All games</a></p>
     <div class="brand">
+      <img class="brand-ico" src="assets/icons/bullet.svg" alt="" width="56" height="56" draggable="false" />
       <h1>BULLET</h1>
       <p>Realtime duel — tap bullets & boosts anytime. Pick 3 elements at start.</p>
     </div>
@@ -1106,7 +1238,7 @@
       <label for="name">Your name</label>
       <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
       <button class="btn" id="btn-create">Create room</button>
-      <label for="join-code">Join a room</label>
+      <label for="join-code" id="join-code-label">Join a room</label>
       <input id="join-code" class="room" maxlength="4" placeholder="ABCD" autocomplete="off" />
       <button class="btn teal" id="btn-join">Join friends</button>
       <div class="join-status" id="join-status">
@@ -1117,8 +1249,9 @@
         <div class="join-bar"><i></i></div>
       </div>
       <button class="btn ghost" id="btn-solo">Duel vs bot</button>
+      <button class="btn ghost" id="btn-invite-leave" type="button" style="display:none;margin-top:10px">Leave this invite</button>
       <div class="error" id="home-error"></div>
-      <p class="hint">Load bullets → Single, Twin, or Triple fire. Boosts & fusions. ⚡ fills every 5s.</p>
+      <p class="hint" id="home-hint">Load bullets → Single, Twin, or Triple fire. Boosts & fusions. ⚡ fills every 5s.</p>
     </div>
   </div>
 
@@ -1154,7 +1287,7 @@
         </div>
         <p class="hint" id="lobby-hint">Waiting for the host…</p>
       </div>
-      <div class="qr">
+      <div class="qr" id="lobby-qr">
         <img id="qr" alt="Invite QR code" />
         <b>Scan to join</b>
       </div>
@@ -1163,6 +1296,7 @@
 
   <div id="screen-loadout" class="screen">
     <div class="brand">
+      <img class="brand-ico" src="assets/icons/bullet.svg" alt="" width="48" height="48" draggable="false" style="width:48px;height:48px" />
       <h1 style="font-size:28px">LOADOUT</h1>
       <p>Pick <b>3 element bullets</b> for this duel. Check fusions first.</p>
     </div>
@@ -1174,6 +1308,7 @@
         <div class="fusion-live empty" id="fusion-live">Select 2–3 bullets to see which fusions you unlock.</div>
       </div>
       <div id="loadout-picked" style="font-weight:700;margin-bottom:8px">0 / 3 selected</div>
+      <div id="loadout-status" class="hint" style="margin:0 0 10px;min-height:1.2em"></div>
       <div class="loadout-grid" id="loadout-grid"></div>
       <button class="btn gold" id="btn-loadout-go" disabled>Enter battle</button>
       <button class="btn ghost" id="btn-loadout-back" type="button">Back</button>
@@ -1260,6 +1395,19 @@
   <div class="help-overlay" id="help-pick" role="dialog" aria-modal="true">
     <div class="sheet">
       <h3>How to play</h3>
+      <div class="weak-cycle" id="help-weak-cycle">
+        <h4>Element weakness cycle</h4>
+        <p>Clockwise beats the next. If they last used that element, your shot deals <b>+50%</b>.</p>
+        <div class="weak-wheel" id="help-weak-cycle-row" aria-label="Element weakness wheel"></div>
+        <p class="weak-cycle-legend">Example: they last fired Fire → your Water hits harder. Fusions map to a base (Ice→Water, Lava→Fire, Plasma→Lightning, Stone→Earth, Tornado→Wind).</p>
+      </div>
+      <div class="fusion-guide" id="help-fusion-guide">
+        <h3>FUSION GUIDE</h3>
+        <p class="fg-hint">Fire · Water · Earth · Wind · Lightning. Twin & tri — any order. Tri counts fused Ice / Plasma / Lava / Stone / Tornado from your pairs.</p>
+        <div class="fusion-guide-list" id="help-fusion-guide-list"></div>
+        <div class="fusion-live empty" id="help-fusion-live">Your loadout fusions highlight in gold when in a match.</div>
+      </div>
+      <h4 class="help-rules-title">Rules</h4>
       <ul>
         <li><b>Bullets (5):</b> Tap to load into HAMMER (your 3 elements, random repeat).</li>
         <li><b>FIRE:</b> Single ⚡1 anytime. Twin ⚡2 / Triple ⚡3 only when HAMMER sequence matches a fusion recipe.</li>
@@ -1267,13 +1415,8 @@
         <li>Blind: enemy 50% miss · 10s. Smoke: enemy 100% miss · 5s. Speed Boost: your ⚡ fills twice as fast · 10s.</li>
         <li>No turns — fire anytime. Low damage = longer duels. ⚡ refills every 5s.</li>
         <li>Energy (⚡) fills 1 cell every 5s — need ⚡ to fire.</li>
+        <li><b>Element weakness:</b> Last-used element shows on you and the enemy. Attacks that beat it deal <b>+50%</b> damage.</li>
       </ul>
-      <div class="fusion-guide" id="help-fusion-guide">
-        <h3>FUSION GUIDE</h3>
-        <p class="fg-hint">Fire · Water · Earth · Wind · Lightning. Twin & tri — any order. Tri counts fused Ice / Plasma / Lava / Stone / Tornado from your pairs.</p>
-        <div class="fusion-guide-list" id="help-fusion-guide-list"></div>
-        <div class="fusion-live empty" id="help-fusion-live">Your loadout fusions highlight in gold when in a match.</div>
-      </div>
       <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px;width:100%">Got it</button>
     </div>
   </div>
@@ -1354,7 +1497,7 @@
 
   <div id="screen-end" class="screen">
     <div class="end-card">
-      <div style="font-size:64px" id="end-emoji">🔫</div>
+      <div id="end-emoji"><img class="game-bullet-ico" src="assets/icons/bullet.svg" alt="" width="64" height="64" draggable="false" /></div>
       <h2 id="end-title">Winner</h2>
       <p id="end-sub" style="color:var(--muted)"></p>
       <div class="podium panel" id="end-scores" style="width:auto;margin-top:16px"></div>
@@ -1394,7 +1537,7 @@
     }
 
     const PEER_PREFIX = "bullethost-";
-    const MAX_PLAYERS = 4;
+    const MAX_PLAYERS = 2;
     const ENERGY_MAX = 5;
     const ENERGY_CELL_MS = 5000;
     const BULLET_ROW_SIZE = 5;
@@ -1409,6 +1552,35 @@
       fire: "🔥", water: "💧", earth: "🌍", wind: "💨", lightning: "⚡",
       ice: "❄️", plasma: "🔆", lava: "🌋", acid: "☠️", stone: "🪨", tornado: "🌪",
     };
+
+    // Last-used element weakness: defender's lastUsed is weak to this attack type (+50% dmg)
+    // Cycle: Water → Fire → Wind → Earth → Lightning → Water
+    const ELEM_WEAK_TO = {
+      fire: "water",
+      wind: "fire",
+      earth: "wind",
+      lightning: "earth",
+      water: "lightning",
+    };
+    const ELEM_CYCLE = ["water", "fire", "wind", "earth", "lightning"];
+    const WEAKNESS_MULT = 1.5;
+    const ELEM_BASE_TYPE = {
+      fire: "fire", water: "water", earth: "earth", wind: "wind", lightning: "lightning",
+      lava: "fire", plasma: "lightning", ice: "water", stone: "earth", tornado: "wind",
+      acid: "earth", surge: "lightning",
+    };
+
+    function elementalType(elem) {
+      if (!elem) return null;
+      return ELEM_BASE_TYPE[elem] || (ELEM_WEAK_TO[elem] ? elem : null);
+    }
+
+    function isWeaknessHit(attackElem, defenderLastUsed) {
+      const atk = elementalType(attackElem);
+      const def = elementalType(defenderLastUsed);
+      if (!atk || !def) return false;
+      return ELEM_WEAK_TO[def] === atk;
+    }
 
     const BULLET_ASSETS = {
       fire: "assets/bullets/fire.png",
@@ -1652,13 +1824,83 @@
       }).filter(Boolean);
     }
 
+    function renderWeakCycleGuide() {
+      const wheel = $("help-weak-cycle-row");
+      if (!wheel) return;
+      wheel.replaceChildren();
+      wheel.className = "weak-wheel";
+
+      // Clockwise from top: each beats the next (matches ELEM_WEAK_TO)
+      const ring = ["fire", "wind", "earth", "lightning", "water"];
+      const colors = {
+        fire: "#ff6b35",
+        wind: "#a78bfa",
+        earth: "#b45309",
+        lightning: "#facc15",
+        water: "#3b82f6",
+      };
+
+      const ringEl = document.createElement("div");
+      ringEl.className = "weak-wheel-ring";
+      ringEl.setAttribute("aria-hidden", "true");
+      wheel.appendChild(ringEl);
+
+      const center = document.createElement("div");
+      center.className = "weak-wheel-center";
+      center.title = "Beat the next clockwise";
+      center.innerHTML = '<img class="game-bullet-ico" src="assets/icons/bullet.svg" alt="" draggable="false">';
+      wheel.appendChild(center);
+
+      const n = ring.length;
+      const radiusPct = 38;
+      for (let i = 0; i < n; i++) {
+        const e = ring[i];
+        const next = ring[(i + 1) % n];
+        // -90° = top; percentages are of the wheel box (not the node)
+        const deg = -90 + (i * 360) / n;
+        const rad = (deg * Math.PI) / 180;
+        const x = 50 + radiusPct * Math.cos(rad);
+        const y = 50 + radiusPct * Math.sin(rad);
+
+        const node = document.createElement("div");
+        node.className = "weak-wheel-node";
+        node.style.left = x + "%";
+        node.style.top = y + "%";
+        node.style.background = colors[e] || "#333";
+        node.title = e + " beats " + next + " (+50%)";
+        node.innerHTML = bulletImgHtml(e) + '<span class="wc-label">' + e + "</span>";
+        wheel.appendChild(node);
+
+        const midDeg = deg + 180 / n;
+        const midRad = (midDeg * Math.PI) / 180;
+        const ax = 50 + radiusPct * Math.cos(midRad);
+        const ay = 50 + radiusPct * Math.sin(midRad);
+        const arrow = document.createElement("div");
+        arrow.className = "weak-wheel-arrow";
+        arrow.style.left = ax + "%";
+        arrow.style.top = ay + "%";
+        arrow.style.transform = "translate(-50%, -50%) rotate(" + (midDeg + 90) + "deg)";
+        arrow.textContent = "›";
+        arrow.title = e + " → " + next;
+        wheel.appendChild(arrow);
+      }
+    }
+
     function openHelp() {
+      const pick = $("help-pick");
+      const sheet = pick && pick.querySelector(".sheet");
+      if (sheet) sheet.scrollTop = 0;
+      renderWeakCycleGuide();
       renderFusionGuide(loadoutElemsFromView(), {
         listId: "help-fusion-guide-list",
         liveId: "help-fusion-live",
         helpMode: true,
       });
-      $("help-pick").classList.add("show");
+      pick.classList.add("show");
+      requestAnimationFrame(() => {
+        if (sheet) sheet.scrollTop = 0;
+        if (pick) pick.scrollTop = 0;
+      });
     }
 
     const ZOOM_MIN = 0.8;
@@ -1736,6 +1978,8 @@
       reconnecting: false, reconnectTimer: 0, reconnectAttempt: 0,
       localSelected: new Set(), lastFxId: "", lastSlotKey: "",
       pendingLoadout: null, loadoutPick: new Set(),
+      pendingMatch: null,
+      loadoutSubmitted: false,
       recharge: { active: false, started: 0, duration: 1350 },
       energyTimer: 0,
       energyRaf: 0,
@@ -1795,6 +2039,7 @@
         evadeUntil: 0,
         evadeChance: 0,
         fastRegenUntil: 0,
+        lastUsedElem: null,
         actionLock: false,
         connected: p.connected !== false,
         isBot: !!p.isBot,
@@ -2013,10 +2258,18 @@
         shooter.nextShotMult = 1;
       }
       if (shooter.damageBonus) dmg = Math.round(dmg * (1 + shooter.damageBonus));
+      const shotType = elementalType(shot.elem) || shot.elem;
+      let weak = false;
+      if (isWeaknessHit(shot.elem, target.lastUsedElem)) {
+        dmg = Math.max(1, Math.round(dmg * WEAKNESS_MULT));
+        weak = true;
+      }
+      shooter.lastUsedElem = shotType || shooter.lastUsedElem;
       const dealt = applyDamage(g, target, dmg);
       applyShotEffects(g, shooter, target, shot, dealt);
-      g.log = shooter.name + " hits " + target.name + " with " + shot.name + " for " + dealt + "!";
-      g.banner = shot.name + "!";
+      g.log = shooter.name + " hits " + target.name + " with " + shot.name + " for " + dealt
+        + (weak ? " (WEAK!)" : "") + "!";
+      g.banner = (weak ? "WEAK! " : "") + shot.name + "!";
       const fxElem = shot.art === "plasma" ? "plasma" : (shot.elem || "fire");
       const fxId = newFxId();
       g.pendingFx = {
@@ -2025,6 +2278,7 @@
         elem: fxElem, elems: shot.elems,
         bulletSrc: bulletSrc(shot),
         damage: dealt, mode: shot.mode || "single",
+        weak: weak,
         spin: !opts.noSpin,
       };
       checkWinner(g);
@@ -2472,6 +2726,7 @@
           burn: me ? me.burn : 0, freeze: me ? me.freeze : 0, stun: me ? me.stun : 0,
           poison: me ? me.poison : 0, shield: me ? me.shield : 0,
           nextShotMult: me ? me.nextShotMult : 1,
+          lastUsedElem: me ? me.lastUsedElem : null,
           isMyTurn: alive, canAct: alive && game.phase === "playing" && me && !me.actionLock,
         },
         players: game.players.map((p) => ({
@@ -2480,6 +2735,7 @@
           stun: p.stun, poison: p.poison, handCount: (p.bulletRow || []).length,
           slotCount: p.slots.filter(Boolean).length,
           evadeUntil: p.evadeUntil || 0,
+          lastUsedElem: p.lastUsedElem || null,
           connected: p.connected, isBot: p.isBot, overcharged: p.overcharged,
         })),
       };
@@ -2507,6 +2763,10 @@
       if (view.room) state.room = view.room;
       state.connecting = false;
       if (view.phase === "lobby") { renderLobby(view); showScreen("lobby"); return; }
+      if (view.phase === "loadout") {
+        enterLoadoutFromView(view);
+        return;
+      }
       if (view.phase === "end") {
         stopEnergyLoop();
         renderEnd(view);
@@ -2677,6 +2937,11 @@
         if (you.shield) chips.innerHTML += '<span class="chip shield">🛡' + you.shield + "</span>";
         if (you.evadeUntil > Date.now()) chips.innerHTML += '<span class="chip shield">☁ miss</span>';
         if (you.fastRegenUntil > Date.now()) chips.innerHTML += '<span class="chip stun">💨 ⚡</span>';
+        if (you.lastUsedElem) {
+          const weak = ELEM_WEAK_TO[elementalType(you.lastUsedElem)] || "";
+          chips.innerHTML += '<span class="chip shield" title="Last used · weak to ' + weak + '">'
+            + (ELEM_ICON[you.lastUsedElem] || "✦") + (weak ? " ←" + (ELEM_ICON[weak] || weak) : "") + "</span>";
+        }
         if (you.burn) chips.innerHTML += '<span class="chip burn">🔥' + you.burn + "</span>";
         if (you.freeze) chips.innerHTML += '<span class="chip freeze">❄️' + you.freeze + "</span>";
         if (you.stun) chips.innerHTML += '<span class="chip stun">💫</span>';
@@ -2695,6 +2960,18 @@
           + (alive && p.hp > 0 ? " targetable" : "")
           + (view.targetId === p.id ? " selected" : "");
         seat.dataset.id = p.id;
+        if (p.lastUsedElem) {
+          const badge = document.createElement("div");
+          badge.className = "last-elem-badge";
+          const base = elementalType(p.lastUsedElem) || p.lastUsedElem;
+          const weakTo = ELEM_WEAK_TO[base];
+          badge.title = "Last used: " + p.lastUsedElem + (weakTo ? " · weak to " + weakTo : "");
+          const src = bulletSrc(p.lastUsedElem);
+          if (src) badge.innerHTML = '<img src="' + src + '" alt="">'
+            + (weakTo ? '<span class="le-weak">' + (ELEM_ICON[weakTo] || "!") + "</span>" : "");
+          else badge.innerHTML = '<span class="le-emoji">' + (ELEM_ICON[p.lastUsedElem] || "✦") + "</span>";
+          seat.appendChild(badge);
+        }
         const dot = document.createElement("div");
         dot.className = "dot";
         dot.style.background = p.color;
@@ -3001,13 +3278,22 @@
     function sendAction(msg) {
       if (state.solo || state.isHost) hostHandleAction(state.myId, msg);
       else {
-        const conn = [...state.conns.values()][0];
-        if (conn && conn.open) conn.send({ type: "action", ...msg });
+        const conn = state.conns.get("host") || [...state.conns.values()][0];
+        if (conn && conn.open) {
+          try { conn.send(msg); } catch (e) {}
+        } else {
+          toast("Not connected to host");
+        }
       }
     }
 
     function hostHandleAction(playerId, msg) {
-      if (!msg || !state.game) return;
+      if (!msg) return;
+      if (msg.type === "loadout") {
+        hostReceiveLoadout(playerId, msg.ids);
+        return;
+      }
+      if (!state.game) return;
       if (msg.type === "loadBullet") hostLoadBullet(playerId, msg.uid);
       else if (msg.type === "fireBullet") hostLoadBullet(playerId, msg.uid);
       else if (msg.type === "fireHammer") hostFireHammer(playerId, msg.mode || "single");
@@ -3042,16 +3328,20 @@
       $("lobby-code").textContent = view.room || state.room;
       MG.renderPlayerList(view.players, state.myId);
       $("host-settings").style.display = state.isHost ? "grid" : "none";
+      const qrEl = $("lobby-qr");
+      if (qrEl) qrEl.style.display = state.isHost ? "" : "none";
       $("lobby-hint").textContent = state.isHost
-        ? "Up to " + MAX_PLAYERS + ". Start when ready — each picks a 3-bullet loadout."
+        ? "1v1 duel. Start when ready — both pick their own 3-bullet loadout."
         : "Waiting for host…";
-      setQr(inviteUrl());
+      if (state.isHost) setQr(inviteUrl());
     }
 
     function renderEnd(view) {
       const winner = view.players.find((p) => p.id === view.winnerId);
       const youWin = view.winnerId === view.you.id;
-      $("end-emoji").textContent = youWin ? "🏆" : "💥";
+      $("end-emoji").innerHTML = youWin
+        ? "🏆"
+        : '<img class="game-bullet-ico" src="assets/icons/bullet.svg" alt="" width="64" height="64" draggable="false">';
       $("end-title").textContent = winner ? winner.name + " wins!" : "Over";
       $("end-sub").textContent = formatTime(Math.max(0, Date.now() - (view.startedAt || Date.now())));
       const box = $("end-scores");
@@ -3080,13 +3370,7 @@
     function stopTimer() { clearInterval(state.timerId); state.timerId = 0; }
 
     function lobbySnapshot() {
-      const players = [{ id: "host", name: state.myName, color: COLORS[0], connected: true }];
-      let i = 1;
-      for (const [, meta] of guests) {
-        players.push({ id: meta.playerId || "g" + i, name: meta.name, color: COLORS[i % COLORS.length], connected: true });
-        i++;
-      }
-      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+      return { phase: "lobby", room: state.room, players: lobbyPlayersList(), you: { id: "host" } };
     }
     function sendLobby() {
       const snap = lobbySnapshot();
@@ -3097,8 +3381,13 @@
     }
 
     function attachHostConn(conn) {
+      if (conn._bulletHostAttached) return;
+      conn._bulletHostAttached = true;
       conn.on("data", (msg) => {
         if (!msg || typeof msg !== "object") return;
+        const meta = guests.get(conn.peer);
+        const pid = (meta && meta.playerId) || conn.peer;
+
         if (msg.type === "join") {
           const name = String(msg.name || "Player").slice(0, 16);
           const token = String(msg.token || "").slice(0, 80);
@@ -3114,41 +3403,89 @@
             conn.send({ type: "error", message: "Game already started" });
             return;
           }
+          if (state.pendingMatch) {
+            if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
+              conn.send({ type: "error", message: "Room full" });
+              return;
+            }
+            guests.set(conn.peer, { name, token: token || conn.peer, playerId: conn.peer });
+            state.pendingMatch.players = lobbyPlayersList();
+            broadcastLoadoutPhase();
+            return;
+          }
           if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
             conn.send({ type: "error", message: "Room full" });
             return;
           }
           guests.set(conn.peer, { name, token: token || conn.peer, playerId: conn.peer });
           sendLobby();
+          return;
         }
-        if (msg.type === "action") {
-          const meta = guests.get(conn.peer);
-          hostHandleAction((meta && meta.playerId) || conn.peer, msg);
-        }
+
         if (msg.type === "leave") {
           state.conns.delete(conn.peer);
-          const meta = guests.get(conn.peer);
-          const pid = (meta && meta.playerId) || conn.peer;
           guests.delete(conn.peer);
           try { conn.close(); } catch (e) {}
+          if (state.pendingMatch) {
+            state.pendingMatch.players = lobbyPlayersList();
+            delete state.pendingMatch.loadouts[pid];
+            if (state.pendingMatch.players.length < 2) {
+              state.pendingMatch = null;
+              sendLobby();
+            } else {
+              broadcastLoadoutPhase();
+            }
+            return;
+          }
           if (state.game && state.game.players) {
             const p = state.game.players.find((x) => x.id === pid);
             if (p) p.connected = false;
             hostBroadcast();
           } else sendLobby();
+          return;
         }
+
+        if (msg.type === "loadout") {
+          hostReceiveLoadout(pid, msg.ids);
+          return;
+        }
+
+        hostHandleAction(pid, msg);
       });
       conn.on("close", () => {
         const meta = guests.get(conn.peer);
         const pid = (meta && meta.playerId) || conn.peer;
         state.conns.delete(conn.peer);
         guests.delete(conn.peer);
+        if (state.pendingMatch) {
+          state.pendingMatch.players = lobbyPlayersList();
+          delete state.pendingMatch.loadouts[pid];
+          if (state.pendingMatch.players.length < 2) {
+            state.pendingMatch = null;
+            sendLobby();
+          } else {
+            broadcastLoadoutPhase();
+          }
+          return;
+        }
         if (state.game && state.game.players) {
           const p = state.game.players.find((x) => x.id === pid);
           if (p) p.connected = false;
           hostBroadcast();
         } else sendLobby();
       });
+    }
+
+    function lobbyPlayersList() {
+      const players = [{ id: "host", name: state.myName, color: COLORS[0], connected: true }];
+      let i = 1;
+      for (const [peerId, meta] of guests) {
+        players.push({
+          id: meta.playerId || peerId, name: meta.name,
+          color: COLORS[i++ % COLORS.length], connected: true,
+        });
+      }
+      return players;
     }
 
     function destroyPeer(opts) {
@@ -3167,6 +3504,7 @@
       const name = requireName();
       if (!name) return;
       state.connecting = true;
+      state.leaving = false;
       showWarmup("Opening arena…", "Wait here.");
       waitForPeer(() => {
         state.isHost = true; state.solo = false; state.myId = "host";
@@ -3174,6 +3512,7 @@
         state.room = isRetry ? (state.room || randomCode()) : randomCode();
         showError("home-error", ""); setJoinStatus("", "");
         destroyPeer();
+        guests.clear();
         const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
         state.peer = peer;
         peer.on("open", () => {
@@ -3187,7 +3526,7 @@
           if (err.type === "unavailable-id") { state.room = randomCode(); destroyPeer(); createRoom(true); return; }
           hideWarmup(); state.connecting = false; showError("home-error", "Could not create room.");
         });
-      }, () => { hideWarmup(); showError("home-error", "Could not load multiplayer."); });
+      }, () => { hideWarmup(); state.connecting = false; showError("home-error", "Could not load multiplayer."); });
     }
 
     function joinRoom(code, reconnect) {
@@ -3202,28 +3541,47 @@
       waitForPeer(() => {
         state.isHost = false; state.solo = false; state.myName = name; rememberName(name);
         state.room = code; destroyPeer({ keepView: !!reconnect });
+        showError("home-error", "");
         if (!reconnect) setJoinStatus("connecting", "Finding " + code + "…");
         clearJoinWait();
         state.joinTimer = setTimeout(() => {
           if (reconnect) { state.connecting = false; scheduleGuestReconnect(); return; }
-          setJoinStatus("fail", "Timed out.");
-        }, 22000);
+          state.connecting = false;
+          hideWarmup();
+          destroyPeer();
+          setJoinStatus("fail", "Timed out. Check the code and that the host is still in the lobby.");
+        }, reconnect ? 16000 : 22000);
         const peer = new Peer(peerOptions());
         state.peer = peer;
         peer.on("open", () => {
+          state.myId = peer.id;
+          if (reconnect) setReconnectUi(true, "Connecting to the host…");
+          else {
+            setJoinStatus("joining", "Connecting to the host…");
+            showWarmup("Connecting to the host…", "Stay on this page.");
+          }
           const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
           state.conns.set("host", conn);
           conn.on("open", () => {
-            clearJoinWait(); hideWarmup(); setReconnectUi(false); state.reconnectAttempt = 0;
+            if (reconnect) setReconnectUi(true, "Rejoining…");
+            else setJoinStatus("joining", "Joining the lobby…");
             conn.send({ type: "join", name, token: mySeatToken() });
           });
           attachGuestConn(conn);
         });
         peer.on("error", () => {
           hideWarmup(); state.connecting = false;
-          if (reconnect) scheduleGuestReconnect(); else setJoinStatus("fail", "Could not connect.");
+          if (reconnect) scheduleGuestReconnect();
+          else {
+            destroyPeer();
+            setJoinStatus("fail", "Could not connect. Check the code and try again.");
+          }
         });
-      }, () => { hideWarmup(); showError("home-error", "Could not load multiplayer."); });
+      }, () => {
+        hideWarmup();
+        state.connecting = false;
+        showError("home-error", "Could not load multiplayer.");
+      });
     }
 
     function attachGuestConn(conn) {
@@ -3231,18 +3589,134 @@
         if (!msg) return;
         if (msg.type === "state") {
           clearJoinWait(); hideWarmup(); setReconnectUi(false);
-          state.connecting = false; state.reconnectAttempt = 0; applyView(msg.view);
+          state.connecting = false; state.reconnectAttempt = 0;
+          setJoinStatus("ok", "You're in!");
+          applyView(msg.view);
         }
-        if (msg.type === "error") { setJoinStatus("fail", msg.message || "Join failed"); destroyPeer(); }
+        if (msg.type === "error") {
+          clearJoinWait(); hideWarmup(); state.connecting = false;
+          setJoinStatus("fail", msg.message || "Join failed");
+          toast(msg.message || "Join failed");
+          destroyPeer();
+        }
       });
       conn.on("close", () => { if (!state.leaving) scheduleGuestReconnect(); });
+      conn.on("error", () => {
+        if (!state.leaving && !state.isHost) scheduleGuestReconnect();
+      });
     }
 
-    function openLoadout(thenStart) {
-      state.pendingLoadout = thenStart;
+    function normalizeLoadoutIds(ids) {
+      const out = [];
+      const seen = new Set();
+      for (const raw of ids || []) {
+        const id = String(raw || "");
+        if (!BULLET_CATALOG.some((b) => b.id === id) || seen.has(id)) continue;
+        seen.add(id);
+        out.push(id);
+        if (out.length >= 3) break;
+      }
+      return out;
+    }
+
+    function updateLoadoutStatus(view) {
+      const el = $("loadout-status");
+      const go = $("btn-loadout-go");
+      if (!el) return;
+      const players = (view && view.players) || [];
+      const readyMap = (view && view.loadoutReady) || {};
+      const readyN = players.filter((p) => readyMap[p.id]).length;
+      const total = players.length || 0;
+      const meReady = !!(view && view.you && readyMap[view.you.id]);
+      if (state.loadoutSubmitted || meReady) {
+        el.textContent = "Locked in — waiting for others (" + readyN + "/" + total + ")";
+        if (go) {
+          go.disabled = true;
+          go.textContent = "Waiting…";
+        }
+      } else {
+        el.textContent = total
+          ? "Everyone picks 3 bullets · ready " + readyN + "/" + total
+          : "Pick 3 element bullets";
+        if (go) go.textContent = "Ready";
+      }
+    }
+
+    function enterLoadoutFromView(view) {
+      updateLoadoutStatus(view);
+      if (document.body.getAttribute("data-phase") === "loadout" && $("loadout-grid").children.length) {
+        return;
+      }
+      openLoadout(null, { online: true });
+      updateLoadoutStatus(view);
+    }
+
+    function broadcastLoadoutPhase() {
+      const m = state.pendingMatch;
+      if (!m || !state.isHost) return;
+      const ready = {};
+      for (const p of m.players) {
+        ready[p.id] = !!(m.loadouts[p.id] && m.loadouts[p.id].length === 3);
+      }
+      const snap = {
+        phase: "loadout",
+        room: state.room,
+        maxHp: m.maxHp,
+        players: m.players.map((p) => ({
+          id: p.id, name: p.name, color: p.color, connected: p.connected !== false,
+          loadoutReady: !!ready[p.id],
+        })),
+        loadoutReady: ready,
+        banner: "Pick your 3 bullets",
+      };
+      applyView({ ...snap, you: { id: state.myId, loadoutReady: !!ready[state.myId] } });
+      for (const [id, conn] of state.conns) {
+        if (!conn.open) continue;
+        const pid = playerIdFromPeer(id);
+        try {
+          conn.send({ type: "state", view: { ...snap, you: { id: pid, loadoutReady: !!ready[pid] } } });
+        } catch (e) {}
+      }
+    }
+
+    function hostReceiveLoadout(playerId, ids) {
+      const cleaned = normalizeLoadoutIds(ids);
+      if (cleaned.length !== 3) return;
+      if (!state.pendingMatch) return;
+      if (!state.pendingMatch.players.some((p) => p.id === playerId)) return;
+      state.pendingMatch.loadouts[playerId] = cleaned;
+      broadcastLoadoutPhase();
+      const allReady = state.pendingMatch.players.every(
+        (p) => state.pendingMatch.loadouts[p.id] && state.pendingMatch.loadouts[p.id].length === 3
+      );
+      if (!allReady) return;
+      const match = state.pendingMatch;
+      state.pendingMatch = null;
+      startHostGame(match.loadouts, match.maxHp, match.players);
+    }
+
+    function beginOnlineLoadout() {
+      if (!state.isHost || state.solo) return;
+      if (guests.size < 1) { toast("Need 2 players"); return; }
+      const maxHp = Number($("max-hp") && $("max-hp").value) || 100;
+      state.pendingMatch = {
+        maxHp,
+        players: lobbyPlayersList(),
+        loadouts: {},
+      };
+      state.loadoutSubmitted = false;
+      broadcastLoadoutPhase();
+    }
+
+    function openLoadout(thenStart, opts) {
+      opts = opts || {};
+      state.pendingLoadout = thenStart || null;
       state.loadoutPick = new Set();
+      state.loadoutSubmitted = false;
       const grid = $("loadout-grid");
       grid.replaceChildren();
+      const status = $("loadout-status");
+      if (status) status.textContent = opts.online ? "Everyone picks 3 bullets" : "";
 
       function selectedElems() {
         return [...state.loadoutPick].map((id) => {
@@ -3252,7 +3726,11 @@
       }
       function refreshLoadoutUi() {
         $("loadout-picked").textContent = state.loadoutPick.size + " / 3 selected";
-        $("btn-loadout-go").disabled = state.loadoutPick.size !== 3;
+        const go = $("btn-loadout-go");
+        if (go && !state.loadoutSubmitted) {
+          go.disabled = state.loadoutPick.size !== 3;
+          go.textContent = opts.online || state.pendingMatch ? "Ready" : "Enter battle";
+        }
         renderFusionGuide(selectedElems());
       }
 
@@ -3264,6 +3742,7 @@
           + '<span class="meta-text"><b>' + s.name + "</b>"
           + s.role + " · " + s.dmg + " dmg · " + s.elem + "</span>";
         btn.onclick = () => {
+          if (state.loadoutSubmitted) return;
           if (state.loadoutPick.has(s.id)) state.loadoutPick.delete(s.id);
           else if (state.loadoutPick.size < 3) state.loadoutPick.add(s.id);
           btn.classList.toggle("on", state.loadoutPick.has(s.id));
@@ -3275,6 +3754,27 @@
       showScreen("loadout");
     }
 
+    function submitMyLoadout() {
+      if (state.loadoutPick.size !== 3 || state.loadoutSubmitted) return;
+      const ids = [...state.loadoutPick];
+      if (state.pendingLoadout) {
+        const fn = state.pendingLoadout;
+        state.pendingLoadout = null;
+        fn(ids);
+        return;
+      }
+      state.loadoutSubmitted = true;
+      const go = $("btn-loadout-go");
+      if (go) { go.disabled = true; go.textContent = "Waiting…"; }
+      if (state.isHost && state.pendingMatch) {
+        hostReceiveLoadout("host", ids);
+      } else {
+        sendAction({ type: "loadout", ids });
+        toast("Loadout locked — waiting for others");
+        if (state.view) updateLoadoutStatus(state.view);
+      }
+    }
+
     function resetBattleUi() {
       state.lastSlotKey = "";
       state.lastFxId = "";
@@ -3283,21 +3783,40 @@
       resetHammerDrum();
     }
 
-    function startHostGame(loadoutIds) {
-      const maxHp = Number($("max-hp") && $("max-hp").value) || 100;
-      const players = [{ id: "host", name: state.myName, token: "host", color: COLORS[0], connected: true }];
-      let i = 1;
-      for (const [peerId, meta] of guests) {
-        players.push({
-          id: meta.playerId || peerId, name: meta.name, token: meta.token || peerId,
-          color: COLORS[i++ % COLORS.length], connected: true,
-        });
+    function startHostGame(loadoutsOrHostIds, maxHpArg, playersArg) {
+      let loadouts = {};
+      let maxHp = Number($("max-hp") && $("max-hp").value) || 100;
+      let players;
+
+      if (playersArg && Array.isArray(playersArg)) {
+        players = playersArg.map((p, i) => ({
+          id: p.id, name: p.name, token: p.token || p.id,
+          color: p.color || COLORS[i % COLORS.length], connected: true,
+        }));
+        maxHp = maxHpArg || maxHp;
+        loadouts = loadoutsOrHostIds || {};
+      } else {
+        // Solo / legacy: first arg is host loadout ids
+        const hostIds = loadoutsOrHostIds;
+        players = [{ id: "host", name: state.myName, token: "host", color: COLORS[0], connected: true }];
+        let i = 1;
+        for (const [peerId, meta] of guests) {
+          players.push({
+            id: meta.playerId || peerId, name: meta.name, token: meta.token || peerId,
+            color: COLORS[i++ % COLORS.length], connected: true,
+          });
+        }
+        if (players.length < 2 && !state.solo) { toast("Need 2 players"); return; }
+        loadouts = { host: hostIds || defaultLoadout(0) };
       }
-      if (players.length < 2 && !state.solo) { toast("Need 2 players"); return; }
-      const loadouts = { host: loadoutIds || defaultLoadout(0) };
-      players.forEach((p, idx) => { if (!loadouts[p.id]) loadouts[p.id] = defaultLoadout(idx); });
+
+      players.forEach((p, idx) => {
+        if (!loadouts[p.id] || loadouts[p.id].length !== 3) loadouts[p.id] = defaultLoadout(idx);
+      });
       uidSeq = 1;
       state.game = createGame(players, maxHp, loadouts);
+      state.pendingMatch = null;
+      state.loadoutSubmitted = false;
       initRealtimeGame(state.game);
       resetBattleUi();
       startEnergyLoop();
@@ -3326,9 +3845,14 @@
 
     function goHome() {
       state.leaving = true; destroyPeer(); closeRechargeUI(); stopEnergyLoop(); stopBotLoop();
-      state.game = null; state.solo = false; state.isHost = false;
+      state.game = null; state.solo = false; state.isHost = false; state.myId = "host";
+      state.room = ""; state.connecting = false;
+      state.pendingMatch = null; state.pendingLoadout = null; state.loadoutSubmitted = false;
       state.localSelected.clear(); setReconnectUi(false); stopTimer();
-      guests.clear(); showScreen("home"); MG.stripRoomFromUrl(); state.leaving = false;
+      guests.clear();
+      MG.clearInviteHome();
+      showScreen("home");
+      state.leaving = false;
     }
     function leaveRoom() {
       if (!state.solo && !state.isHost) {
@@ -3344,26 +3868,44 @@
     const boot = MG.init({ hubHref: "index.html", nameKey: "bullet-name", maxPlayers: MAX_PLAYERS });
     MG.bindHome({
       onCreate: createRoom,
-      onJoin: joinRoom,
+      onJoin: (code) => joinRoom(code || boot.roomParam || ($("join-code") && $("join-code").value)),
       onSolo: startSolo,
       onLeave: leaveRoom,
       onHome: goHome,
+      onInviteLeave: () => {
+        state.leaving = true;
+        clearJoinWait();
+        destroyPeer();
+        state.connecting = false;
+        hideWarmup();
+        setReconnectUi(false);
+        MG.clearInviteHome();
+        showScreen("home");
+        state.leaving = false;
+      },
       onAgain: () => {
         if (state.solo) startSolo();
-        else if (state.isHost) openLoadout((ids) => startHostGame(ids));
+        else if (state.isHost) beginOnlineLoadout();
       },
-      onStart: () => openLoadout((ids) => startHostGame(ids)),
+      onStart: beginOnlineLoadout,
       inviteUrl,
     });
 
-    $("btn-loadout-go").onclick = () => {
-      if (state.loadoutPick.size !== 3) return;
-      const ids = [...state.loadoutPick];
-      const fn = state.pendingLoadout;
-      state.pendingLoadout = null;
-      if (fn) fn(ids);
+    $("btn-loadout-go").onclick = submitMyLoadout;
+    $("btn-loadout-back").onclick = () => {
+      if (state.pendingMatch && state.isHost) {
+        state.pendingMatch = null;
+        state.loadoutSubmitted = false;
+        state.pendingLoadout = null;
+        sendLobby();
+        return;
+      }
+      if (!state.solo && state.view && state.view.phase === "loadout") {
+        leaveRoom();
+        return;
+      }
+      goHome();
     };
-    $("btn-loadout-back").onclick = goHome;
     $("btn-help").onclick = openHelp;
     $("btn-help-close").onclick = () => $("help-pick").classList.remove("show");
     $("btn-special-cards").onclick = () => $("special-cards-pick").classList.add("show");
@@ -3387,7 +3929,11 @@
       if (e.key === " " && state.recharge.active) { e.preventDefault(); hitRecharge(); }
     });
 
-    if (boot.roomParam && $("name").value.trim()) joinRoom(boot.roomParam);
+    if (boot.roomParam && boot.roomParam.length === 4) {
+      if ($("name").value.trim()) {
+        setTimeout(() => joinRoom(boot.roomParam), 250);
+      }
+    }
   </script>
 </body>
 </html>

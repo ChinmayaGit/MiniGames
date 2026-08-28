@@ -19,7 +19,8 @@ Files: `boot.css` · `shell.css` · `kit.js`
 | Netlify cold start feels broken | `boot.css` + warmup overlay (“don’t tap again”) |
 | PeerJS CDN slow | `waitForPeer` |
 | NAT / same-ISP fails | `wifiHint`, optional TURN via `peerOptions` |
-| Invite links hide Create forever | `stripRoomFromUrl` on Leave |
+| Invite links hide Create forever | `stripRoomFromUrl` + `clearInviteHome` on Leave |
+| Link/QR still shows Create / Solo | `setInviteHome(room)` — **kit `init` does this automatically** |
 | Room ID collisions across games | **Per-game Peer prefix** (`unohost-`, `dobblehost-`, …) |
 
 ---
@@ -55,6 +56,7 @@ index.html (hub)
 | `MG.waitForPeer` | CDN ready gate |
 | `MG.renderPlayerList` | Lobby roster |
 | `MG.wifiHint` / `stripRoomFromUrl` | NAT copy + invite cleanup |
+| `MG.setInviteHome(code)` / `MG.clearInviteHome()` | Hide Create/Solo on link·QR join; restore home |
 
 ---
 

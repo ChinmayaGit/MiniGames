@@ -26,17 +26,106 @@
   function init(options) {
     cfg = Object.assign({}, cfg, options || {});
     ensureChrome();
+    ensureInviteLeaveBtn();
     const saved = localStorage.getItem(cfg.nameKey);
     if (saved && $("name")) $("name").value = saved;
     const roomParam = (new URLSearchParams(location.search).get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
     if ($("join-code") && roomParam.length === 4) $("join-code").value = roomParam;
     document.body.setAttribute("data-phase", "home");
+    // Invite link / QR: hide Create + Solo before any game script runs
+    setInviteHome(roomParam.length === 4 ? roomParam : "");
     ready();
     return { roomParam };
   }
 
   function ready() {
     document.documentElement.classList.remove("booting");
+  }
+
+  /** Required home controls when ?room=ABCD (link / QR join). */
+  function ensureInviteLeaveBtn() {
+    if ($("btn-invite-leave")) return;
+    const home = $("screen-home");
+    const panel = home && home.querySelector(".panel");
+    if (!panel) return;
+    const btn = document.createElement("button");
+    btn.id = "btn-invite-leave";
+    btn.type = "button";
+    btn.className = "btn ghost";
+    btn.style.display = "none";
+    btn.style.marginTop = "10px";
+    btn.textContent = "Leave this invite";
+    const err = $("home-error");
+    if (err && err.parentNode === panel) panel.insertBefore(btn, err);
+    else panel.appendChild(btn);
+  }
+
+  function captureHomeDefaults() {
+    const joinBtn = $("btn-join");
+    if (joinBtn && joinBtn.dataset.defaultLabel == null) {
+      joinBtn.dataset.defaultLabel = joinBtn.textContent || "Join friends";
+    }
+    const hint = $("home-hint");
+    if (hint && hint.dataset.defaultHint == null) {
+      hint.dataset.defaultHint = hint.textContent || "";
+    }
+  }
+
+  /**
+   * Invite join UI (common for all games).
+   * When code is a 4-char room: hide Create / Solo / pack choosers; show Join room + Leave invite.
+   * Call with "" when returning to a normal home screen.
+   */
+  function setInviteHome(code, opts) {
+    opts = opts || {};
+    captureHomeDefaults();
+    const invite = !!(code && String(code).length === 4);
+    const codeU = invite ? String(code).toUpperCase() : "";
+
+    document.body.classList.toggle("invite-join", invite);
+
+    ["btn-create", "btn-solo", "solo-home-row", "home-pack"].forEach((id) => {
+      if ($(id)) $(id).style.display = invite ? "none" : "";
+    });
+
+    if ($("join-code-label")) $("join-code-label").style.display = invite ? "none" : "";
+    if ($("join-code")) {
+      $("join-code").style.display = invite ? "none" : "";
+      const wrap = $("join-code").closest(".row") || $("join-code").parentElement;
+      if (wrap && wrap !== $("screen-home") && !(wrap.classList && wrap.classList.contains("panel"))) {
+        // Hide a dedicated join-code row wrapper (Dobble / Cubestacc), not the whole panel
+        if (wrap.querySelector && wrap.querySelector("#join-code") && !wrap.querySelector("#name")) {
+          wrap.style.display = invite ? "none" : "";
+        }
+      }
+    }
+
+    if ($("btn-invite-leave")) $("btn-invite-leave").style.display = invite ? "" : "none";
+
+    const joinBtn = $("btn-join");
+    if (joinBtn) {
+      joinBtn.textContent = invite
+        ? (opts.joinLabel || ("Join room " + codeU))
+        : (opts.defaultJoinLabel || joinBtn.dataset.defaultLabel || "Join friends");
+    }
+
+    const hint = $("home-hint");
+    if (hint) {
+      hint.textContent = invite
+        ? (opts.inviteHint
+          || "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite.")
+        : (opts.defaultHint || hint.dataset.defaultHint || "");
+    }
+
+    return invite;
+  }
+
+  function clearInviteHome() {
+    stripRoomFromUrl();
+    if ($("join-code")) $("join-code").value = "";
+    setInviteHome("");
+    setJoinStatus("", "");
+    showError("home-error", "");
   }
 
   function screens() {
@@ -306,7 +395,13 @@
   function bindHome(handlers) {
     const h = handlers || {};
     if ($("btn-create")) $("btn-create").onclick = () => h.onCreate && h.onCreate();
-    if ($("btn-join")) $("btn-join").onclick = () => h.onJoin && h.onJoin($("join-code").value);
+    if ($("btn-join")) {
+      $("btn-join").onclick = () => {
+        const code = ($("join-code") && $("join-code").value)
+          || (new URLSearchParams(location.search).get("room") || "");
+        if (h.onJoin) h.onJoin(code);
+      };
+    }
     if ($("join-code")) {
       $("join-code").addEventListener("keydown", (e) => {
         if (e.key === "Enter" && h.onJoin) h.onJoin($("join-code").value);
@@ -321,7 +416,13 @@
     if ($("btn-copy")) {
       $("btn-copy").onclick = () => copyInvite(h.inviteUrl ? h.inviteUrl() : inviteUrl());
     }
-    ["btn-lobby-leave", "btn-game-leave", "btn-invite-leave", "btn-reconnect-leave"].forEach((id) => {
+    if ($("btn-invite-leave")) {
+      $("btn-invite-leave").onclick = () => {
+        if (h.onInviteLeave) h.onInviteLeave();
+        else clearInviteHome();
+      };
+    }
+    ["btn-lobby-leave", "btn-game-leave", "btn-reconnect-leave"].forEach((id) => {
       if ($(id) && h.onLeave) $(id).onclick = h.onLeave;
     });
     if ($("btn-home") && h.onHome) $("btn-home").onclick = h.onHome;
@@ -349,6 +450,8 @@
     peerOptions,
     wifiHint,
     stripRoomFromUrl,
+    setInviteHome,
+    clearInviteHome,
     renderPlayerList,
     bindHome,
     setZoom,

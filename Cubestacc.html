@@ -3657,24 +3657,10 @@
     }
 
     function setInviteHome(code) {
-      const invite = !!(code && String(code).length === 4);
-      if ($("btn-create")) $("btn-create").style.display = invite ? "none" : "";
-      if ($("solo-home-row")) $("solo-home-row").style.display = invite ? "none" : "";
-      if ($("btn-solo")) $("btn-solo").style.display = invite ? "none" : "";
-      if ($("home-pack")) $("home-pack").style.display = invite ? "none" : "";
-      if ($("btn-invite-leave")) $("btn-invite-leave").style.display = invite ? "" : "none";
-      if ($("join-code")) {
-        const wrap = $("join-code").closest("div");
-        if (wrap) wrap.style.display = invite ? "none" : "";
-      }
-      if ($("btn-join")) {
-        $("btn-join").textContent = invite ? "Join room " + String(code).toUpperCase() : "Join";
-      }
-      if ($("home-hint")) {
-        $("home-hint").textContent = invite
-          ? "You're joining a friend's room. Enter your name, then tap Join. If the host is gone, tap Leave this invite."
-          : "Create a room and share the code, or practice solo vs bots. Host must keep their tab open.";
-      }
+      MG.setInviteHome(code, {
+        defaultJoinLabel: "Join",
+        defaultHint: "Create a room and share the code, or practice solo vs bots. Host must keep their tab open.",
+      });
     }
 
     function goHome() {
