@@ -49,6 +49,16 @@
   status = 200
 
 [[redirects]]
+  from = "/bullet"
+  to = "/Bullet.html"
+  status = 200
+
+[[redirects]]
+  from = "/bullet.html"
+  to = "/Bullet.html"
+  status = 200
+
+[[redirects]]
   from = "/docs"
   to = "/docs/README.md"
   status = 200

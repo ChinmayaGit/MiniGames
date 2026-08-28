@@ -335,6 +335,11 @@
         radial-gradient(circle at 30% 40%, #5eead466 0 40px, transparent 41px),
         linear-gradient(145deg, #1a5a94 0%, #0b3d6e 55%, #062438 100%);
     }
+    .art.bullet {
+      background:
+        radial-gradient(circle at 50% 55%, #d4a57433 0 50px, transparent 51px),
+        linear-gradient(160deg, #3d2817 0%, #1a1008 60%, #0c0806 100%);
+    }
     .art.soon {
       background: repeating-linear-gradient(-32deg, #1a1612 0 12px, #241e18 12px 24px);
     }
@@ -525,6 +530,7 @@
       <a href="Uno.html">Uno</a>
       <a href="unoflip.html">Uno Flip</a>
       <a href="Cubestacc.html">Cubestacc</a>
+      <a href="Bullet.html">Bullet</a>
     </nav>
 
     <div class="toolbar">
@@ -610,6 +616,23 @@
         </div>
       </a>
 
+      <a class="tile" href="Bullet.html">
+        <div class="art bullet" aria-hidden="true">
+          <div class="disc" style="font-size:42px;background:transparent;border:none;box-shadow:none">🔫</div>
+        </div>
+        <div class="body">
+          <h2>Bullet</h2>
+          <p>Load element bullets into a blaster. Energy auto-fills every 5s — fire Single / Power / Fusion shots.</p>
+          <div class="tags">
+            <span class="tag">Multiplayer</span>
+            <span class="tag">Solo vs bot</span>
+            <span class="tag">Recharge</span>
+            <span class="tag">Max 4 players</span>
+          </div>
+          <span class="play">Play Bullet</span>
+        </div>
+      </a>
+
       <div class="tile soon">
         <div class="art soon" aria-hidden="true">
           <span class="soon-mark">Soon</span>
@@ -635,6 +658,8 @@
         <a href="docs/UnoFlip.md">Uno Flip notes</a>
         ·
         <a href="docs/Cubestacc.md">Cubestacc notes</a>
+        ·
+        <a href="docs/Bullet.md">Bullet notes</a>
       </span>
     </footer>
   </div>
@@ -683,7 +708,7 @@
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
           e.preventDefault();
           var href = a.getAttribute("href") || "";
-          var name = /Cubestacc/i.test(href) ? "Cubestacc" : /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
+          var name = /Cubestacc/i.test(href) ? "Cubestacc" : /Bullet/i.test(href) ? "Bullet" : /unoflip/i.test(href) ? "Uno Flip" : /Uno/i.test(href) ? "Uno" : /Dobble/i.test(href) ? "Dobble" : "the game";
           openGame(href, name);
         });
       });

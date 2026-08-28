@@ -23,6 +23,7 @@ This README is the **project overview**; each game’s MD covers architecture an
 | **Uno** | [Uno.html](Uno.html) | Draw-stack FSM, UNO catch window, NAT/reconnect | [Uno.md](docs/Uno.md) |
 | **Uno Flip** | [unoflip.html](unoflip.html) | Dual-face cards + O(1) global flip | [UnoFlip.md](docs/UnoFlip.md) |
 | **Cubestacc** | [Cubestacc.html](Cubestacc.html) | Sparse 3D cells + painter’s sort + camera yaw | [Cubestacc.md](docs/Cubestacc.md) |
+| **Bullet** | [Bullet.html](Bullet.html) | Blaster FSM: load → timing recharge → Single/Power/Fusion | [Bullet.md](docs/Bullet.md) |
 
 ---
 
@@ -33,7 +34,7 @@ This README is the **project overview**; each game’s MD covers architecture an
                             │
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
-           Dobble         Uno/Flip     Cubestacc
+           Dobble         Uno/Flip     Cubestacc    Bullet
               └─────────────┬─────────────┘
                             │ shared/kit.js
                             │ PeerJS signaling + STUN/(TURN)
@@ -83,6 +84,10 @@ Double-sided deck; **Flip** turns the whole table Light↔Dark. Details: [UnoFli
 ### Cubestacc
 
 Match suit↑ / rank→ / face← on a shared cube STACC. Deck themes in lobby. Details: [Cubestacc.md](docs/Cubestacc.md).
+
+### Bullet
+
+Pick a **3-bullet loadout**. Draw → Load → attack when ⚡ fills (5s/cell) → Single / Power / Twin Fusion. Details: [Bullet.md](docs/Bullet.md).
 
 ---
 

@@ -1,0 +1,2439 @@
+<!DOCTYPE html>
+<html lang="en" class="booting" style="--boot-bg:#1a1428;--boot-accent:#7c5cff;--boot-ink:#c9b8ff;--boot-title:'Charging blaster…'">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1428" />
+  <title>Bullet</title>
+  <link rel="stylesheet" href="shared/boot.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1428'/><text y='68' x='50' text-anchor='middle' font-size='48'>🔫</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="shared/shell.css" />
+  <style>
+    :root {
+      --bg: #1a1428;
+      --card: #f4eefc;
+      --ink: #1a1028;
+      --muted: #7a6a98;
+      --line: #3a2a58;
+      --gold: #ffcc33;
+      --red: #ff3d6e;
+      --teal: #2ee6a6;
+      --purple: #7c5cff;
+      --safe: env(safe-area-inset-top, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: Fredoka, system-ui, sans-serif;
+      background: var(--bg); color: var(--ink);
+      min-height: 100dvh; overflow: hidden;
+    }
+    body.dark {
+      --card: #221833; --ink: #f0e8ff; --muted: #a898c8; --line: #4a3a68;
+    }
+    .play-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #7c5cff33, transparent 55%),
+        radial-gradient(circle at 12% 80%, #2ee6a622 0 70px, transparent 71px),
+        radial-gradient(circle at 88% 20%, #ff3d6e22 0 60px, transparent 61px),
+        var(--bg);
+    }
+    button, input, select { font-family: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .screen {
+      display: none; position: relative; z-index: 1;
+      min-height: 100dvh;
+      padding: calc(12px + var(--safe)) 12px 20px;
+    }
+    .screen.active { display: flex; flex-direction: column; align-items: center; }
+    #screen-lobby.screen.active, #screen-home.screen.active, #screen-end.screen.active {
+      overflow-x: hidden; overflow-y: auto; max-height: 100dvh; -webkit-overflow-scrolling: touch;
+    }
+
+    .brand { text-align: center; margin-bottom: 8px; }
+    .brand h1 {
+      font-family: Orbitron, sans-serif; font-size: clamp(32px, 8vw, 56px);
+      color: var(--gold); letter-spacing: 0.06em; text-shadow: 0 0 18px #7c5cff88;
+    }
+    .brand p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+
+    .panel {
+      width: min(420px, 100%); background: var(--card);
+      border: 2px solid var(--line); border-radius: 16px; padding: 20px; margin-top: 12px;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+    input, select {
+      width: 100%; border: 2px solid var(--line); border-radius: 10px;
+      padding: 14px 16px; font-size: 18px; background: #fff; color: var(--ink); outline: none;
+    }
+    body.dark input, body.dark select { background: #1a1428; }
+    input.room { text-transform: uppercase; letter-spacing: 0.28em; text-align: center; font-weight: 700; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; border: 0; border-radius: 10px; padding: 14px 16px;
+      font-size: 17px; font-weight: 700; color: #fff; background: var(--purple); margin-top: 12px;
+    }
+    .btn:active:not(:disabled) { opacity: 0.85; }
+    .btn.teal { background: var(--teal); color: #102018; }
+    .btn.gold { background: var(--gold); color: #1a1028; }
+    .btn.ghost { background: #fff; color: var(--purple); box-shadow: 0 4px 0 #4a38a0; }
+    body.dark .btn.ghost { background: #2a2040; color: #c9b8ff; }
+    .btn.row { width: auto; padding-inline: 16px; margin-top: 0; }
+    .btn.sm { font-size: 14px; padding: 10px 12px; min-width: 0; margin-top: 0; width: auto; }
+    .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; line-height: 1.4; }
+    .error { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+    .error.show { display: block; }
+
+    .icon-btn {
+      width: 42px; height: 42px; border: 0; border-radius: 999px;
+      background: #fff; color: #111; font-size: 18px; box-shadow: 0 3px 0 rgba(0,0,0,.18);
+    }
+
+    /* —— Board —— */
+    #screen-game.screen.active {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      align-items: stretch; overflow: hidden; max-height: 100dvh;
+    }
+    .game-wrap {
+      flex: 1; width: min(1100px, 100%); margin: 0 auto;
+      display: flex; flex-direction: column; gap: 6px;
+      min-height: 0; max-height: 100%; overflow: hidden; padding: 0 4px;
+    }
+    .turn-banner {
+      text-align: center; font-weight: 700; font-size: 14px;
+      padding: 8px 14px; border-radius: 999px;
+      background: var(--card); border: 2px solid var(--line);
+      max-width: min(100%, 460px); margin: 0 auto;
+    }
+    .turn-banner.my-turn { border-color: var(--gold); background: #fff8e0; color: #1a1028; }
+    body.dark .turn-banner.my-turn { background: #3a2a18; color: var(--ink); }
+    .log-strip { font-size: 12px; color: var(--muted); text-align: center; min-height: 16px; }
+
+    .battlefield {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr);
+      gap: 8px 12px; min-height: 0; overflow: hidden;
+    }
+    .enemy-corner {
+      grid-column: 1; grid-row: 1; align-self: start; justify-self: start;
+      max-width: min(100%, 280px); min-width: 0; overflow: auto;
+    }
+    .hand-corner {
+      grid-column: 1; grid-row: 2; align-self: end;
+      min-width: 0; max-width: 100%; overflow: visible;
+    }
+    .health-loader-row {
+      display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
+    }
+    .me-corner {
+      grid-column: 2; grid-row: 2; align-self: end; justify-self: end;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0;
+      width: min(280px, 100%); min-width: 0;
+    }
+    .me-corner .loader-slot {
+      flex-shrink: 0; display: flex; align-items: center; padding-bottom: 0;
+    }
+    .me-corner .me-seat {
+      flex: 1; min-width: 0; width: auto;
+    }
+    .blaster-panel {
+      width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+    }
+    .corner-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--gold); opacity: 0.85; margin-bottom: 4px;
+    }
+
+    .opp-seat, .me-seat {
+      background: var(--card); border: 2px solid var(--line);
+      border-radius: 12px; padding: 6px 10px;
+      display: flex; align-items: center; gap: 8px;
+      transition: border-color .2s, box-shadow .2s;
+      width: 100%; box-sizing: border-box;
+    }
+    .me-seat { border-color: var(--gold); }
+    .opp-seat.targetable { cursor: pointer; }
+    .opp-seat.targetable:hover { border-color: var(--gold); }
+    .opp-seat.selected { border-color: var(--red); box-shadow: 0 0 0 2px var(--red); }
+    .opp-seat.turn, .me-seat.turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+    .opp-seat.offline { opacity: 0.45; }
+    .opp-seat .dot, .me-seat .dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: grid; place-items: center; font-weight: 700; color: #fff; flex-shrink: 0; font-size: 13px;
+    }
+    .meta { min-width: 0; flex: 1; }
+    .meta b { display: block; font-size: 13px; }
+    .meta span { font-size: 11px; color: var(--muted); }
+    .hp-bar {
+      height: 3px; background: #ddd; border-radius: 2px; margin-top: 3px;
+      overflow: hidden; width: 100%; max-width: 100%;
+    }
+    body.dark .hp-bar { background: #3a2a50; }
+    .hp-bar i { display: block; height: 100%; background: var(--teal); transition: width .3s; }
+    .status-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+    .chip {
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+      background: #0c0a0c; color: var(--gold); border: 1px solid var(--line);
+    }
+    .chip.burn { color: #ff6b35; border-color: #ff6b35; }
+    .chip.freeze { color: #4ac0ff; border-color: #4ac0ff; }
+    .chip.stun { color: #ffcc33; border-color: #ffcc33; }
+    .chip.shield { color: #4a90a4; border-color: #4a90a4; }
+
+    /* Blaster */
+    .energy-meter {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .energy-bar-track {
+      position: relative;
+      height: 14px;
+      border-radius: 999px;
+      background: #1a1028;
+      border: 2px solid #4a3a78;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px #0008;
+    }
+    .energy-bar-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 0%;
+      background: linear-gradient(180deg, #c4a0ff 0%, #7c5cff 45%, #5a3fd4 100%);
+      border-radius: 999px;
+      transition: width .08s linear;
+      box-shadow: 0 0 10px #7c5cff88;
+    }
+    .energy-bar-fill.full {
+      background: linear-gradient(180deg, #ffe066 0%, #ffcc33 50%, #e6a800 100%);
+      box-shadow: 0 0 12px #ffcc3388;
+    }
+    .energy-bar-label {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 2px #000; pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+    .energy-row {
+      display: flex; gap: 5px; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--gold);
+    }
+    .energy-pip {
+      width: 18px; height: 18px; border-radius: 5px;
+      border: 2px solid var(--purple); background: transparent;
+      transition: background .2s, box-shadow .2s;
+    }
+    .energy-pip.on { background: var(--purple); box-shadow: 0 0 8px #7c5cffaa; }
+    .energy-pip.filling {
+      background: linear-gradient(to top, var(--purple) var(--fill, 0%), transparent var(--fill, 0%));
+    }
+    .energy-pip.over { background: var(--red); border-color: var(--red); box-shadow: 0 0 10px #ff3d6e; }
+    .energy-count {
+      font-variant-numeric: tabular-nums;
+      min-width: 2.2em;
+      text-align: right;
+      color: #fff;
+      text-shadow: 0 1px 2px #000;
+    }
+    .slots {
+      display: none;
+    }
+    .cylinder-wrap {
+      position: relative;
+      width: min(108px, 24vw);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+    }
+    .cylinder {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 8px solid var(--gold);
+      background: radial-gradient(circle at 50% 45%, #5c4030, #1a1028);
+      box-shadow: inset 0 0 28px #000, 0 6px 0 #000;
+    }
+    .cylinder-drum {
+      position: absolute; inset: 8%;
+      border-radius: 50%;
+    }
+    .cylinder-drum.spin { animation: drum-spin .48s cubic-bezier(.25, .9, .35, 1); }
+    @keyframes drum-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(72deg); }
+    }
+    .muzzle {
+      position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+      width: 28px; height: 28px; border-radius: 50%; pointer-events: none; z-index: 5;
+      opacity: 0;
+    }
+    .muzzle.flash {
+      animation: muzzle-flash .28s ease-out forwards;
+    }
+    @keyframes muzzle-flash {
+      0% { opacity: 0; box-shadow: 0 0 0 0 #ffcc33; background: transparent; transform: translateX(-50%) scale(0.4); }
+      35% { opacity: 1; box-shadow: 0 0 28px 12px #ff9500, 0 0 50px 20px #ffcc33aa; background: #fff8e0; transform: translateX(-50%) scale(1.2); }
+      100% { opacity: 0; box-shadow: 0 0 0 0 transparent; background: transparent; transform: translateX(-50%) scale(1.6); }
+    }
+    .hammer-label {
+      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      background: var(--red); color: #fff; font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px; white-space: nowrap; z-index: 6;
+    }
+    .chamber {
+      position: absolute; width: 34px; height: 34px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 2px dashed rgba(92, 64, 48, 0.65);
+      background: rgba(0, 0, 0, 0.35);
+      display: grid; place-items: center;
+      padding: 0; overflow: visible;
+    }
+    .chamber.hammer {
+      border-color: var(--red);
+      box-shadow: 0 0 10px #c41e3a88;
+      z-index: 2;
+    }
+    .chamber.filled {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    body.dark .chamber.filled { background: transparent; }
+    .chamber-icon {
+      width: 100%; height: 100%;
+      display: grid; place-items: center;
+      position: relative;
+    }
+    .chamber-icon .bullet-icon,
+    .chamber-img {
+      width: 100%; height: 100%; object-fit: contain;
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.55));
+    }
+    .chamber.powered .chamber-icon::after {
+      content: "★"; position: absolute; top: -5px; right: -5px;
+      font-size: 9px; color: var(--teal); text-shadow: 0 0 4px #2ee6a6;
+    }
+    .chamber.load-pop { animation: chamber-load .42s cubic-bezier(.2, 1.1, .3, 1); }
+    @keyframes chamber-load {
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.2; }
+      60% { transform: translate(-50%, -50%) scale(1.12); }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    .chamber.fire-out { animation: chamber-fire .22s ease-in forwards; }
+    @keyframes chamber-fire {
+      to { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+    }
+
+    .bullet-icon {
+      width: 88%; height: 88%; object-fit: contain;
+      pointer-events: none; user-select: none;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.45));
+    }
+    .bullet-icon.fg-icon { width: 18px; height: 18px; vertical-align: middle; }
+
+    .hand-area {
+      background: rgba(0,0,0,.28); border-radius: 12px; border: 1px solid var(--line);
+      padding: 6px 6px 5px; width: 100%; max-width: 100%; min-width: 0;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .hand-label {
+      font-size: 10px; color: var(--gold); font-weight: 700; flex-shrink: 0;
+      line-height: 1.25;
+    }
+    .hand-scroll {
+      width: 100%; max-width: 100%; min-width: 0;
+      padding-top: 2px;
+    }
+    .hand {
+      display: flex; flex-wrap: nowrap; gap: 5px;
+      overflow-x: auto; overflow-y: hidden;
+      width: 100%; max-width: 100%; min-width: 0;
+      padding: 4px 2px 6px;
+      scroll-padding-inline: 4px;
+      justify-content: flex-start;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--gold) rgba(0,0,0,.25);
+    }
+    .hand::-webkit-scrollbar { height: 5px; }
+    .hand::-webkit-scrollbar-track {
+      background: rgba(0,0,0,.25); border-radius: 999px; margin: 0 2px;
+    }
+    .hand::-webkit-scrollbar-thumb {
+      background: var(--gold); border-radius: 999px;
+    }
+    .hand-divider {
+      height: 2px; background: var(--gold); border-radius: 999px;
+      margin: 2px 4px 4px; opacity: 0.9; flex-shrink: 0;
+    }
+    .bullet-card, .util-card {
+      flex: 0 0 auto; width: 48px; min-height: 58px; border-radius: 8px;
+      border: 2px solid transparent;
+      background: transparent;
+      color: var(--ink); display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start; padding: 2px 2px 3px; cursor: pointer;
+      transition: transform .15s, border-color .15s, box-shadow .15s; user-select: none;
+      position: relative; overflow: visible;
+    }
+    .bullet-card.selected, .util-card.selected {
+      border-color: var(--gold); transform: translateY(-3px);
+      background: rgba(255, 204, 51, 0.08);
+    }
+    .bullet-card .hand-img,
+    .bullet-card > .bullet-icon {
+      width: 38px; height: 38px; object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.45));
+    }
+    .util-card .util-ico {
+      width: 38px; height: 38px; display: grid; place-items: center;
+      font-size: 24px; line-height: 1;
+    }
+    .card-desc {
+      font-size: 7px; font-weight: 700; text-align: center;
+      line-height: 1.1; max-width: 100%; margin-top: 2px;
+      color: var(--gold); opacity: 0.95;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .util-card { border-color: transparent; }
+    .util-card.selected { border-color: var(--teal); background: rgba(46, 230, 166, 0.08); }
+
+    .projectile.elem-plasma img { filter: drop-shadow(0 0 10px #7c5cff) drop-shadow(0 0 6px #5ec4ff); }
+    .damage-pop.elem-plasma { color: #c4a0ff; }
+    .loadout-chip.elem-fire .portrait { border-color: #ff6b3588; }
+    .loadout-chip.elem-water .portrait { border-color: #3a9fff88; }
+    .loadout-chip.elem-energy .portrait { border-color: #ffcc3388; }
+    .loadout-chip.elem-ice .portrait { border-color: #7ad4ff88; }
+    .loadout-chip.elem-earth .portrait { border-color: #8b6a3a88; }
+    .loadout-chip.elem-toxin .portrait { border-color: #6aab2088; }
+    .loadout-chip.elem-nature .portrait { border-color: #2eaa5a88; }
+    .loadout-chip.elem-chaos .portrait { border-color: #7c5cff88; }
+
+    .slot {
+      width: 72px; height: 96px; border-radius: 10px;
+      border: 2px dashed var(--line); background: rgba(0,0,0,.25);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 11px; font-weight: 700;
+      overflow: hidden; padding: 4px;
+    }
+    .slot.filled {
+      border-style: solid; border-color: var(--gold);
+      background: linear-gradient(160deg, #fff, #e8d8ff); color: var(--ink);
+    }
+    body.dark .slot.filled { background: linear-gradient(160deg, #3a2a58, #2a1840); color: var(--ink); }
+    .slot .portrait {
+      width: 40px; height: 40px; border-radius: 8px;
+      display: grid; place-items: center;
+      position: relative; border: 1.5px solid rgba(255,255,255,.12);
+      background: #120a20; overflow: hidden;
+    }
+    .slot .val { font-size: 13px; font-weight: 800; }
+    .slot .nm { font-size: 8px; opacity: 0.85; text-align: center; }
+    .slot.powered { box-shadow: 0 0 0 2px var(--teal), 0 0 12px #2ee6a666; }
+    .slot.fusion { box-shadow: 0 0 0 2px var(--purple), 0 0 14px #7c5cff88; }
+
+    .loadout-chip {
+      border: 2px solid var(--line); border-radius: 12px; padding: 8px;
+      background: #fff; cursor: pointer; text-align: left; font-size: 12px;
+      display: flex; gap: 10px; align-items: center;
+    }
+    body.dark .loadout-chip { background: #1a1428; }
+    .loadout-chip.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+    .loadout-chip .portrait {
+      width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center; position: relative;
+      border: 1.5px solid rgba(255,255,255,.12); background: #120a20; overflow: hidden;
+    }
+    .loadout-chip .meta-text { min-width: 0; }
+    .loadout-chip b { display: block; font-size: 13px; }
+    .action-bar {
+      display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-start;
+      flex-shrink: 0; padding-top: 0;
+    }
+    .hand-area .btn.sm { font-size: 11px; padding: 7px 8px; }
+
+    /* Recharge timing */
+    .recharge-modal {
+      position: fixed; inset: 0; z-index: 11000; background: rgba(0,0,0,.6);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .recharge-modal.show { display: flex; }
+    .recharge-sheet {
+      width: min(360px, 100%); background: var(--card); border: 2px solid var(--line);
+      border-radius: 16px; padding: 18px; text-align: center;
+    }
+    .recharge-sheet h3 { font-family: Orbitron, sans-serif; margin-bottom: 6px; }
+    .timing-track {
+      position: relative; height: 28px; border-radius: 8px;
+      background: #2a2040; margin: 16px 0; overflow: hidden; border: 2px solid var(--line);
+    }
+    .timing-green {
+      position: absolute; top: 0; bottom: 0; left: 42%; width: 16%;
+      background: linear-gradient(90deg, #2ee6a655, #2ee6a6, #2ee6a655);
+    }
+    .timing-perfect {
+      position: absolute; top: 0; bottom: 0; left: 48%; width: 4%;
+      background: #ffcc33;
+    }
+    .timing-needle {
+      position: absolute; top: -2px; bottom: -2px; width: 3px; background: #fff;
+      left: 0; box-shadow: 0 0 8px #fff; transform: translateX(-50%);
+    }
+    .timing-needle.run { animation: needle-run 1.35s linear infinite; }
+    @keyframes needle-run {
+      from { left: 0%; }
+      to { left: 100%; }
+    }
+
+    .fx-layer { position: fixed; inset: 0; z-index: 9000; pointer-events: none; overflow: hidden; }
+    .projectile {
+      position: fixed; z-index: 9002; width: 36px; height: 36px;
+      pointer-events: none; transform: translate(-50%, -50%);
+    }
+    .projectile img {
+      width: 100%; height: 100%; object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.55));
+    }
+    .projectile.elem-fire img { filter: drop-shadow(0 0 8px #ff6b35) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-water img { filter: drop-shadow(0 0 8px #3a9fff) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-energy img { filter: drop-shadow(0 0 10px #ffcc33) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-ice img { filter: drop-shadow(0 0 8px #7ad4ff) hue-rotate(165deg) saturate(1.3); }
+    .projectile.elem-earth img { filter: drop-shadow(0 0 6px #8b6a3a) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-toxin img { filter: drop-shadow(0 0 8px #6aab20) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-nature img { filter: drop-shadow(0 0 8px #2eaa5a) drop-shadow(0 2px 6px #000); }
+    .projectile.elem-chaos img { filter: drop-shadow(0 0 8px #7c5cff) drop-shadow(0 2px 6px #000); }
+    .fx-particle {
+      position: fixed; z-index: 9001; border-radius: 50%; pointer-events: none;
+      animation: fx-particle-fly .55s ease-out forwards;
+    }
+    @keyframes fx-particle-fly {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.2); }
+    }
+    .fx-ring {
+      position: fixed; z-index: 9001; border-radius: 50%; pointer-events: none;
+      border: 2px solid var(--ring-color, #fff);
+      animation: fx-ring-expand .5s ease-out forwards;
+    }
+    @keyframes fx-ring-expand {
+      0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+    }
+    .fx-splash {
+      position: fixed; z-index: 9001; pointer-events: none; border-radius: 50%;
+      animation: fx-splash .45s ease-out forwards;
+    }
+    @keyframes fx-splash {
+      0% { opacity: 0.85; transform: translate(-50%, -50%) scale(0.3); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+    }
+    .damage-pop {
+      position: fixed; z-index: 9003; font-size: 26px; font-weight: 800;
+      text-shadow: 0 2px 0 #000; pointer-events: none;
+      animation: damage-float .75s ease-out forwards;
+    }
+    .damage-pop.elem-fire { color: #ff9500; }
+    .damage-pop.elem-water { color: #5ec4ff; }
+    .damage-pop.elem-energy { color: #ffeb3b; }
+    .damage-pop.elem-ice { color: #b3e5ff; }
+    .damage-pop.elem-earth { color: #c4a070; }
+    .damage-pop.elem-toxin { color: #a8ff60; }
+    .damage-pop.elem-nature { color: #8fdc80; }
+    .damage-pop.elem-chaos { color: #c4a0ff; }
+    @keyframes damage-float {
+      0% { opacity: 0; transform: translate(-50%, 0) scale(.5); }
+      20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -48px) scale(.9); }
+    }
+    .opp-seat.hit, .me-seat.hit { animation: seat-hit .4s ease-out; }
+    @keyframes seat-hit {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+    }
+    .game-wrap.shake { animation: screen-shake .35s ease-out; }
+    @keyframes screen-shake {
+      0%, 100% { transform: translate(0,0); }
+      30% { transform: translate(-3px, 2px); }
+      60% { transform: translate(3px, -1px); }
+    }
+
+    .help-overlay {
+      position: fixed; inset: 0; z-index: 12000; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .help-overlay.show { display: flex; }
+    .help-overlay .sheet {
+      width: min(400px, 100%); max-height: min(85dvh, 640px); overflow: auto;
+      background: var(--card); color: var(--ink); border-radius: 16px;
+      padding: 16px; text-align: left; border: 2px solid var(--line);
+    }
+    .help-overlay .sheet h3 { margin: 0 0 8px; text-align: center; font-family: Orbitron, sans-serif; }
+    .help-overlay .sheet ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 13px; line-height: 1.45; }
+
+    .loadout-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+    }
+    .fusion-guide {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1.5px solid var(--line);
+      background: color-mix(in srgb, var(--purple) 8%, var(--card));
+    }
+    body.dark .fusion-guide { background: #1a1428; }
+    .fusion-guide h3 {
+      margin: 0 0 4px;
+      font-family: Orbitron, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--purple);
+    }
+    .fusion-guide .fg-hint {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .fusion-guide-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .fusion-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      font-weight: 650;
+      padding: 5px 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      color: var(--ink);
+      opacity: 0.72;
+      transition: opacity .15s, border-color .15s, background .15s;
+    }
+    .fusion-row.match {
+      opacity: 1;
+      border-color: var(--gold);
+      background: color-mix(in srgb, var(--gold) 14%, transparent);
+    }
+    .fusion-row .pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .fusion-row .arrow { color: var(--muted); font-weight: 700; }
+    .fusion-row .result { color: var(--purple); }
+    body.dark .fusion-row .result { color: #c4a0ff; }
+    .fusion-live {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+      min-height: 1.4em;
+      color: var(--gold);
+    }
+    .fusion-live.empty { color: var(--muted); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .battlefield {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .enemy-corner { grid-column: 1; grid-row: 1; max-width: 100%; }
+      .hand-corner { grid-column: 1; grid-row: 2; max-width: 100%; }
+      .me-corner { grid-column: 2; grid-row: 2; align-self: end; width: min(260px, 100%); }
+      .cylinder-wrap { width: min(96px, 22vw); }
+      .chamber { width: 28px; height: 28px; }
+      .bullet-card, .util-card { width: 44px; min-height: 54px; }
+      .bullet-card .hand-img, .bullet-card > .bullet-icon, .util-card .util-ico { width: 34px; height: 34px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .timing-needle.run, .game-wrap.shake, .opp-seat.hit, .me-seat.hit, .damage-pop { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="warmup" class="warmup" aria-live="polite">
+    <div class="warmup-card">
+      <div class="warmup-spin" aria-hidden="true"></div>
+      <b id="warmup-title">Waking up…</b>
+      <p id="warmup-text">The site may be asleep. Wait here — don’t tap again.</p>
+    </div>
+  </div>
+  <div class="play-bg" aria-hidden="true"></div>
+
+  <div id="screen-home" class="screen active">
+    <p class="all-games"><a href="index.html">← All games</a></p>
+    <div class="brand">
+      <h1>BULLET</h1>
+      <p>Load bullets. Fire when energy is ready. Prepare your blaster before you attack.</p>
+    </div>
+    <div class="panel">
+      <label for="name">Your name</label>
+      <input id="name" maxlength="16" placeholder="Enter your name" autocomplete="nickname" required />
+      <button class="btn" id="btn-create">Create room</button>
+      <label for="join-code">Join a room</label>
+      <input id="join-code" class="room" maxlength="4" placeholder="ABCD" autocomplete="off" />
+      <button class="btn teal" id="btn-join">Join friends</button>
+      <div class="join-status" id="join-status">
+        <div class="join-status-row">
+          <span class="join-dot"></span>
+          <span id="join-status-text">Connecting…</span>
+        </div>
+        <div class="join-bar"><i></i></div>
+      </div>
+      <button class="btn ghost" id="btn-solo">Duel vs bot</button>
+      <div class="error" id="home-error"></div>
+      <p class="hint">Draw → Load → Attack. Single, Power-Up, or Twin Fusion shots. ⚡ fills every 5s.</p>
+    </div>
+  </div>
+
+  <div id="screen-lobby" class="screen">
+    <p class="all-games"><a href="index.html">← All games</a></p>
+    <div class="topbar">
+      <div>
+        <div class="room-label">Arena</div>
+        <div class="code-pill" id="lobby-code">----</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-copy">Copy link</button>
+        <button class="btn row ghost" id="btn-lobby-leave" type="button">Leave</button>
+      </div>
+    </div>
+    <div class="lobby-grid">
+      <div class="panel" style="width:auto;margin:0">
+        <b>Blasters</b>
+        <div class="player-list" id="lobby-players"></div>
+        <div class="settings" id="host-settings">
+          <div>
+            <label for="max-hp">Starting HP</label>
+            <select id="max-hp">
+              <option value="80">Quick · 80</option>
+              <option value="100" selected>Normal · 100</option>
+              <option value="140">Long · 140</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn teal" id="btn-start">Start duel</button>
+          </div>
+        </div>
+        <p class="hint" id="lobby-hint">Waiting for the host…</p>
+      </div>
+      <div class="qr">
+        <img id="qr" alt="Invite QR code" />
+        <b>Scan to join</b>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-loadout" class="screen">
+    <div class="brand">
+      <h1 style="font-size:28px">LOADOUT</h1>
+      <p>Pick <b>3 element bullets</b> for this duel. Check fusions first.</p>
+    </div>
+    <div class="panel" style="width:min(480px,100%)">
+      <div class="fusion-guide" id="fusion-guide">
+        <h3>FUSION GUIDE</h3>
+        <p class="fg-hint">Twin Fusion needs <b>2</b> matching elements loaded in the hammer + next chamber (⚡3).</p>
+        <div class="fusion-guide-list" id="fusion-guide-list"></div>
+        <div class="fusion-live empty" id="fusion-live">Select 2–3 bullets to see which fusions you unlock.</div>
+      </div>
+      <div id="loadout-picked" style="font-weight:700;margin-bottom:8px">0 / 3 selected</div>
+      <div class="loadout-grid" id="loadout-grid"></div>
+      <button class="btn gold" id="btn-loadout-go" disabled>Enter battle</button>
+      <button class="btn ghost" id="btn-loadout-back" type="button">Back</button>
+    </div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="topbar">
+      <div class="code-pill" id="game-code">----</div>
+      <div id="timer" style="font-variant-numeric:tabular-nums;font-weight:700;color:var(--gold)">0:00</div>
+      <div class="topbar-actions">
+        <button class="btn row ghost" id="btn-game-leave" type="button">Leave</button>
+        <button class="icon-btn" id="btn-help" title="How to play" type="button">?</button>
+        <button class="icon-btn theme-toggle" id="btn-theme" title="Toggle dark mode" type="button">🌙</button>
+      </div>
+    </div>
+    <div class="game-wrap" id="game-wrap">
+      <div class="turn-banner" id="turn-banner">Waiting…</div>
+      <div class="log-strip" id="log-strip"></div>
+      <div class="battlefield">
+        <div class="enemy-corner">
+          <div class="corner-label">Enemy</div>
+          <div class="opponents" id="opponents"></div>
+        </div>
+        <div class="hand-corner">
+          <div class="hand-area" id="hand-area">
+            <div class="hand-label" id="hand-label">Hand</div>
+            <div class="hand-scroll">
+              <div class="hand" id="hand"></div>
+            </div>
+            <div class="hand-divider" aria-hidden="true"></div>
+            <div class="action-bar" id="action-bar"></div>
+          </div>
+        </div>
+        <div class="me-corner">
+          <div class="blaster-panel">
+            <div class="health-loader-row">
+              <div class="me-seat" id="me-seat"></div>
+              <div class="loader-slot">
+                <div class="cylinder-wrap" id="cylinder-wrap">
+                  <div class="muzzle" id="muzzle" aria-hidden="true"></div>
+                  <div class="cylinder" id="cylinder">
+                    <div class="cylinder-drum" id="cylinder-drum"></div>
+                  </div>
+                  <div class="hammer-label">HAMMER</div>
+                </div>
+              </div>
+            </div>
+            <div class="energy-meter" id="energy-meter">
+              <div class="energy-row" id="energy-row"></div>
+              <div class="energy-bar-track" title="Next cell recharges in 5s">
+                <div class="energy-bar-fill" id="energy-bar-fill"></div>
+                <div class="energy-bar-label" id="energy-bar-label">⚡ 0/5</div>
+              </div>
+            </div>
+            <div class="slots" id="slots" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recharge-modal" id="recharge-pick" role="dialog" aria-modal="true">
+    <div class="recharge-sheet">
+      <h3>Recharge</h3>
+      <p class="hint" style="margin:0">Tap when the needle hits the green zone. Gold = Perfect.</p>
+      <div class="timing-track" id="timing-track">
+        <div class="timing-green"></div>
+        <div class="timing-perfect"></div>
+        <div class="timing-needle" id="timing-needle"></div>
+      </div>
+      <button class="btn gold" id="btn-recharge-hit" type="button">HIT</button>
+    </div>
+  </div>
+
+  <div class="help-overlay" id="help-pick" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h3>How to play</h3>
+      <ul>
+        <li><b>Loop:</b> Draw → Load bullets → Attack when you have energy → Opponent.</li>
+        <li>Energy recharges <b>1 cell every 5 seconds</b> — watch the bar above (Clash Royale style).</li>
+        <li><b>Single</b> (⚡1): hammer bullet. <b>Power</b> (⚡2): powered bullet. <b>Fusion</b> (⚡3): two compatible elements.</li>
+        <li>Load up to <b>5 bullets</b> into the circular cylinder. Hammer (top) fires first, then it rotates.</li>
+        <li>Start with a <b>3-bullet loadout</b> — check the fusion guide first so 2 of your elements can Twin Fusion.</li>
+      </ul>
+      <button class="btn teal" id="btn-help-close" type="button" style="margin-top:12px;width:100%">Got it</button>
+    </div>
+  </div>
+
+  <div class="help-overlay" id="reconnect-pick" role="dialog" aria-modal="true">
+    <div class="sheet" style="text-align:center">
+      <h3>Rejoining…</h3>
+      <p class="hint" id="reconnect-sub" style="margin-top:8px">Connection dropped.</p>
+      <button class="btn ghost" id="btn-reconnect-leave" type="button" style="margin-top:12px;width:100%">Leave</button>
+    </div>
+  </div>
+
+  <div id="screen-end" class="screen">
+    <div class="end-card">
+      <div style="font-size:64px" id="end-emoji">🔫</div>
+      <h2 id="end-title">Winner</h2>
+      <p id="end-sub" style="color:var(--muted)"></p>
+      <div class="podium panel" id="end-scores" style="width:auto;margin-top:16px"></div>
+      <button class="btn" id="btn-again">Duel again</button>
+      <button class="btn ghost" id="btn-home">Home</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+
+  <script src="shared/kit.js"></script>
+  <script>
+    const MG = window.MiniGames;
+    const $ = MG.$;
+    const toast = MG.toast;
+    const showError = MG.showError;
+    const requireName = MG.requireName;
+    const rememberName = MG.rememberName;
+    const showWarmup = MG.showWarmup;
+    const hideWarmup = MG.hideWarmup;
+    const setJoinStatus = MG.setJoinStatus;
+    const waitForPeer = MG.waitForPeer;
+    const randomCode = MG.randomCode;
+    const inviteUrl = () => MG.inviteUrl(state.room);
+    const setQr = MG.setQr;
+    const peerOptions = MG.peerOptions;
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+      const map = {
+        home: "screen-home", lobby: "screen-lobby", game: "screen-game",
+        end: "screen-end", loadout: "screen-loadout",
+      };
+      const el = $(map[name] || ("screen-" + name));
+      if (el) el.classList.add("active");
+      document.body.setAttribute("data-phase", name || "home");
+    }
+
+    const PEER_PREFIX = "bullethost-";
+    const MAX_PLAYERS = 4;
+    const ENERGY_MAX = 5;
+    const ENERGY_CELL_MS = 5000;
+    const SLOT_MAX = 5;
+    const HAND_MAX = 8;
+    const FX_MS = 900;
+    const COLORS = ["#ff3d6e", "#7c5cff", "#2ee6a6", "#ffcc33"];
+
+    const ELEM_ICON = {
+      fire: "🔥", water: "💧", energy: "⚡", ice: "❄️",
+      earth: "🪨", toxin: "☠️", nature: "🌿", chaos: "🌀",
+    };
+
+    const BULLET_ASSETS = {
+      fire: "assets/bullets/fire.png",
+      water: "assets/bullets/water.png",
+      energy: "assets/bullets/lightning.png",
+      ice: "assets/bullets/ice.png",
+      earth: "assets/bullets/stone.png",
+      toxin: "assets/bullets/puddle.png",
+      nature: "assets/bullets/earth.png",
+      chaos: "assets/bullets/air.png",
+      plasma: "assets/bullets/plasma.png",
+      surge: "assets/bullets/surge-lightning.png",
+    };
+
+    const ELEM_FX = {
+      fire: { c1: "#ff6b35", c2: "#ffcc33", ring: "#ff9500" },
+      water: { c1: "#3a9fff", c2: "#7ad4ff", ring: "#5ec4ff" },
+      energy: { c1: "#ffeb3b", c2: "#fff59d", ring: "#ffcc33" },
+      ice: { c1: "#7ad4ff", c2: "#e8f8ff", ring: "#b3e5ff" },
+      earth: { c1: "#8b6a3a", c2: "#c4a070", ring: "#a08050" },
+      toxin: { c1: "#6aab20", c2: "#a8ff60", ring: "#8fdc50" },
+      nature: { c1: "#2eaa5a", c2: "#8fdc80", ring: "#5cc878" },
+      chaos: { c1: "#7c5cff", c2: "#c4a0ff", ring: "#a080ff" },
+      plasma: { c1: "#7c5cff", c2: "#5ec4ff", ring: "#c4a0ff" },
+    };
+
+    function bulletSrc(cardOrElem) {
+      if (cardOrElem && typeof cardOrElem === "object") {
+        if (cardOrElem.art && BULLET_ASSETS[cardOrElem.art]) return BULLET_ASSETS[cardOrElem.art];
+        if (cardOrElem.elem && BULLET_ASSETS[cardOrElem.elem]) return BULLET_ASSETS[cardOrElem.elem];
+      }
+      if (typeof cardOrElem === "string" && BULLET_ASSETS[cardOrElem]) return BULLET_ASSETS[cardOrElem];
+      return BULLET_ASSETS.fire;
+    }
+
+    function bulletImgHtml(cardOrElem, extraClass) {
+      const src = bulletSrc(cardOrElem);
+      return '<img class="bullet-icon' + (extraClass ? " " + extraClass : "") + '" src="' + src + '" alt="" draggable="false">';
+    }
+
+    function portraitHtml(card) {
+      return '<span class="portrait">' + bulletImgHtml(card) + "</span>";
+    }
+
+    function cardDesc(card) {
+      if (!card) return "";
+      if (card.kind === "util") return card.name || "";
+      return card.name || card.elem || "";
+    }
+
+    function handCardHtml(card) {
+      if (card.kind === "util") {
+        return '<span class="util-ico">' + (card.icon || "✦") + '</span>'
+          + '<span class="card-desc">' + cardDesc(card) + "</span>";
+      }
+      return bulletImgHtml(card, "hand-img")
+        + '<span class="card-desc">' + cardDesc(card) + "</span>";
+    }
+
+    function chamberIconHtml(card) {
+      return '<span class="chamber-icon">' + bulletImgHtml(card, "chamber-img") + "</span>";
+    }
+
+    const BULLET_CATALOG = [
+      { id: "infurnus", name: "Ember Round", icon: "🔥", elem: "fire", role: "attack", dmg: 40, speed: "fast", effect: "burn", rarity: "common" },
+      { id: "aquabeek", name: "Aqua Shot", icon: "💧", elem: "water", role: "support", dmg: 30, speed: "med", effect: "heal", rarity: "common" },
+      { id: "armashelt", name: "Bolt Shell", icon: "⚡", elem: "energy", role: "speed", dmg: 28, speed: "fast", effect: "boost", rarity: "common" },
+      { id: "frostcrawler", name: "Frost Cap", icon: "❄️", elem: "ice", role: "control", dmg: 26, speed: "slow", effect: "freeze", rarity: "rare" },
+      { id: "tankshell", name: "Stone Round", icon: "🪨", elem: "earth", role: "tank", dmg: 22, speed: "slow", effect: "shield", rarity: "common" },
+      { id: "venomfang", name: "Acid Round", icon: "☠️", elem: "toxin", role: "control", dmg: 24, speed: "med", effect: "poison", rarity: "rare" },
+      { id: "blastor", name: "Surge Bolt", icon: "⚡", elem: "energy", art: "surge", role: "attack", dmg: 36, speed: "med", effect: null, rarity: "rare" },
+      { id: "verdant", name: "Verdant Shot", icon: "🌿", elem: "nature", role: "support", dmg: 10, speed: "med", effect: "heal", rarity: "common" },
+      { id: "trickster", name: "Gale Round", icon: "🌀", elem: "chaos", role: "trick", dmg: 18, speed: "fast", effect: "steal", rarity: "epic" },
+      { id: "plasma", name: "Plasma Bolt", icon: "⚡", elem: "energy", art: "plasma", role: "attack", dmg: 34, speed: "fast", effect: "burn", rarity: "epic" },
+    ];
+
+    const FUSIONS = {
+      "fire+energy": { name: "Plasma Fusion", icon: "🔆", dmg: 80, effect: "burn", elem: "plasma", art: "plasma" },
+      "energy+fire": { name: "Plasma Fusion", icon: "🔆", dmg: 80, effect: "burn", elem: "plasma", art: "plasma" },
+      "water+ice": { name: "Frozen Blast", icon: "🧊", dmg: 60, effect: "freeze", elem: "ice" },
+      "ice+water": { name: "Frozen Blast", icon: "🧊", dmg: 60, effect: "freeze", elem: "ice" },
+      "fire+earth": { name: "Magma Shell", icon: "🪨", dmg: 70, effect: "burn", elem: "fire" },
+      "earth+fire": { name: "Magma Shell", icon: "🪨", dmg: 70, effect: "burn", elem: "fire" },
+      "energy+ice": { name: "Static Freeze", icon: "⚡", dmg: 65, effect: "stun", elem: "energy" },
+      "ice+energy": { name: "Static Freeze", icon: "⚡", dmg: 65, effect: "stun", elem: "energy" },
+      "water+earth": { name: "Mud Barrage", icon: "🌊", dmg: 55, effect: "shield", elem: "water" },
+      "earth+water": { name: "Mud Barrage", icon: "🌊", dmg: 55, effect: "shield", elem: "water" },
+    };
+
+    function uniqueFusionRecipes() {
+      const seen = new Set();
+      const list = [];
+      for (const key of Object.keys(FUSIONS)) {
+        const [a, b] = key.split("+");
+        const norm = [a, b].sort().join("+");
+        if (seen.has(norm)) continue;
+        seen.add(norm);
+        const f = FUSIONS[key];
+        list.push({ a, b, name: f.name, icon: f.icon, dmg: f.dmg, effect: f.effect, elem: f.elem || a, art: f.art });
+      }
+      return list;
+    }
+
+    function renderFusionGuide(selectedElems) {
+      const list = $("fusion-guide-list");
+      const live = $("fusion-live");
+      if (!list || !live) return;
+      const elems = selectedElems || [];
+      const recipes = uniqueFusionRecipes();
+      list.replaceChildren();
+      const matched = [];
+      for (const r of recipes) {
+        const hasA = elems.includes(r.a);
+        const hasB = elems.includes(r.b);
+        const hit = hasA && hasB;
+        if (hit) matched.push(r);
+        const row = document.createElement("div");
+        row.className = "fusion-row" + (hit ? " match" : "");
+        row.innerHTML = '<span class="pair">'
+          + bulletImgHtml(r.a, "fg-icon") + " " + r.a
+          + " + "
+          + bulletImgHtml(r.b, "fg-icon") + " " + r.b
+          + '</span><span class="arrow">→</span><span class="result">'
+          + bulletImgHtml({ elem: r.elem, art: r.art }, "fg-icon") + " " + r.name + " (" + r.dmg + ")</span>";
+        list.appendChild(row);
+      }
+      if (elems.length < 2) {
+        live.className = "fusion-live empty";
+        live.textContent = "Select 2–3 bullets to see which fusions you unlock.";
+      } else if (!matched.length) {
+        live.className = "fusion-live empty";
+        live.textContent = elems.length === 2
+          ? "Those 2 elements don’t fuse — pick a 3rd that pairs with one of them."
+          : "None of your 3 elements fuse together. Check the guide above.";
+      } else {
+        live.className = "fusion-live";
+        live.textContent = (elems.length === 2 ? "With these 2: " : "With your 3: ")
+          + matched.map((r) => r.name).join(" · ");
+      }
+    }
+
+    const UTIL_TYPES = {
+      powerCore: { name: "Power Core", icon: "🔋", kind: "power" },
+      draw2: { name: "Draw+", icon: "🃏", kind: "draw" },
+      shieldChip: { name: "Shield Chip", icon: "🛡", kind: "shield" },
+    };
+
+    let uidSeq = 1;
+    function makeBullet(defId) {
+      const def = BULLET_CATALOG.find((s) => s.id === defId) || BULLET_CATALOG[0];
+      return { uid: "b" + (uidSeq++), kind: "bullet", ...def };
+    }
+    function makeUtil(typeId) {
+      const def = UTIL_TYPES[typeId];
+      return { uid: "u" + (uidSeq++), type: typeId, kind: "util", ...def };
+    }
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function buildSharedDeck() {
+      const pile = [];
+      for (const s of BULLET_CATALOG) {
+        const n = s.rarity === "epic" ? 1 : s.rarity === "rare" ? 2 : 3;
+        for (let i = 0; i < n; i++) pile.push(makeBullet(s.id));
+      }
+      for (let i = 0; i < 6; i++) pile.push(makeUtil("powerCore"));
+      for (let i = 0; i < 4; i++) pile.push(makeUtil("draw2"));
+      for (let i = 0; i < 3; i++) pile.push(makeUtil("shieldChip"));
+      return shuffle(pile);
+    }
+
+    const state = {
+      peer: null, conns: new Map(), isHost: false, solo: false,
+      myId: "host", myName: "", room: "", connecting: false, leaving: false,
+      game: null, view: null, timerId: 0,
+      reconnecting: false, reconnectTimer: 0, reconnectAttempt: 0,
+      localSelected: new Set(), lastFxId: "",
+      pendingLoadout: null, loadoutPick: new Set(),
+      recharge: { active: false, started: 0, duration: 1350 },
+      energyTimer: 0,
+      energyRaf: 0,
+    };
+    const guests = new Map();
+
+    function mySeatToken() {
+      try {
+        let t = localStorage.getItem("bullet-seat-token");
+        if (!t) {
+          t = "s" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+          localStorage.setItem("bullet-seat-token", t);
+        }
+        return t;
+      } catch (e) { return "s" + Math.random().toString(36).slice(2, 12); }
+    }
+    function setReconnectUi(on, text) {
+      const el = $("reconnect-pick");
+      if (el) el.classList.toggle("show", !!on);
+      state.reconnecting = !!on;
+      if (text && $("reconnect-sub")) $("reconnect-sub").textContent = text;
+    }
+    function scheduleGuestReconnect() {
+      if (state.leaving || state.isHost || !state.room || state.solo) return;
+      if (state.reconnectTimer) return;
+      state.reconnectAttempt += 1;
+      if (state.reconnectAttempt > 8) {
+        setReconnectUi(true, MG.wifiHint ? MG.wifiHint() : "Couldn't reach host.");
+        return;
+      }
+      const delay = Math.min(12000, 1500 * state.reconnectAttempt);
+      setReconnectUi(true, "Retry " + state.reconnectAttempt + "/8…");
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = 0;
+        joinRoom(state.room, true);
+      }, delay);
+    }
+
+    function createPlayer(p, maxHp, loadoutIds) {
+      const loadout = (loadoutIds || []).slice(0, 3).map((id) => makeBullet(id));
+      while (loadout.length < 3) loadout.push(makeBullet(BULLET_CATALOG[loadout.length % BULLET_CATALOG.length].id));
+      return {
+        id: p.id, name: p.name, token: p.token || p.id, color: p.color || COLORS[0],
+        hp: maxHp, maxHp,
+        energy: 1, overcharged: false, overheated: false,
+        regenStartedAt: Date.now(),
+        energyProgress: 0,
+        slots: [null, null, null, null, null],
+        hand: loadout.slice(),
+        loadout: loadout.map((s) => s.id),
+        burn: 0, freeze: 0, stun: 0, poison: 0, shield: 0,
+        damageBonus: 0,
+        rechargedThisTurn: false,
+        connected: p.connected !== false,
+        isBot: !!p.isBot,
+      };
+    }
+
+    function createGame(players, maxHp, loadouts) {
+      const deck = buildSharedDeck();
+      const list = players.map((p, i) => {
+        const ids = (loadouts && loadouts[p.id]) || defaultLoadout(i);
+        const pl = createPlayer({ ...p, color: p.color || COLORS[i % COLORS.length] }, maxHp, ids);
+        // deal 2 extra from shared deck
+        for (let k = 0; k < 2 && deck.length; k++) pl.hand.push(deck.pop());
+        return pl;
+      });
+      return {
+        phase: "playing",
+        subPhase: "draw",
+        turn: list[0].id,
+        maxHp, deck, discard: [],
+        targetId: list.length === 2 ? list[1].id : null,
+        banner: list[0].name + "'s turn — prepare your blaster",
+        log: "Duel start. Energy refills 1 cell / 5s — watch the bar.",
+        startedAt: Date.now(), winnerId: null, players: list,
+        pendingFx: null, animLock: false,
+        discoveredFusions: {},
+      };
+    }
+
+    function defaultLoadout(i) {
+      const pools = [
+        ["infurnus", "armashelt", "aquabeek"],
+        ["tankshell", "frostcrawler", "blastor"],
+        ["venomfang", "verdant", "plasma"],
+        ["trickster", "infurnus", "tankshell"],
+      ];
+      return pools[i % pools.length];
+    }
+
+    function chamberPositions() {
+      const cx = 50, cy = 50, r = 34;
+      const out = [];
+      for (let i = 0; i < SLOT_MAX; i++) {
+        const ang = -Math.PI / 2 + (i * 2 * Math.PI) / SLOT_MAX;
+        out.push({ left: cx + r * Math.cos(ang), top: cy + r * Math.sin(ang) });
+      }
+      return out;
+    }
+
+    function rotateSlots(slots) {
+      const next = slots.slice(1).concat([null]);
+      return next;
+    }
+
+    function playerById(g, id) { return g.players.find((p) => p.id === id); }
+    function alivePlayers(g) { return g.players.filter((p) => p.hp > 0); }
+    function nextTurnId(g) {
+      const alive = alivePlayers(g);
+      if (alive.length <= 1) return alive[0] ? alive[0].id : null;
+      const idx = alive.findIndex((p) => p.id === g.turn);
+      return alive[(idx + 1) % alive.length].id;
+    }
+    function newFxId() { return "fx" + Date.now() + "-" + Math.random().toString(36).slice(2, 6); }
+
+    function drawCards(g, player, n) {
+      let drew = 0;
+      while (drew < n && player.hand.length < HAND_MAX) {
+        if (!g.deck.length && g.discard.length) g.deck = shuffle(g.discard.splice(0));
+        if (!g.deck.length) break;
+        player.hand.push(g.deck.pop());
+        drew++;
+      }
+      return drew;
+    }
+
+    function applyStatusTicks(g, p) {
+      if (p.burn > 0) {
+        p.hp = Math.max(0, p.hp - Math.min(8, p.burn * 4));
+        p.burn = Math.max(0, p.burn - 1);
+      }
+      if (p.poison > 0) {
+        p.hp = Math.max(0, p.hp - Math.min(6, p.poison * 3));
+        p.poison = Math.max(0, p.poison - 1);
+      }
+      if (p.freeze > 0) p.freeze = Math.max(0, p.freeze - 1);
+      if (p.stun > 0) p.stun = Math.max(0, p.stun - 1);
+    }
+
+    function startTurn(g) {
+      const p = playerById(g, g.turn);
+      if (!p || p.hp <= 0) return;
+      applyStatusTicks(g, p);
+      if (p.hp <= 0) { endTurn(g); return; }
+      p.rechargedThisTurn = true;
+      p.damageBonus = 0;
+      if (p.energy < ENERGY_MAX && !p.regenStartedAt) p.regenStartedAt = Date.now();
+      if (p.overheated) {
+        p.overheated = false;
+        g.subPhase = "locked";
+        g.banner = p.name + " overheated — skipping attack!";
+        g.log = p.name + "'s blaster cools down. Turn wasted.";
+        setTimeout(() => { if (state.game === g) endTurn(g); }, 700);
+        hostBroadcast();
+        return;
+      }
+      if (p.stun > 0) {
+        g.subPhase = "locked";
+        g.banner = p.name + " is stunned!";
+        g.log = p.name + " skips this turn.";
+        setTimeout(() => { if (state.game === g) endTurn(g); }, 700);
+        hostBroadcast();
+        return;
+      }
+      if (p.freeze > 0) {
+        g.log = p.name + " is frozen — half actions.";
+      }
+      const drew = drawCards(g, p, p.freeze > 0 ? 1 : 2);
+      g.subPhase = "armed";
+      g.banner = p.name + "'s turn — load & fire (⚡ fills every 5s)";
+      g.log = p.name + " draws " + drew + ".";
+      if (alivePlayers(g).length === 2) {
+        const other = g.players.find((x) => x.id !== p.id && x.hp > 0);
+        g.targetId = other ? other.id : null;
+      }
+    }
+
+    function applyDamage(g, target, amount) {
+      if (amount <= 0) return 0;
+      let left = amount;
+      if (target.shield > 0) {
+        const abs = Math.min(target.shield, left);
+        target.shield -= abs;
+        left -= abs;
+      }
+      // tank role on board reduces
+      const tank = (target.slots || []).find((s) => s && s.role === "tank");
+      if (tank && left > 0) left = Math.max(1, Math.floor(left * 0.75));
+      if (left > 0) target.hp = Math.max(0, target.hp - left);
+      return amount;
+    }
+
+    function fusionKey(a, b) { return a.elem + "+" + b.elem; }
+    function getFusion(a, b) { return FUSIONS[fusionKey(a, b)] || null; }
+
+    function hostLoad(playerId, uids) {
+      const g = state.game;
+      if (!g || g.phase !== "playing" || g.turn !== playerId || g.animLock) return;
+      if (g.subPhase !== "prep" && g.subPhase !== "armed") return;
+      const p = playerById(g, playerId);
+      if (!p) return;
+      const ids = Array.isArray(uids) ? uids.slice(0, SLOT_MAX) : [];
+      // clear current slots back to hand first if reloading
+      for (let i = 0; i < p.slots.length; i++) {
+        if (p.slots[i]) { p.hand.push(p.slots[i]); p.slots[i] = null; }
+      }
+      while (p.slots.length < SLOT_MAX) p.slots.push(null);
+      p.slots = p.slots.slice(0, SLOT_MAX);
+      let slot = 0;
+      for (const uid of ids) {
+        if (slot >= SLOT_MAX) break;
+        const idx = p.hand.findIndex((c) => c.uid === uid && c.kind === "bullet");
+        if (idx < 0) continue;
+        p.slots[slot++] = p.hand.splice(idx, 1)[0];
+      }
+      g.log = p.name + " loaded " + slot + " bullet" + (slot === 1 ? "" : "s") + ".";
+      g.subPhase = "prep";
+      hostBroadcast();
+    }
+
+    function hostUseUtil(playerId, uid) {
+      const g = state.game;
+      if (!g || g.turn !== playerId || g.animLock) return;
+      if (g.subPhase !== "prep" && g.subPhase !== "armed") return;
+      const p = playerById(g, playerId);
+      const idx = p.hand.findIndex((c) => c.uid === uid && c.kind === "util");
+      if (idx < 0) return;
+      const card = p.hand.splice(idx, 1)[0];
+      if (card.type === "powerCore") {
+        // attach to first loaded bullet as powered flag
+        const slot = p.slots.find((s) => s);
+        if (!slot) { p.hand.push(card); toast("Load a bullet first"); return; }
+        slot.powered = true;
+        g.log = p.name + " powered up " + slot.name + "!";
+        g.discard.push(card);
+      } else if (card.type === "draw2") {
+        const d = drawCards(g, p, 2);
+        g.log = p.name + " draws " + d + " from Draw+.";
+        g.discard.push(card);
+      } else if (card.type === "shieldChip") {
+        p.shield += 15;
+        g.log = p.name + " gains 15 shield.";
+        g.discard.push(card);
+      }
+      hostBroadcast();
+    }
+
+    function syncPlayerEnergy(p, now) {
+      now = now || Date.now();
+      if (p.energy >= ENERGY_MAX) {
+        p.regenStartedAt = 0;
+        p.energyProgress = 0;
+        return false;
+      }
+      if (!p.regenStartedAt) p.regenStartedAt = now;
+      let gained = false;
+      while (p.energy < ENERGY_MAX && now - p.regenStartedAt >= ENERGY_CELL_MS) {
+        p.energy += 1;
+        p.regenStartedAt += ENERGY_CELL_MS;
+        gained = true;
+      }
+      if (p.energy >= ENERGY_MAX) {
+        p.regenStartedAt = 0;
+        p.energyProgress = 0;
+      } else {
+        p.energyProgress = Math.max(0, Math.min(1, (now - p.regenStartedAt) / ENERGY_CELL_MS));
+      }
+      return gained;
+    }
+
+    function hostTickEnergy() {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const now = Date.now();
+      let gained = false;
+      for (const p of g.players) {
+        if (p.hp <= 0) continue;
+        if (syncPlayerEnergy(p, now)) gained = true;
+      }
+      if (gained) hostBroadcast();
+      else paintEnergyUiFromView();
+    }
+
+    function startEnergyLoop() {
+      stopEnergyLoop();
+      state.energyTimer = setInterval(hostTickEnergy, 100);
+      const tickUi = () => {
+        state.energyRaf = requestAnimationFrame(tickUi);
+        if (state.solo || state.isHost) {
+          const g = state.game;
+          if (g && g.phase === "playing") {
+            for (const p of g.players) syncPlayerEnergy(p);
+          }
+        }
+        paintEnergyUiFromView();
+      };
+      state.energyRaf = requestAnimationFrame(tickUi);
+    }
+
+    function stopEnergyLoop() {
+      clearInterval(state.energyTimer);
+      state.energyTimer = 0;
+      if (state.energyRaf) cancelAnimationFrame(state.energyRaf);
+      state.energyRaf = 0;
+    }
+
+    function spendEnergy(p, cost) {
+      p.energy = Math.max(0, p.energy - cost);
+      if (p.energy < ENERGY_MAX && !p.regenStartedAt) p.regenStartedAt = Date.now();
+    }
+
+    function hostBeginRecharge() {
+      toast("Energy fills automatically — 1 cell / 5s");
+    }
+
+    function openRechargeUI() {}
+    function closeRechargeUI() {
+      const el = $("recharge-pick");
+      if (el) el.classList.remove("show");
+    }
+    function hostRechargeResult() {}
+
+    function attackCost(mode) {
+      if (mode === "single") return 1;
+      if (mode === "power") return 2;
+      if (mode === "fusion") return 3;
+      return 1;
+    }
+
+    function hostAttack(playerId, mode) {
+      const g = state.game;
+      if (!g || g.turn !== playerId || g.animLock) return;
+      if (g.subPhase !== "armed" && g.subPhase !== "prep") return;
+      const p = playerById(g, playerId);
+      if (!p) return;
+      const cost = attackCost(mode);
+      if (p.energy < cost) {
+        g.banner = "Need ⚡" + cost + " — wait for the bar";
+        hostBroadcast();
+        return;
+      }
+
+      let target = playerById(g, g.targetId);
+      if (!target || target.hp <= 0) {
+        const others = g.players.filter((x) => x.id !== playerId && x.hp > 0);
+        if (others.length === 1) target = others[0];
+        else { g.banner = "Pick a target"; hostBroadcast(); return; }
+      }
+
+      const s0 = p.slots[0];
+      const s1 = p.slots[1];
+      let shot = null;
+
+      if (mode === "single") {
+        if (!s0) { g.banner = "Load a bullet into the hammer first"; hostBroadcast(); return; }
+        shot = { name: s0.name, icon: s0.icon, elem: s0.elem, art: s0.art, dmg: s0.dmg, effect: s0.effect, mode: "single" };
+        g.discard.push(s0);
+        p.slots = rotateSlots(p.slots);
+      } else if (mode === "power") {
+        const powered = p.slots.find((s) => s && s.powered) || s0;
+        if (!powered) { g.banner = "Need a powered bullet (Power Core)"; hostBroadcast(); return; }
+        if (!powered.powered) { g.banner = "Use a Power Core on a bullet first"; hostBroadcast(); return; }
+        shot = {
+          name: powered.name + " ★", icon: powered.icon, elem: powered.elem, art: powered.art,
+          dmg: Math.round(powered.dmg * 2), effect: powered.effect || "knockback", mode: "power",
+        };
+        const si = p.slots.indexOf(powered);
+        g.discard.push(powered);
+        p.slots[si] = null;
+        p.slots = p.slots.filter(Boolean);
+        while (p.slots.length < SLOT_MAX) p.slots.push(null);
+      } else if (mode === "fusion") {
+        if (!s0 || !s1) { g.banner = "Load 2 bullets in hammer + next chamber"; hostBroadcast(); return; }
+        const fuse = getFusion(s0, s1);
+        if (!fuse) {
+          g.banner = "Those elements don't fuse";
+          hostBroadcast();
+          return;
+        }
+        g.discoveredFusions[fusionKey(s0, s1)] = fuse.name;
+        shot = {
+          name: fuse.name, icon: fuse.icon, elem: fuse.elem || s0.elem, art: fuse.art,
+          elems: [s0.elem, s1.elem], dmg: fuse.dmg, effect: fuse.effect, mode: "fusion", discovered: true,
+        };
+        g.discard.push(s0, s1);
+        p.slots[0] = null;
+        p.slots[1] = null;
+        p.slots = p.slots.filter(Boolean);
+        while (p.slots.length < SLOT_MAX) p.slots.push(null);
+        g.log = "💥 NEW FUSION: " + fuse.name + "!";
+      } else return;
+
+      spendEnergy(p, cost);
+      let dmg = shot.dmg;
+      if (p.damageBonus) dmg = Math.round(dmg * (1 + p.damageBonus));
+      if (p.overcharged) {
+        dmg = Math.round(dmg * 1.5);
+        shot.name += " OVERCHARGED";
+        p.overcharged = false;
+      }
+      // speed role: chance to keep energy
+      if (s0 && s0.role === "speed" && Math.random() < 0.25) {
+        p.energy = Math.min(ENERGY_MAX, p.energy + 1);
+      }
+
+      g.animLock = true;
+      const dealt = applyDamage(g, target, dmg);
+      if (shot.effect === "burn") target.burn += 2;
+      if (shot.effect === "freeze") target.freeze += 1;
+      if (shot.effect === "stun") target.stun += 1;
+      if (shot.effect === "poison") target.poison += 2;
+      if (shot.effect === "heal") p.hp = Math.min(p.maxHp, p.hp + 12);
+      if (shot.effect === "shield") p.shield += 12;
+      if (shot.effect === "steal" && target.hand && target.hand.length) {
+        const stolen = target.hand.pop();
+        if (stolen) p.hand.push(stolen);
+      }
+
+      g.log = (g.log && shot.discovered ? g.log + " " : "")
+        + p.name + " fires " + shot.name + " at " + target.name + " for " + dealt + "!";
+      g.banner = shot.name + "!";
+      const fxElem = shot.art === "plasma" ? "plasma" : (shot.elem || "fire");
+      g.pendingFx = {
+        id: newFxId(), type: "fire",
+        shooterId: playerId, targetId: target.id,
+        elem: fxElem, elems: shot.elems,
+        bulletSrc: bulletSrc(shot),
+        damage: dealt, mode: shot.mode,
+        spin: true,
+      };
+      g.subPhase = "resolve";
+      checkWinner(g);
+      hostBroadcast();
+      setTimeout(() => {
+        if (!state.game) return;
+        state.game.animLock = false;
+        state.game.pendingFx = null;
+        if (state.game.phase === "playing") endTurn(state.game);
+        else hostBroadcast();
+      }, FX_MS);
+    }
+
+    function endTurn(g) {
+      checkWinner(g);
+      if (g.phase !== "playing") { hostBroadcast(); return; }
+      g.turn = nextTurnId(g);
+      startTurn(g);
+      hostBroadcast();
+      if (state.solo) setTimeout(botTurn, 700);
+    }
+
+    function checkWinner(g) {
+      const alive = alivePlayers(g);
+      if (alive.length <= 1) {
+        g.phase = "end";
+        g.winnerId = alive[0] ? alive[0].id : null;
+        g.banner = alive[0] ? alive[0].name + " wins!" : "Draw";
+        stopEnergyLoop();
+      }
+    }
+
+    function botTurn() {
+      const g = state.game;
+      if (!g || g.phase !== "playing") return;
+      const bot = g.players.find((p) => p.isBot && p.id === g.turn);
+      if (!bot || bot.hp <= 0) return;
+      if (g.subPhase === "locked") return;
+
+      const human = g.players.find((p) => !p.isBot && p.hp > 0);
+      if (human) g.targetId = human.id;
+
+      const bullets = bot.hand.filter((c) => c.kind === "bullet").sort((a, b) => b.dmg - a.dmg);
+      if (bot.slots.filter(Boolean).length === 0 && bullets.length) {
+        hostLoad(bot.id, bullets.slice(0, 2).map((c) => c.uid));
+      }
+
+      const core = bot.hand.find((c) => c.type === "powerCore");
+      if (core && bot.slots[0] && bot.energy >= 2) hostUseUtil(bot.id, core.uid);
+
+      syncPlayerEnergy(bot);
+      if (!bot.slots.some(Boolean)) {
+        endTurn(g);
+        return;
+      }
+      let mode = "single";
+      if (bot.slots[0] && bot.slots[1] && getFusion(bot.slots[0], bot.slots[1]) && bot.energy >= 3) mode = "fusion";
+      else if (bot.slots.some((s) => s && s.powered) && bot.energy >= 2) mode = "power";
+      const cost = attackCost(mode);
+      if (bot.energy < cost) {
+        setTimeout(botTurn, 400);
+        return;
+      }
+      setTimeout(() => {
+        if (!state.game || state.game.turn !== bot.id) return;
+        hostAttack(bot.id, mode);
+      }, 500);
+    }
+
+    function cardSnap(c) {
+      if (!c) return null;
+      if (c.kind === "util") return { uid: c.uid, kind: "util", type: c.type, name: c.name, icon: c.icon };
+      return {
+        uid: c.uid, kind: "bullet", id: c.id, name: c.name, icon: c.icon, elem: c.elem, art: c.art,
+        role: c.role, dmg: c.dmg, effect: c.effect, powered: !!c.powered,
+      };
+    }
+
+    function playerView(game, id) {
+      const me = playerById(game, id);
+      const isMyTurn = game.turn === id;
+      return {
+        phase: game.phase, subPhase: game.subPhase, turn: game.turn,
+        room: state.room, targetId: game.targetId,
+        banner: game.banner, log: game.log, startedAt: game.startedAt,
+        winnerId: game.winnerId, maxHp: game.maxHp,
+        pendingFx: game.pendingFx, animLock: game.animLock,
+        you: {
+          id, hp: me ? me.hp : 0, maxHp: me ? me.maxHp : game.maxHp,
+          energy: me ? me.energy : 0, overcharged: me ? me.overcharged : false,
+          overheated: me ? me.overheated : false,
+          energyProgress: me ? me.energyProgress : 0,
+          energyRegenAt: me ? me.regenStartedAt : 0,
+          hand: me ? me.hand.map(cardSnap) : [],
+          slots: me ? me.slots.map(cardSnap) : Array(SLOT_MAX).fill(null),
+          burn: me ? me.burn : 0, freeze: me ? me.freeze : 0, stun: me ? me.stun : 0,
+          poison: me ? me.poison : 0, shield: me ? me.shield : 0,
+          isMyTurn, canAct: isMyTurn && game.phase === "playing" && !game.animLock && game.subPhase !== "locked",
+        },
+        players: game.players.map((p) => ({
+          id: p.id, name: p.name, color: p.color, hp: p.hp, maxHp: p.maxHp,
+          energy: p.energy, shield: p.shield, burn: p.burn, freeze: p.freeze,
+          stun: p.stun, poison: p.poison, handCount: p.hand.length,
+          slotCount: p.slots.filter(Boolean).length,
+          connected: p.connected, isBot: p.isBot, overcharged: p.overcharged,
+        })),
+      };
+    }
+
+    function hostBroadcast() {
+      if (!state.game) return;
+      if (state.solo) { applyView(playerView(state.game, "host")); return; }
+      applyView(playerView(state.game, state.myId));
+      for (const [peerId, conn] of state.conns) {
+        if (conn.open) {
+          const pid = playerIdFromPeer(peerId);
+          try { conn.send({ type: "state", view: playerView(state.game, pid) }); } catch (e) {}
+        }
+      }
+    }
+    function playerIdFromPeer(peerId) {
+      const meta = guests.get(peerId);
+      return (meta && meta.playerId) || peerId;
+    }
+
+    function applyView(view) {
+      state.view = view;
+      if (view.you && view.you.id) state.myId = view.you.id;
+      if (view.room) state.room = view.room;
+      state.connecting = false;
+      if (view.phase === "lobby") { renderLobby(view); showScreen("lobby"); return; }
+      if (view.phase === "end") {
+        stopEnergyLoop();
+        renderEnd(view);
+        showScreen("end");
+        return;
+      }
+      if (view.phase === "playing") {
+        showScreen("game");
+        $("game-code").textContent = view.room || state.room;
+        renderGame(view);
+        if (view.startedAt && !state.timerId) startTimer(view.startedAt);
+        if ((state.solo || state.isHost) && !state.energyTimer) startEnergyLoop();
+        else if (!state.solo && !state.isHost && !state.energyRaf) {
+          const tickUi = () => {
+            state.energyRaf = requestAnimationFrame(tickUi);
+            paintEnergyUiFromView();
+          };
+          state.energyRaf = requestAnimationFrame(tickUi);
+        }
+      }
+    }
+
+    function readEnergyDisplay() {
+      const v = state.view;
+      if (!v || !v.you) return { n: 0, progress: 0, over: false };
+      if ((state.solo || state.isHost) && state.game) {
+        const me = playerById(state.game, v.you.id);
+        if (me) {
+          syncPlayerEnergy(me);
+          return { n: me.energy, progress: me.energyProgress || 0, over: !!me.overcharged };
+        }
+      }
+      let n = v.you.energy || 0;
+      let progress = v.you.energyProgress || 0;
+      if (n < ENERGY_MAX && v.you.energyRegenAt) {
+        progress = Math.max(0, Math.min(0.999, (Date.now() - v.you.energyRegenAt) / ENERGY_CELL_MS));
+      }
+      if (n >= ENERGY_MAX) progress = 0;
+      return { n, progress, over: !!v.you.overcharged };
+    }
+
+    function paintEnergyUiFromView() {
+      if (!state.view || state.view.phase !== "playing") return;
+      const { n, progress, over } = readEnergyDisplay();
+      renderEnergy(n, over, progress);
+    }
+
+    function renderEnergy(n, over, progress) {
+      progress = Math.max(0, Math.min(1, progress || 0));
+      const fill = $("energy-bar-fill");
+      const label = $("energy-bar-label");
+      const frac = Math.min(1, (n + (n < ENERGY_MAX ? progress : 0)) / ENERGY_MAX);
+      if (fill) {
+        fill.style.width = (frac * 100) + "%";
+        fill.classList.toggle("full", n >= ENERGY_MAX);
+      }
+      if (label) {
+        const shown = n >= ENERGY_MAX ? ENERGY_MAX : (n + progress);
+        label.textContent = (over ? "OVER " : "⚡ ") + shown.toFixed(n >= ENERGY_MAX ? 0 : 1) + "/" + ENERGY_MAX;
+      }
+      const row = $("energy-row");
+      if (!row) return;
+      row.replaceChildren();
+      for (let i = 0; i < ENERGY_MAX; i++) {
+        const pip = document.createElement("span");
+        let cls = "energy-pip";
+        if (i < n) cls += " on";
+        else if (i === n && n < ENERGY_MAX && progress > 0.02) {
+          cls += " filling";
+          pip.style.setProperty("--fill", Math.round(progress * 100) + "%");
+        }
+        if (over && i === ENERGY_MAX - 1) cls += " over";
+        pip.className = cls;
+        row.appendChild(pip);
+      }
+    }
+
+    function renderSlots(slots, spin) {
+      const drum = $("cylinder-drum");
+      if (!drum) return;
+      drum.replaceChildren();
+      drum.classList.toggle("spin", !!spin);
+      const pos = chamberPositions();
+      for (let i = 0; i < SLOT_MAX; i++) {
+        const s = slots[i];
+        const el = document.createElement("div");
+        el.className = "chamber"
+          + (i === 0 ? " hammer" : "")
+          + (s ? " filled" : "")
+          + (s && s.powered ? " powered" : "")
+          + (s && s.elem ? " elem-" + s.elem : "");
+        el.style.left = pos[i].left + "%";
+        el.style.top = pos[i].top + "%";
+        if (s) {
+          el.innerHTML = chamberIconHtml(s);
+        } else {
+          el.innerHTML = "";
+        }
+        drum.appendChild(el);
+      }
+      if (spin) setTimeout(() => drum.classList.remove("spin"), 500);
+    }
+
+    function renderGame(view) {
+      const you = view.you;
+      const myTurn = you.canAct;
+      const banner = $("turn-banner");
+      banner.textContent = view.banner || "";
+      banner.classList.toggle("my-turn", myTurn);
+      $("log-strip").textContent = view.log || "";
+
+      renderEnergy(you.energy, you.overcharged, you.energyProgress || 0);
+      const spin = !!(view.pendingFx && view.pendingFx.spin && view.pendingFx.shooterId === you.id);
+      renderSlots(you.slots, spin);
+
+      const mePlayer = view.players.find((p) => p.id === you.id);
+      const meSeat = $("me-seat");
+      meSeat.className = "me-seat" + (you.id === view.turn ? " turn" : "");
+      meSeat.dataset.id = you.id;
+      meSeat.replaceChildren();
+      if (mePlayer) {
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = mePlayer.color;
+        dot.textContent = (mePlayer.name || "?").slice(0, 1).toUpperCase();
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = "<b>" + mePlayer.name + " (you)</b><span>HP " + you.hp + "/" + you.maxHp
+          + " · ⚡" + you.energy + (you.overcharged ? " OVER" : "") + "</span>";
+        const bar = document.createElement("div");
+        bar.className = "hp-bar";
+        const fill = document.createElement("i");
+        fill.style.width = Math.max(0, (you.hp / you.maxHp) * 100) + "%";
+        bar.appendChild(fill);
+        const chips = document.createElement("div");
+        chips.className = "status-chips";
+        if (you.shield) chips.innerHTML += '<span class="chip shield">🛡' + you.shield + "</span>";
+        if (you.burn) chips.innerHTML += '<span class="chip burn">🔥' + you.burn + "</span>";
+        if (you.freeze) chips.innerHTML += '<span class="chip freeze">❄️' + you.freeze + "</span>";
+        if (you.stun) chips.innerHTML += '<span class="chip stun">💫</span>';
+        if (you.poison) chips.innerHTML += '<span class="chip burn">☠' + you.poison + "</span>";
+        meta.append(bar, chips);
+        meSeat.append(dot, meta);
+      }
+
+      const oppEl = $("opponents");
+      oppEl.replaceChildren();
+      for (const p of view.players) {
+        if (p.id === you.id) continue;
+        const seat = document.createElement("div");
+        seat.className = "opp-seat"
+          + (p.id === view.turn ? " turn" : "")
+          + (p.connected === false ? " offline" : "")
+          + (myTurn && p.hp > 0 ? " targetable" : "")
+          + (view.targetId === p.id ? " selected" : "");
+        seat.dataset.id = p.id;
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = p.color;
+        dot.textContent = p.name.slice(0, 1).toUpperCase();
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = "<b>" + p.name + (p.isBot ? " 🤖" : "") + "</b><span>HP " + p.hp + "/" + p.maxHp
+          + " · ⚡" + p.energy + " · " + p.handCount + " cards</span>";
+        const bar = document.createElement("div");
+        bar.className = "hp-bar";
+        const fill = document.createElement("i");
+        fill.style.width = Math.max(0, (p.hp / p.maxHp) * 100) + "%";
+        bar.appendChild(fill);
+        const chips = document.createElement("div");
+        chips.className = "status-chips";
+        if (p.shield) chips.innerHTML += '<span class="chip shield">🛡' + p.shield + "</span>";
+        if (p.burn) chips.innerHTML += '<span class="chip burn">🔥</span>';
+        if (p.freeze) chips.innerHTML += '<span class="chip freeze">❄️</span>';
+        if (p.overcharged) chips.innerHTML += '<span class="chip stun">OVER</span>';
+        meta.append(bar, chips);
+        seat.append(dot, meta);
+        if (myTurn && p.hp > 0) seat.onclick = () => sendAction({ type: "target", targetId: p.id });
+        oppEl.append(seat);
+      }
+
+      const handEl = $("hand");
+      handEl.replaceChildren();
+      const sel = state.localSelected;
+      if (!myTurn) sel.clear();
+      for (const card of you.hand) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const isBullet = card.kind === "bullet";
+        btn.className = (isBullet ? "bullet-card" : "util-card") + (sel.has(card.uid) ? " selected" : "")
+          + (isBullet && card.elem ? " elem-" + card.elem : "");
+        btn.innerHTML = handCardHtml(card);
+        btn.disabled = !myTurn;
+        btn.onclick = () => {
+          if (!myTurn) return;
+          if (!isBullet) {
+            sendAction({ type: "util", uid: card.uid });
+            return;
+          }
+          if (sel.has(card.uid)) sel.delete(card.uid);
+          else {
+            if (sel.size >= SLOT_MAX) {
+              const first = sel.values().next().value;
+              sel.delete(first);
+            }
+            sel.add(card.uid);
+          }
+          renderGame(view);
+        };
+        handEl.append(btn);
+      }
+
+      const bar = $("action-bar");
+      bar.replaceChildren();
+      if (!myTurn) {
+        const wait = document.createElement("button");
+        wait.className = "btn ghost sm";
+        wait.disabled = true;
+        wait.textContent = "Wait for turn…";
+        bar.append(wait);
+      } else {
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "btn gold sm";
+        loadBtn.textContent = "Load (" + sel.size + ")";
+        loadBtn.disabled = sel.size === 0;
+        loadBtn.onclick = () => { sendAction({ type: "load", uids: [...sel] }); sel.clear(); };
+        const single = document.createElement("button");
+        single.className = "btn sm";
+        single.textContent = "Single ⚡1";
+        single.disabled = you.energy < 1 || !you.slots.some(Boolean);
+        single.onclick = () => sendAction({ type: "attack", mode: "single" });
+        const power = document.createElement("button");
+        power.className = "btn sm";
+        power.textContent = "Power ⚡2";
+        power.disabled = you.energy < 2 || !you.slots.some((s) => s && s.powered);
+        power.onclick = () => sendAction({ type: "attack", mode: "power" });
+        const fuse = document.createElement("button");
+        fuse.className = "btn sm";
+        fuse.textContent = "Fusion ⚡3";
+        const canFuse = you.slots[0] && you.slots[1] && you.energy >= 3;
+        fuse.disabled = !canFuse;
+        fuse.onclick = () => sendAction({ type: "attack", mode: "fusion" });
+        bar.append(loadBtn, single, power, fuse);
+      }
+
+      $("hand-label").textContent = myTurn
+        ? "Load bullets · fire when ⚡ is ready (fills every 5s)"
+        : "Your hand · " + you.hand.length + " · pick up to 5 to load";
+
+      if (view.pendingFx && view.pendingFx.type === "fire") {
+        requestAnimationFrame(() => playFireFx(view.pendingFx, view));
+      }
+    }
+
+    function playFireFx(fx, view) {
+      if (!fx || !fx.id || state.lastFxId === fx.id) return;
+      state.lastFxId = fx.id;
+      const elem = fx.elem || "fire";
+      const colors = ELEM_FX[elem] || ELEM_FX.fire;
+      const layer = $("fx-layer");
+      if (!layer) return;
+
+      const wrap = $("game-wrap");
+      if (wrap) { wrap.classList.add("shake"); setTimeout(() => wrap.classList.remove("shake"), 400); }
+
+      const muzzle = $("muzzle");
+      if (muzzle && fx.shooterId === view.you.id) {
+        muzzle.classList.remove("flash");
+        void muzzle.offsetWidth;
+        muzzle.className = "muzzle flash elem-" + elem;
+        muzzle.style.background = colors.c2;
+        muzzle.style.boxShadow = "0 0 24px 8px " + colors.c1;
+        setTimeout(() => { muzzle.className = "muzzle"; muzzle.style.background = ""; muzzle.style.boxShadow = ""; }, 320);
+      }
+
+      const drum = $("cylinder-drum");
+      if (drum && fx.spin && fx.shooterId === view.you.id) {
+        drum.classList.remove("spin");
+        void drum.offsetWidth;
+        drum.classList.add("spin");
+      }
+
+      const fromEl = fx.shooterId === view.you.id
+        ? $("cylinder-wrap")
+        : document.querySelector('.opp-seat[data-id="' + fx.shooterId + '"]');
+      const toEl = fx.targetId === view.you.id
+        ? $("me-seat")
+        : document.querySelector('.opp-seat[data-id="' + fx.targetId + '"]');
+      if (!fromEl || !toEl) return;
+
+      const from = fromEl.getBoundingClientRect();
+      const to = toEl.getBoundingClientRect();
+      const sx = from.left + from.width / 2;
+      const sy = from.top + 8;
+      const tx = to.left + to.width / 2;
+      const ty = to.top + to.height / 2;
+      const dx = tx - sx;
+      const dy = ty - sy;
+
+      const proj = document.createElement("div");
+      proj.className = "projectile elem-" + elem;
+      const img = document.createElement("img");
+      img.src = fx.bulletSrc || bulletSrc(elem);
+      img.alt = "";
+      img.draggable = false;
+      proj.appendChild(img);
+      proj.style.left = sx + "px";
+      proj.style.top = sy + "px";
+      layer.appendChild(proj);
+
+      let trailT = 0;
+      const trailIv = setInterval(() => {
+        trailT += 1;
+        const t = Math.min(1, trailT * 40 / 360);
+        const px = sx + dx * t;
+        const py = sy + dy * t;
+        spawnTrailParticle(layer, px, py, elem, colors);
+      }, 40);
+
+      proj.animate([
+        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0.5 },
+        { transform: "translate(-50%, -50%) scale(1)", opacity: 1, offset: 0.12 },
+        { transform: "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px)) scale(1.05)", opacity: 1 },
+      ], { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }).onfinish = () => {
+        clearInterval(trailIv);
+        proj.remove();
+        spawnImpactFx(layer, tx, ty, elem, colors, fx.elems);
+        toEl.classList.add("hit");
+        const pop = document.createElement("div");
+        pop.className = "damage-pop elem-" + elem;
+        pop.textContent = "-" + (fx.damage || 0);
+        pop.style.left = tx + "px";
+        pop.style.top = (ty - 12) + "px";
+        layer.appendChild(pop);
+        setTimeout(() => { pop.remove(); toEl.classList.remove("hit"); }, 700);
+      };
+    }
+
+    function spawnTrailParticle(layer, x, y, elem, colors) {
+      const p = document.createElement("div");
+      p.className = "fx-particle elem-" + elem;
+      const size = elem === "earth" ? 5 + Math.random() * 4 : 4 + Math.random() * 5;
+      p.style.width = size + "px";
+      p.style.height = size + "px";
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      p.style.background = Math.random() > 0.5 ? colors.c1 : colors.c2;
+      if (elem === "energy") p.style.borderRadius = "2px";
+      if (elem === "chaos") p.style.borderRadius = "40%";
+      const spread = elem === "earth" ? 18 : 28;
+      p.style.setProperty("--dx", (Math.random() * spread - spread / 2) + "px");
+      p.style.setProperty("--dy", (Math.random() * spread - spread / 2) + "px");
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), 560);
+    }
+
+    function spawnImpactFx(layer, x, y, elem, colors, elems) {
+      const ring = document.createElement("div");
+      ring.className = "fx-ring elem-" + elem;
+      ring.style.left = x + "px";
+      ring.style.top = y + "px";
+      ring.style.width = "28px";
+      ring.style.height = "28px";
+      ring.style.setProperty("--ring-color", colors.ring);
+      layer.appendChild(ring);
+      setTimeout(() => ring.remove(), 520);
+
+      const splash = document.createElement("div");
+      splash.className = "fx-splash elem-" + elem;
+      splash.style.left = x + "px";
+      splash.style.top = y + "px";
+      splash.style.width = "40px";
+      splash.style.height = "40px";
+      splash.style.background = "radial-gradient(circle, " + colors.c2 + "aa 0%, " + colors.c1 + "44 45%, transparent 70%)";
+      layer.appendChild(splash);
+      setTimeout(() => splash.remove(), 480);
+
+      const count = elem === "fusion" || (elems && elems.length === 2) ? 16 : 12;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement("div");
+        p.className = "fx-particle elem-" + elem;
+        const size = 5 + Math.random() * 7;
+        p.style.width = size + "px";
+        p.style.height = size + "px";
+        p.style.left = x + "px";
+        p.style.top = y + "px";
+        p.style.background = i % 3 === 0 ? colors.c2 : colors.c1;
+        const ang = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+        const dist = 24 + Math.random() * 36;
+        p.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+        p.style.setProperty("--dy", Math.sin(ang) * dist + "px");
+        if (elem === "water" || elem === "ice") p.style.borderRadius = "40% 60% 50% 50%";
+        if (elem === "energy") { p.style.borderRadius = "2px"; p.style.transform = "rotate(" + (i * 30) + "deg)"; }
+        layer.appendChild(p);
+        setTimeout(() => p.remove(), 560);
+      }
+
+      if (elems && elems.length === 2 && elems[0] !== elems[1]) {
+        const c2 = ELEM_FX[elems[1]] || colors;
+        for (let i = 0; i < 6; i++) {
+          const p = document.createElement("div");
+          p.className = "fx-particle elem-" + elems[1];
+          p.style.width = "6px";
+          p.style.height = "6px";
+          p.style.left = x + "px";
+          p.style.top = y + "px";
+          p.style.background = c2.c1;
+          const ang = Math.PI + (Math.PI * i) / 6;
+          p.style.setProperty("--dx", Math.cos(ang) * 30 + "px");
+          p.style.setProperty("--dy", Math.sin(ang) * 30 + "px");
+          layer.appendChild(p);
+          setTimeout(() => p.remove(), 560);
+        }
+      }
+    }
+
+    function sendAction(msg) {
+      if (state.solo || state.isHost) hostHandleAction(state.myId, msg);
+      else {
+        const conn = [...state.conns.values()][0];
+        if (conn && conn.open) conn.send({ type: "action", ...msg });
+      }
+    }
+
+    function hostHandleAction(playerId, msg) {
+      if (!msg || !state.game) return;
+      if (msg.type === "load") hostLoad(playerId, msg.uids);
+      else if (msg.type === "util") hostUseUtil(playerId, msg.uid);
+      else if (msg.type === "recharge") hostBeginRecharge(playerId);
+      else if (msg.type === "rechargeResult") hostRechargeResult(playerId, msg.quality);
+      else if (msg.type === "attack") hostAttack(playerId, msg.mode);
+      else if (msg.type === "target") {
+        const g = state.game;
+        if (g.turn !== playerId) return;
+        const t = playerById(g, msg.targetId);
+        if (t && t.hp > 0 && t.id !== playerId) { g.targetId = t.id; hostBroadcast(); }
+      }
+    }
+
+    function hitRecharge() {
+      if (!state.recharge.active) return;
+      const needle = $("timing-needle");
+      const track = $("timing-track");
+      const rect = track.getBoundingClientRect();
+      // estimate position from animation time
+      const elapsed = (performance.now() - state.recharge.started) % 1350;
+      const pct = elapsed / 1350;
+      let quality = "miss";
+      if (pct >= 0.48 && pct <= 0.52) quality = "perfect";
+      else if (pct >= 0.42 && pct <= 0.58) quality = "good";
+      const pid = state.recharge.playerId || state.myId;
+      closeRechargeUI();
+      if (state.solo || state.isHost) hostRechargeResult(pid, quality);
+      else sendAction({ type: "rechargeResult", quality });
+    }
+
+    function renderLobby(view) {
+      $("lobby-code").textContent = view.room || state.room;
+      MG.renderPlayerList(view.players, state.myId);
+      $("host-settings").style.display = state.isHost ? "grid" : "none";
+      $("lobby-hint").textContent = state.isHost
+        ? "Up to " + MAX_PLAYERS + ". Start when ready — each picks a 3-bullet loadout."
+        : "Waiting for host…";
+      setQr(inviteUrl());
+    }
+
+    function renderEnd(view) {
+      const winner = view.players.find((p) => p.id === view.winnerId);
+      const youWin = view.winnerId === view.you.id;
+      $("end-emoji").textContent = youWin ? "🏆" : "💥";
+      $("end-title").textContent = winner ? winner.name + " wins!" : "Over";
+      $("end-sub").textContent = formatTime(Math.max(0, Date.now() - (view.startedAt || Date.now())));
+      const box = $("end-scores");
+      box.replaceChildren();
+      for (const p of view.players.slice().sort((a, b) => b.hp - a.hp)) {
+        const row = document.createElement("div");
+        row.className = "seat" + (p.id === view.winnerId ? " win" : "");
+        row.style.margin = "6px 0";
+        row.innerHTML = "<b>" + p.name + "</b> · HP " + p.hp + "/" + p.maxHp;
+        box.append(row);
+      }
+      $("btn-again").style.display = state.isHost || state.solo ? "inline-flex" : "none";
+      stopTimer();
+    }
+
+    function formatTime(ms) {
+      const s = Math.floor(ms / 1000);
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+    function startTimer(from) {
+      stopTimer();
+      const tick = () => { $("timer").textContent = formatTime(Date.now() - from); };
+      tick();
+      state.timerId = setInterval(tick, 250);
+    }
+    function stopTimer() { clearInterval(state.timerId); state.timerId = 0; }
+
+    function lobbySnapshot() {
+      const players = [{ id: "host", name: state.myName, color: COLORS[0], connected: true }];
+      let i = 1;
+      for (const [, meta] of guests) {
+        players.push({ id: meta.playerId || "g" + i, name: meta.name, color: COLORS[i % COLORS.length], connected: true });
+        i++;
+      }
+      return { phase: "lobby", room: state.room, players, you: { id: "host" } };
+    }
+    function sendLobby() {
+      const snap = lobbySnapshot();
+      applyView({ ...snap, you: { id: state.myId } });
+      for (const [id, conn] of state.conns) {
+        if (conn.open) try { conn.send({ type: "state", view: { ...snap, you: { id } } }); } catch (e) {}
+      }
+    }
+
+    function attachHostConn(conn) {
+      conn.on("data", (msg) => {
+        if (!msg || typeof msg !== "object") return;
+        if (msg.type === "join") {
+          const name = String(msg.name || "Player").slice(0, 16);
+          const token = String(msg.token || "").slice(0, 80);
+          if (state.game && state.game.phase === "playing") {
+            let seated = token ? state.game.players.find((p) => p.id !== "host" && p.token === token) : null;
+            if (seated) {
+              guests.set(conn.peer, { name, token, playerId: seated.id });
+              seated.connected = true;
+              try { conn.send({ type: "state", view: playerView(state.game, seated.id) }); } catch (e) {}
+              hostBroadcast();
+              return;
+            }
+            conn.send({ type: "error", message: "Game already started" });
+            return;
+          }
+          if (!guests.has(conn.peer) && 1 + guests.size >= MAX_PLAYERS) {
+            conn.send({ type: "error", message: "Room full" });
+            return;
+          }
+          guests.set(conn.peer, { name, token: token || conn.peer, playerId: conn.peer });
+          sendLobby();
+        }
+        if (msg.type === "action") {
+          const meta = guests.get(conn.peer);
+          hostHandleAction((meta && meta.playerId) || conn.peer, msg);
+        }
+        if (msg.type === "leave") {
+          state.conns.delete(conn.peer);
+          const meta = guests.get(conn.peer);
+          const pid = (meta && meta.playerId) || conn.peer;
+          guests.delete(conn.peer);
+          try { conn.close(); } catch (e) {}
+          if (state.game && state.game.players) {
+            const p = state.game.players.find((x) => x.id === pid);
+            if (p) p.connected = false;
+            hostBroadcast();
+          } else sendLobby();
+        }
+      });
+      conn.on("close", () => {
+        const meta = guests.get(conn.peer);
+        const pid = (meta && meta.playerId) || conn.peer;
+        state.conns.delete(conn.peer);
+        guests.delete(conn.peer);
+        if (state.game && state.game.players) {
+          const p = state.game.players.find((x) => x.id === pid);
+          if (p) p.connected = false;
+          hostBroadcast();
+        } else sendLobby();
+      });
+    }
+
+    function destroyPeer(opts) {
+      clearTimeout(state.joinTimer);
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      if (!opts || !opts.keepView) state.view = null;
+      for (const c of state.conns.values()) { try { c.close(); } catch (e) {} }
+      state.conns.clear();
+      if (state.peer) { try { state.peer.destroy(); } catch (e) {} state.peer = null; }
+    }
+    function clearJoinWait() { clearTimeout(state.joinTimer); state.joinTimer = 0; }
+
+    function createRoom(isRetry) {
+      if (state.connecting && !isRetry) return;
+      const name = requireName();
+      if (!name) return;
+      state.connecting = true;
+      showWarmup("Opening arena…", "Wait here.");
+      waitForPeer(() => {
+        state.isHost = true; state.solo = false; state.myId = "host";
+        state.myName = name; rememberName(name);
+        state.room = isRetry ? (state.room || randomCode()) : randomCode();
+        showError("home-error", ""); setJoinStatus("", "");
+        destroyPeer();
+        const peer = new Peer(PEER_PREFIX + state.room, peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          hideWarmup(); state.connecting = false; sendLobby(); toast("Room " + state.room);
+        });
+        peer.on("connection", (conn) => {
+          state.conns.set(conn.peer, conn);
+          conn.on("open", () => attachHostConn(conn));
+        });
+        peer.on("error", (err) => {
+          if (err.type === "unavailable-id") { state.room = randomCode(); destroyPeer(); createRoom(true); return; }
+          hideWarmup(); state.connecting = false; showError("home-error", "Could not create room.");
+        });
+      }, () => { hideWarmup(); showError("home-error", "Could not load multiplayer."); });
+    }
+
+    function joinRoom(code, reconnect) {
+      if (state.connecting && !reconnect) return;
+      const name = reconnect ? (state.myName || requireName()) : requireName();
+      if (!name) return;
+      code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (code.length !== 4) { setJoinStatus("fail", "Enter a 4-character code."); return; }
+      state.connecting = true; state.leaving = false;
+      if (!reconnect) showWarmup("Finding arena…", "Wait.");
+      else setReconnectUi(true, "Reconnecting…");
+      waitForPeer(() => {
+        state.isHost = false; state.solo = false; state.myName = name; rememberName(name);
+        state.room = code; destroyPeer({ keepView: !!reconnect });
+        if (!reconnect) setJoinStatus("connecting", "Finding " + code + "…");
+        clearJoinWait();
+        state.joinTimer = setTimeout(() => {
+          if (reconnect) { state.connecting = false; scheduleGuestReconnect(); return; }
+          setJoinStatus("fail", "Timed out.");
+        }, 22000);
+        const peer = new Peer(peerOptions());
+        state.peer = peer;
+        peer.on("open", () => {
+          const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+          state.conns.set("host", conn);
+          conn.on("open", () => {
+            clearJoinWait(); hideWarmup(); setReconnectUi(false); state.reconnectAttempt = 0;
+            conn.send({ type: "join", name, token: mySeatToken() });
+          });
+          attachGuestConn(conn);
+        });
+        peer.on("error", () => {
+          hideWarmup(); state.connecting = false;
+          if (reconnect) scheduleGuestReconnect(); else setJoinStatus("fail", "Could not connect.");
+        });
+      }, () => { hideWarmup(); showError("home-error", "Could not load multiplayer."); });
+    }
+
+    function attachGuestConn(conn) {
+      conn.on("data", (msg) => {
+        if (!msg) return;
+        if (msg.type === "state") {
+          clearJoinWait(); hideWarmup(); setReconnectUi(false);
+          state.connecting = false; state.reconnectAttempt = 0; applyView(msg.view);
+        }
+        if (msg.type === "error") { setJoinStatus("fail", msg.message || "Join failed"); destroyPeer(); }
+      });
+      conn.on("close", () => { if (!state.leaving) scheduleGuestReconnect(); });
+    }
+
+    function openLoadout(thenStart) {
+      state.pendingLoadout = thenStart;
+      state.loadoutPick = new Set();
+      const grid = $("loadout-grid");
+      grid.replaceChildren();
+
+      function selectedElems() {
+        return [...state.loadoutPick].map((id) => {
+          const s = BULLET_CATALOG.find((x) => x.id === id);
+          return s ? s.elem : null;
+        }).filter(Boolean);
+      }
+      function refreshLoadoutUi() {
+        $("loadout-picked").textContent = state.loadoutPick.size + " / 3 selected";
+        $("btn-loadout-go").disabled = state.loadoutPick.size !== 3;
+        renderFusionGuide(selectedElems());
+      }
+
+      for (const s of BULLET_CATALOG) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "loadout-chip elem-" + s.elem;
+        btn.innerHTML = portraitHtml(s)
+          + '<span class="meta-text"><b>' + s.name + "</b>"
+          + s.role + " · " + s.dmg + " dmg · " + s.elem + "</span>";
+        btn.onclick = () => {
+          if (state.loadoutPick.has(s.id)) state.loadoutPick.delete(s.id);
+          else if (state.loadoutPick.size < 3) state.loadoutPick.add(s.id);
+          btn.classList.toggle("on", state.loadoutPick.has(s.id));
+          refreshLoadoutUi();
+        };
+        grid.appendChild(btn);
+      }
+      refreshLoadoutUi();
+      showScreen("loadout");
+    }
+
+    function startHostGame(loadoutIds) {
+      const maxHp = Number($("max-hp") && $("max-hp").value) || 100;
+      const players = [{ id: "host", name: state.myName, token: "host", color: COLORS[0], connected: true }];
+      let i = 1;
+      for (const [peerId, meta] of guests) {
+        players.push({
+          id: meta.playerId || peerId, name: meta.name, token: meta.token || peerId,
+          color: COLORS[i++ % COLORS.length], connected: true,
+        });
+      }
+      if (players.length < 2 && !state.solo) { toast("Need 2 players"); return; }
+      const loadouts = { host: loadoutIds || defaultLoadout(0) };
+      players.forEach((p, idx) => { if (!loadouts[p.id]) loadouts[p.id] = defaultLoadout(idx); });
+      uidSeq = 1;
+      state.game = createGame(players, maxHp, loadouts);
+      startTurn(state.game);
+      startEnergyLoop();
+      hostBroadcast();
+    }
+
+    function startSolo() {
+      const name = requireName();
+      if (!name) return;
+      state.solo = true; state.isHost = true; state.myId = "host";
+      state.myName = name; rememberName(name); state.room = "SOLO";
+      openLoadout((ids) => {
+        uidSeq = 1;
+        state.game = createGame([
+          { id: "host", name, connected: true },
+          { id: "bot", name: "Bandit", isBot: true, color: COLORS[1], connected: true },
+        ], 100, { host: ids, bot: defaultLoadout(1) });
+        startTurn(state.game);
+        startEnergyLoop();
+        hostBroadcast();
+        setTimeout(botTurn, 800);
+      });
+    }
+
+    function goHome() {
+      state.leaving = true; destroyPeer(); closeRechargeUI(); stopEnergyLoop();
+      state.game = null; state.solo = false; state.isHost = false;
+      state.localSelected.clear(); setReconnectUi(false); stopTimer();
+      guests.clear(); showScreen("home"); MG.stripRoomFromUrl(); state.leaving = false;
+    }
+    function leaveRoom() {
+      if (!state.solo && !state.isHost) {
+        const conn = [...state.conns.values()][0];
+        if (conn && conn.open) try { conn.send({ type: "leave" }); } catch (e) {}
+      }
+      goHome();
+    }
+
+    // Patch kit showScreen so loadout works from bindHome paths
+    MG.showScreen = showScreen;
+
+    const boot = MG.init({ hubHref: "index.html", nameKey: "bullet-name", maxPlayers: MAX_PLAYERS });
+    MG.bindHome({
+      onCreate: createRoom,
+      onJoin: joinRoom,
+      onSolo: startSolo,
+      onLeave: leaveRoom,
+      onHome: goHome,
+      onAgain: () => {
+        if (state.solo) startSolo();
+        else if (state.isHost) openLoadout((ids) => startHostGame(ids));
+      },
+      onStart: () => openLoadout((ids) => startHostGame(ids)),
+      inviteUrl,
+    });
+
+    $("btn-loadout-go").onclick = () => {
+      if (state.loadoutPick.size !== 3) return;
+      const ids = [...state.loadoutPick];
+      const fn = state.pendingLoadout;
+      state.pendingLoadout = null;
+      if (fn) fn(ids);
+    };
+    $("btn-loadout-back").onclick = goHome;
+    $("btn-help").onclick = () => $("help-pick").classList.add("show");
+    $("btn-help-close").onclick = () => $("help-pick").classList.remove("show");
+    $("btn-theme").onclick = () => document.body.classList.toggle("dark");
+    $("btn-recharge-hit").onclick = hitRecharge;
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        $("help-pick").classList.remove("show");
+        $("reconnect-pick").classList.remove("show");
+      }
+      if (e.key === " " && state.recharge.active) { e.preventDefault(); hitRecharge(); }
+    });
+
+    if (boot.roomParam && $("name").value.trim()) joinRoom(boot.roomParam);
+  </script>
+</body>
+</html>
