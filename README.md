@@ -97,73 +97,97 @@ Any two cards share **exactly one** symbol — tap it. First empty pile wins. Ho
 
 **Hub** · [index.html](index.html)
 
+<p>
 <img src="Pics/Mobile/dasboard1.png" width="180" alt="Hub mobile 1" />
 <img src="Pics/Mobile/dashboard2.png" width="180" alt="Hub mobile 2" />
+</p>
 
 **Bullet** · [Bullet.html](Bullet.html)
 
+<p>
 <img src="Pics/Mobile/bullet1.png" width="180" alt="Bullet mobile 1" />
 <img src="Pics/Mobile/bullet2.png" width="180" alt="Bullet mobile 2" />
 <img src="Pics/Mobile/bullet3.png" width="180" alt="Bullet mobile 3" />
 <img src="Pics/Mobile/bullet4.png" width="180" alt="Bullet mobile 4" />
 <img src="Pics/Mobile/bullet5.png" width="180" alt="Bullet mobile 5" />
+</p>
 
 **Cube** · [Cubestacc.html](Cubestacc.html)
 
+<p>
 <img src="Pics/Mobile/cube1.png" width="180" alt="Cube mobile 1" />
 <img src="Pics/Mobile/cube2.png" width="180" alt="Cube mobile 2" />
 <img src="Pics/Mobile/cube3.png" width="180" alt="Cube mobile 3" />
+</p>
 
 **Flip** · [unoflip.html](unoflip.html)
 
+<p>
 <img src="Pics/Mobile/flip1.png" width="180" alt="Flip mobile 1" />
 <img src="Pics/Mobile/flip2.png" width="180" alt="Flip mobile 2" />
 <img src="Pics/Mobile/flip3.png" width="180" alt="Flip mobile 3" />
+</p>
 
 **Uno** · [Uno.html](Uno.html)
 
+<p>
 <img src="Pics/Mobile/uno1.png" width="180" alt="Uno mobile 1" />
 <img src="Pics/Mobile/uno2.png" width="180" alt="Uno mobile 2" />
+</p>
 
 **Dobble** · [Dobble.html](Dobble.html)
 
+<p>
 <img src="Pics/Mobile/dobble1.png" width="180" alt="Dobble mobile 1" />
 <img src="Pics/Mobile/dobble2.png" width="180" alt="Dobble mobile 2" />
+</p>
 
 ### Desktop
 
 **Hub** · [index.html](index.html)
 
-<img src="Pics/Desktop/dashboard1.png" width="360" alt="Hub desktop 1" />
-<img src="Pics/Desktop/dashboard2.png" width="360" alt="Hub desktop 2" />
+<p>
+<img src="Pics/Desktop/dashboard1.png" width="320" alt="Hub desktop 1" />
+<img src="Pics/Desktop/dashboard2.png" width="320" alt="Hub desktop 2" />
+</p>
 
 **Bullet** · [Bullet.html](Bullet.html)
 
-<img src="Pics/Desktop/bullet1.png" width="360" alt="Bullet desktop 1" />
-<img src="Pics/Desktop/Bullet2.png" width="360" alt="Bullet desktop 2" />
-<img src="Pics/Desktop/Bullet3.png" width="360" alt="Bullet desktop 3" />
+<p>
+<img src="Pics/Desktop/bullet1.png" width="320" alt="Bullet desktop 1" />
+<img src="Pics/Desktop/Bullet2.png" width="320" alt="Bullet desktop 2" />
+<img src="Pics/Desktop/Bullet3.png" width="320" alt="Bullet desktop 3" />
+</p>
 
 **Cube** · [Cubestacc.html](Cubestacc.html)
 
-<img src="Pics/Desktop/cube1.png" width="360" alt="Cube desktop 1" />
-<img src="Pics/Desktop/Cube2.png" width="360" alt="Cube desktop 2" />
-<img src="Pics/Desktop/Cube3.png" width="360" alt="Cube desktop 3" />
+<p>
+<img src="Pics/Desktop/cube1.png" width="320" alt="Cube desktop 1" />
+<img src="Pics/Desktop/Cube2.png" width="320" alt="Cube desktop 2" />
+<img src="Pics/Desktop/Cube3.png" width="320" alt="Cube desktop 3" />
+</p>
 
 **Flip** · [unoflip.html](unoflip.html)
 
-<img src="Pics/Desktop/flip1.png" width="360" alt="Flip desktop 1" />
-<img src="Pics/Desktop/flip2.png" width="360" alt="Flip desktop 2" />
-<img src="Pics/Desktop/flip3.png" width="360" alt="Flip desktop 3" />
+<p>
+<img src="Pics/Desktop/flip1.png" width="320" alt="Flip desktop 1" />
+<img src="Pics/Desktop/flip2.png" width="320" alt="Flip desktop 2" />
+<img src="Pics/Desktop/flip3.png" width="320" alt="Flip desktop 3" />
+</p>
 
 **Uno** · [Uno.html](Uno.html)
 
-<img src="Pics/Desktop/uno1.png" width="360" alt="Uno desktop 1" />
-<img src="Pics/Desktop/uno2.png" width="360" alt="Uno desktop 2" />
+<p>
+<img src="Pics/Desktop/uno1.png" width="320" alt="Uno desktop 1" />
+<img src="Pics/Desktop/uno2.png" width="320" alt="Uno desktop 2" />
+</p>
 
 **Dobble** · [Dobble.html](Dobble.html)
 
-<img src="Pics/Desktop/dobble1.png" width="360" alt="Dobble desktop 1" />
-<img src="Pics/Desktop/dobbl2.png" width="360" alt="Dobble desktop 2" />
+<p>
+<img src="Pics/Desktop/dobble1.png" width="320" alt="Dobble desktop 1" />
+<img src="Pics/Desktop/dobbl2.png" width="320" alt="Dobble desktop 2" />
+</p>
 
 ---
 
