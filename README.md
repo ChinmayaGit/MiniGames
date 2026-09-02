@@ -21,6 +21,7 @@ This README is the **project overview**; each game’s MD covers architecture an
 | **Hub** | [index.html](index.html) | Product surface / discovery | — |
 | **Dobble** | [Dobble.html](Dobble.html) | Projective plane order 7; unique intersection | [Dobble.md](docs/Dobble.md) |
 | **Uno** | [Uno.html](Uno.html) | Draw-stack FSM, UNO catch window, NAT/reconnect | [Uno.md](docs/Uno.md) |
+| **UNO No Mercy** | [UnoNoMercy.html](UnoNoMercy.html) | Equal-or-higher draw stack, 7/0 hands, Mercy @ 25 | [UnoNoMercy.md](docs/UnoNoMercy.md) |
 | **Uno Flip** | [unoflip.html](unoflip.html) | Dual-face cards + O(1) global flip | [UnoFlip.md](docs/UnoFlip.md) |
 | **Cubestacc** | [Cubestacc.html](Cubestacc.html) | Sparse 3D cells + painter’s sort + camera yaw | [Cubestacc.md](docs/Cubestacc.md) |
 | **Bullet** | [Bullet.html](Bullet.html) | Blaster FSM: load → timing recharge → Single/Power/Fusion | [Bullet.md](docs/Bullet.md) |
@@ -84,6 +85,10 @@ Double-sided deck; **Flip** turns the whole table Light↔Dark. Details: [UnoFli
 ### Uno
 
 Match **color** or **number**. Stack +2/+4 (house rules). Call **UNO!** at 2 cards or risk **Caught!**. Details: [Uno.md](docs/Uno.md). · [Play](Uno.html)
+
+### UNO No Mercy
+
+Brutal Uno — stack **+2/+4/+6/+10** (equal or higher), **7** swaps, **0** passes hands, **25+ cards = out**. Details: [UnoNoMercy.md](docs/UnoNoMercy.md). · [Play](UnoNoMercy.html)
 
 ### Dobble
 

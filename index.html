@@ -352,6 +352,11 @@
     .art.uno {
       background: radial-gradient(ellipse at center, #3caf58 0%, #1f7a38 58%, #14602c 100%);
     }
+    .art.unonomercy {
+      background:
+        radial-gradient(ellipse at 50% 40%, #5a1018 0%, transparent 55%),
+        linear-gradient(160deg, #2a060c 0%, #0a0204 70%);
+    }
     .art.unoflip {
       background: linear-gradient(120deg, #3caf58 0 50%, #3b0764 50%);
     }
@@ -556,6 +561,7 @@
       <a href="Dobble.html">Dobble</a>
       <a href="unoflip.html">Flip</a>
       <a href="Uno.html">Uno</a>
+      <a href="UnoNoMercy.html">No Mercy</a>
     </nav>
 
     <div class="toolbar">
@@ -575,7 +581,7 @@
     <section class="catalog-section" aria-labelledby="main-games-title">
       <div class="section-head">
         <h2 id="main-games-title">Main games</h2>
-        <p>Bullet · Cube · Dobble · Flip · Uno</p>
+        <p>Bullet · Cube · Dobble · Flip · Uno · No Mercy</p>
       </div>
       <main class="grid" id="game-catalog">
         <a class="tile" href="Bullet.html">
@@ -664,6 +670,23 @@
             <span class="play">Play Uno</span>
           </div>
         </a>
+
+        <a class="tile" href="UnoNoMercy.html">
+          <div class="art unonomercy" aria-hidden="true">
+            <div class="uno-oval"><span>NM</span></div>
+          </div>
+          <div class="body">
+            <h2>UNO No Mercy</h2>
+            <p>Stack +2/+4/+6/+10, swap on 7s, Discard All, Color Roulette. Hit 25 cards and you’re out.</p>
+            <div class="tags">
+              <span class="tag">Multiplayer</span>
+              <span class="tag">Solo vs bots</span>
+              <span class="tag">Mercy rule</span>
+              <span class="tag">Max 6 players</span>
+            </div>
+            <span class="play">Play No Mercy</span>
+          </div>
+        </a>
       </main>
     </section>
 
@@ -701,6 +724,7 @@
         <a href="docs/UnoFlip.md">Flip notes</a>
         ·
         <a href="docs/Uno.md">Uno notes</a>
+        <a href="docs/UnoNoMercy.md">No Mercy notes</a>
       </span>
     </footer>
   </div>
@@ -751,7 +775,7 @@
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
           e.preventDefault();
           var href = a.getAttribute("href") || "";
-          var name = /Bullet/i.test(href) ? "Bullet" : /Cubestacc/i.test(href) ? "Cube" : /Dobble/i.test(href) ? "Dobble" : /unoflip/i.test(href) ? "Flip" : /Uno/i.test(href) ? "Uno" : "the game";
+          var name = /Bullet/i.test(href) ? "Bullet" : /Cubestacc/i.test(href) ? "Cube" : /Dobble/i.test(href) ? "Dobble" : /unoflip/i.test(href) ? "Flip" : /UnoNoMercy/i.test(href) ? "No Mercy" : /Uno/i.test(href) ? "Uno" : "the game";
           openGame(href, name);
         });
       });
